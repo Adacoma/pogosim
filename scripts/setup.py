@@ -20,6 +20,7 @@ setup(
     install_requires=[
         "pyyaml>=5.3",
         "pandas>=1.3.0",
+        "pyarrow>=19.0.0",
         # "ray>=2.0",
     ],
     classifiers=[
