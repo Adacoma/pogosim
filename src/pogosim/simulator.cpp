@@ -165,12 +165,12 @@ void Simulation::create_objects() {
     std::vector<b2Vec2> points;
     try {
         if (initial_formation == "random") {
-            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors);
+            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
         } else if (initial_formation == "disk") {
             points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);
         } else {
             glogger->error("Unknown 'initial_formation' value: '{}'. Assuming random formation...", initial_formation);
-            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors);
+            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
         }
     } catch (const std::exception& e) {
         throw std::runtime_error("Impossible to create robots (number may be too high for the provided arena): " + std::string(e.what()));
@@ -351,6 +351,8 @@ void Simulation::init_config() {
     initial_formation = config["initial_formation"].get(std::string("random"));
     formation_min_space_between_neighbors = config["formation_min_space_between_neighbors"].get(0.0f);
     formation_max_space_between_neighbors = config["formation_max_space_between_neighbors"].get(INFINITY);
+    formation_attempts_per_point = config["formation_attempts_per_point"].get(100U);
+    formation_max_restarts = config["formation_max_restarts"].get(100U);
 
     enable_gui = config["GUI"].get(true);
     GUI_speed_up = config["GUI_speed_up"].get(1.0f);

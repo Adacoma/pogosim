@@ -79,6 +79,8 @@ class Simulation {
     std::string initial_formation;                                          ///< Type of initial formation of the objects.
     float formation_min_space_between_neighbors;                            ///< Min space between neighbors when creating the initial formation.
     float formation_max_space_between_neighbors;                            ///< Max space between neighbors when creating the initial formation.
+    uint32_t formation_attempts_per_point;                                  ///< When creating random formation, number of attempt to place a point.
+    uint32_t formation_max_restarts;                                        ///< When creating random formation, how many times the entire formation creation process can be restarted.
 
     double last_frame_shown_t = -1.0;     ///< Time when the last frame was rendered.
     double last_frame_saved_t = -1.0;     ///< Time when the last frame was saved.
