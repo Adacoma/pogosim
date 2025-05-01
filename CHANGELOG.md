@@ -1,6 +1,27 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.1] - 2025-05-01
+
+### Added
+ - the "init\_from\_configuration" macro can be used to initialize any globals from a configuration file "parameters.\*" entry
+ - pogobatch now supports the config parameter 'result\_new\_columns' that automatically add columns from batch options
+ - normal simulations now accept pogobatch config files. Default options (instead of batch\_options) are provided with configuration key 'default\_option'
+ - add config params to specify max robot speed
+ - support for SDL headless mode if GUI is disabled
+ - new parameters for random formation: formation\_attempts\_per\_point and formation\_max\_restarts, to specify how many attempts should be tried to find initial positions
+ - add "formation\_min\_space\_between\_neighbors" and "formation\_max\_space\_between\_neighbors" parameters in config
+ - implementation of "pogobot\_motor\_dir_\*" and "pogobot\_motor\_power_\*" functions from the Pogolib
+ - run\_and\_tumble example: parameter to allow backward run phases
+
+### Changed
+ - remove locomotion noise in most configs
+
+### Fixed
+ - add pyarrow as requirement of pogosim python scripts
+ - msg reception now updates "\_receiver\_ir\_index"
+
+
 ## [0.10.0] - 2025-04-23
 
 ### Added
