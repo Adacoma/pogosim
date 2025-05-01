@@ -313,9 +313,9 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
 void PogobotObject::set_motor(motor_id motor, int speed) {
     // Update motor speeds
     if (motor == motorL) {
-        left_motor_speed = speed;
+        left_motor_speed = speed * (motor_dir[motorL] == 0 ? -1.f : 1.f);
     } else if (motor == motorR) {
-        right_motor_speed = speed;
+        right_motor_speed = speed * (motor_dir[motorR] == 0 ? 1.f : -1.f);
     }
     // glogger->debug("set motor: {} {}", left_motor_speed, right_motor_speed);
 

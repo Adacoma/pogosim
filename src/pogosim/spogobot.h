@@ -1027,6 +1027,7 @@ void data_set_value_double(char const* name, double value);
 void data_set_value_string(char const* name, char const* value);
 void data_set_value_bool(char const* name, bool value);
 
+void init_bool_from_configuration(bool* var, char const* name, bool const default_value);
 void init_double_from_configuration(double* var, char const* name, double const default_value);
 void init_float_from_configuration(float* var, char const* name, float const default_value);
 void init_int32_from_configuration(int32_t* var, char const* name, int32_t const default_value);
@@ -1046,6 +1047,7 @@ void init_double_array_from_configuration(double* var, char const* name, size_t 
 #ifndef __cplusplus
 #define init_from_configuration(x)                                          \
     _Generic ((x),                                                          \
+        bool:     init_bool_from_configuration,                             \
         double:   init_double_from_configuration,                           \
         float:    init_float_from_configuration,                            \
         int32_t:  init_int32_from_configuration,                            \

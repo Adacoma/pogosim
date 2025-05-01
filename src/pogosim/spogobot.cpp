@@ -294,30 +294,33 @@ void pogobot_motor_set ( motor_id motor, uint16_t value ) {
 
 uint32_t pogobot_motor_dir_current_status( void ) {
     glogger->warn("Function 'pogobot_motor_dir_current_status' is not implemented yet!");
-    return 0;
+    uint32_t value = 0xFFFFFFFF;
+    return value;
 }
 
 int8_t pogobot_motor_dir_mem_get( uint8_t *p_directions ) {
-    glogger->warn("Function 'pogobot_motor_dir_mem_get' is not implemented yet!");
+    std::memcpy(p_directions, &current_robot->motor_dir_mem, sizeof(current_robot->motor_dir_mem));
     return 0;
 }
 
 int8_t pogobot_motor_dir_mem_set( uint8_t *p_directions) {
-    glogger->warn("Function 'pogobot_motor_dir_mem_set' is not implemented yet!");
+    std::memcpy(&current_robot->motor_dir_mem, p_directions, sizeof(current_robot->motor_dir_mem));
     return 0;
 }
 
 void pogobot_motor_dir_set( motor_id motor, uint8_t value ) {
-    glogger->warn("Function 'pogobot_motor_dir_set' is not implemented yet!");
+    if (motor > motorB)
+        return;
+    current_robot->motor_dir[motor] = value;
 }
 
 uint8_t pogobot_motor_power_mem_get( uint16_t *p_powers ) {
-    glogger->warn("Function 'pogobot_motor_power_mem_get' is not implemented yet!");
+    std::memcpy(p_powers, &current_robot->motor_power_mem, sizeof(current_robot->motor_power_mem));
     return 0;
 }
 
 uint8_t pogobot_motor_power_mem_set( uint16_t *p_powers ) {
-    glogger->warn("Function 'pogobot_motor_power_mem_set' is not implemented yet!");
+    std::memcpy(&current_robot->motor_power_mem, p_powers, sizeof(current_robot->motor_power_mem));
     return 0;
 }
 
@@ -511,6 +514,10 @@ void data_set_value_bool(char const* name, bool value) {
 }
 
 static std::string const parameters_config_key = "parameters";
+
+void init_bool_from_configuration(bool* var, char const* name, bool const default_value) {
+    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+}
 
 void init_double_from_configuration(double* var, char const* name, double const default_value) {
     *var = simulation->get_config()[parameters_config_key][name].get(default_value);

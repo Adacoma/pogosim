@@ -350,6 +350,10 @@ public:
 
     uint64_t current_time_microseconds = 0LL;                        ///< Current time in microseconds.
 
+    /// Motors current direction and power ([R, L, B])
+    uint8_t motor_dir_mem[3] = {0, 1, 0};
+    uint8_t motor_dir[3] = {0, 1, 0};
+    uint16_t motor_power_mem[3] = {512, 512, 0};
 
 protected:
     /**
@@ -459,6 +463,7 @@ public:
      * @param world_id The Box2D world identifier (unused in rendering).
      */
     virtual void render(SDL_Renderer*, b2WorldId) const override;
+
 };
 
 
