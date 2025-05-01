@@ -332,6 +332,14 @@ public:
      */
     void send_to_neighbors(ir_direction dir, message_t *const message);
 
+    /**
+     * @brief Receive a message from another robot.
+     *
+     * @param message Pointer to the message_t to receive.
+     * @param source Pointer to the originating robot.
+     */
+    void receive_message(message_t *const message, PogobotObject* source);
+
 
     /**
      * @brief Simulate a sleep on a single robot.

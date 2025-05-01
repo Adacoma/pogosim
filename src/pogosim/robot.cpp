@@ -402,8 +402,41 @@ void PogobotObject::send_to_neighbors(ir_direction dir, message_t *const message
     for (PogobotObject* robot : neighbors[dir]) {
         float const prob = dis(rnd_gen);
         //glogger->debug("MESSAGE !! with prob {} / {}: {} -> {}", prob, msg_success_rate, message->header._sender_id, robot->id);
-        if (prob <= (*msg_success_rate)(msg_size, p_send, cluster_size) && robot->messages.size() < 100) {
-            robot->messages.push(*message);
+        if (prob <= (*msg_success_rate)(msg_size, p_send, cluster_size)) {
+            robot->receive_message(message, this);
+        }
+    }
+}
+
+void PogobotObject::receive_message(message_t *const message, PogobotObject* source) {
+    if (messages.size() > 100) {
+        // Overflow, ignore message
+        return;
+    }
+
+    // Copy original message
+    message_t m;
+    memcpy(&m, message, sizeof(message_t));
+
+    // Check which IR receptors can receive messages from the source
+    std::vector<bool> possible_directions;
+    for (uint8_t dir = ir_front; dir < ir_all; dir++) {
+        possible_directions.push_back(contains(neighbors[dir], source));
+    }
+
+    // Check whether all directions are possible
+    if (all_true(possible_directions)) {
+        // Yes. Change _receiver_ir_index to ir_all, and add the message
+        m.header._receiver_ir_index = ir_all;
+        messages.push(m);
+    } else {
+        // No, create a new received message for each possible directions
+        for (uint8_t dir = ir_front; dir < ir_all; dir++) {
+            if (!possible_directions[dir])
+                continue;
+            // Yes. Change _receiver_ir_index, and add the message
+            m.header._receiver_ir_index = dir;
+            messages.push(m);
         }
     }
 }

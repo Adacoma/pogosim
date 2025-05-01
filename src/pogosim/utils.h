@@ -8,6 +8,7 @@
 #include <box2d/box2d.h>
 
 #include <random>
+#include <algorithm>
 
 /// Global logger for general logging.
 extern std::shared_ptr<spdlog::logger> glogger;
@@ -18,6 +19,47 @@ extern std::shared_ptr<spdlog::logger> robotlogger;
 extern std::random_device rd;
 /// Random number generator seeded with rd.
 extern std::mt19937 rnd_gen;
+
+/**
+ * @brief Check whether a vector contains a given value.
+ *
+ * Traverses the vector and returns `true` as soon as the first element equal
+ * to @p value is found.
+ *
+ * @tparam T   Element type stored in the vector and of the searched value.
+ * @param vec  Vector to inspect.
+ * @param value Value to look for inside @p vec.
+ * @return `true` if @p value is present in @p vec, otherwise `false`.
+ *
+ * @note Complexity: O(n) comparisons, where *n* is `vec.size()`.
+ * @since C++20 — `std::find` is `constexpr`‐friendly when the iterators (and
+ * `operator==`) are `constexpr`.
+ */
+template<typename T>
+[[nodiscard]] constexpr bool contains(const std::vector<T>& vec,
+                                      const T& value) {
+    return std::find(vec.begin(), vec.end(), value) != vec.end();
+}
+
+
+/**
+ * @brief Check whether every element in a `std::vector<bool>` is `true`.
+ *
+ * Uses `std::ranges::all_of` to test each element.  Stops early on the first
+ * `false`, so the complexity is *O(n)* in the worst case, *O(1)* if the first
+ * value is `false`.
+ *
+ * @param flags  Vector of `bool` (or any range of `bool`-convertible values).
+ * @return `true` if **all** elements evaluate to `true`, otherwise `false`.
+ *
+ * @note Works with the `std::vector<bool>` specialisation because the proxy
+ *       object returned by its iterator is convertible to `bool`.
+ * @since C++20
+ */
+[[nodiscard]] constexpr bool all_true(const std::vector<bool>& flags) {
+    return std::ranges::all_of(flags, [](bool v) { return v; });
+}
+
 
 /**
  * @brief Initializes the global loggers.
