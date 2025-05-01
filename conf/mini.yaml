@@ -5,7 +5,7 @@ window_height: 600      # In pixels
 
 arena_file: arenas/disk.csv
 #arena_file: arenas/arena8.csv
-arena_surface: 1.0e6    # In mm²
+arena_surface: 5.0e5    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
@@ -18,14 +18,14 @@ frames_name: "frames/f{:010.4f}.png"
 
 seed: 0
 show_communication_channels: false  # In the GUI, can enabled/disabled using F5
-show_lateral_LEDs: true             # In the GUI, can enabled/disabled using F6
+show_lateral_LEDs: false             # In the GUI, can enabled/disabled using F6
 show_light_levels: false            # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
 simulation_time: 500.0     # In s
 time_step: 0.01            # In s
-GUI_speed_up: 10.0         # How much the visualisation in the GUI should be sped up
+GUI_speed_up: 0.01         # How much the visualisation in the GUI should be sped up
 
 initial_formation: random # Can be "random" (all robots are placed randomly in the arena), or "disk" (robots are placed uniformly in a disk shape at the center of the arena)
 
@@ -46,7 +46,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 200             # Number of objects (Pogobots) in this category
+        nb: 30             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 

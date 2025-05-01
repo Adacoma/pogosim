@@ -19,6 +19,7 @@ uint32_t run_duration_min    = 200;
 uint32_t run_duration_max    = 1200;
 uint32_t tumble_duration_min = 100;
 uint32_t tumble_duration_max = 1100;
+bool enable_backward_dir     = false;
 float test_vect[4]           = {1.f, 2.f, 3.f, 4.f};
 
 
@@ -45,6 +46,8 @@ typedef struct {
     uint32_t phase_start_time;    // Time when the current phase started (ms).
     uint32_t phase_duration;      // Duration of the current phase (ms).
     uint8_t tumble_direction;     // Tumble direction: 0 = left, 1 = right.
+    uint8_t motor_dir_left;       // Calibrated value for left motor direction from robot memory
+    uint8_t motor_dir_right;      // Calibrated value for right motor direction from robot memory
 } USERDATA;
 
 // Call this macro in the same file (.h or .c) as the declaration of USERDATA
@@ -78,6 +81,24 @@ static uint32_t get_tumble_duration(void) {
 }
 
 /**
+ * @brief Set the direction of the robot to go forward or backward
+ *
+ * @param dir false for forward, true for backward
+ */
+static void set_robot_direction(bool dir) {
+    if (!enable_backward_dir)
+        return;
+    if (dir) {
+        pogobot_motor_dir_set(motorL, (mydata->motor_dir_left  == 0 ? 1 : 0));
+        pogobot_motor_dir_set(motorR, (mydata->motor_dir_right == 0 ? 1 : 0));
+    } else {
+        pogobot_motor_dir_set(motorL, mydata->motor_dir_left);
+        pogobot_motor_dir_set(motorR, mydata->motor_dir_right);
+    }
+}
+
+
+/**
  * @brief Initialization function for the robot.
  *
  * This function is executed once at startup (cf 'pogobot_start' call in main()).
@@ -104,6 +125,12 @@ void user_init(void) {
     msg_tx_fn = NULL;
     // Specify LED index for error codes (negative values disable this feature).
     error_codes_led_idx = 3;
+
+    // Retrieve calibration data from the robots
+    uint8_t dir_mem[3];
+    pogobot_motor_dir_mem_get(dir_mem);
+    mydata->motor_dir_left = dir_mem[1];
+    mydata->motor_dir_right = dir_mem[0];
 
     // Initialize the run-and-tumble behavior.
     mydata->phase = PHASE_TUMBLE;                      // Start with the tumble phase.
@@ -139,10 +166,14 @@ void user_step(void) {
             mydata->phase_duration = get_tumble_duration();
             // Randomly choose a tumble direction: 0 for left, 1 for right.
             mydata->tumble_direction = rand() % 2;
+            // Motors go forward
+            set_robot_direction(false);
         } else {
             // Switch from tumble back to run.
             mydata->phase = PHASE_RUN;
             mydata->phase_duration = get_run_duration();
+            // Motors go either foward or backward
+            set_robot_direction((rand() % 2) == 0);
         }
         // Reset the phase start time.
         mydata->phase_start_time = now;
@@ -193,6 +224,7 @@ void global_setup() {
     init_from_configuration(run_duration_max);
     init_from_configuration(tumble_duration_min);
     init_from_configuration(tumble_duration_max);
+    init_from_configuration(enable_backward_dir);
     init_array_from_configuration(test_vect);
 }
 #endif
