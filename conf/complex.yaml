@@ -204,7 +204,7 @@ objects:
         body_restitution: 0.5
 
         max_linear_speed: 100.0
-        max_angular_speed: 1.0
+        max_angular_speed: 2.0
         linear_noise_stddev: 0.5
         angular_noise_stddev: 2.0
 

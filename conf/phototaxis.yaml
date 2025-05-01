@@ -69,9 +69,9 @@ objects:
         body_restitution: 0.5
 
         max_linear_speed: 100.0
-        max_angular_speed: 1.0
-        linear_noise_stddev: 0.5
-        angular_noise_stddev: 2.0
+        max_angular_speed: 2.0
+        linear_noise_stddev: 0
+        angular_noise_stddev: 0
 
         # Communication propeties
         communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)
