@@ -277,7 +277,11 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
     float endX = screenX + cosAngle * arrowLength;
     float endY = screenY + sinAngle * arrowLength;
     auto const end_pos = visualization_position(endX, endY);
-    thickLineRGBA(renderer, circle_pos.x, circle_pos.y, end_pos.x, end_pos.y, 4, arrowR, arrowG, arrowB, 255);
+    float const dist_arrow = sqrt(pow(circle_pos.x - end_pos.x, 2.0) + pow(circle_pos.y - end_pos.y, 2.0));
+    if (dist_arrow > 5) {
+        // Only draw arrow if the agent visual representation is large enough
+        thickLineRGBA(renderer, circle_pos.x, circle_pos.y, end_pos.x, end_pos.y, 4, arrowR, arrowG, arrowB, 255);
+    }
 
     float arrowLeft = endX - arrowHeadSize * (cosAngle * 0.7 + sinAngle * 0.5);
     float arrowRight = endX - arrowHeadSize * (cosAngle * 0.7 - sinAngle * 0.5);
