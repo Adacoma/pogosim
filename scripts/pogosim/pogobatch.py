@@ -65,7 +65,7 @@ def get_by_dotted_path(node: dict, dotted: str, sep: str = "."):
 
 
 class PogobotLauncher:
-    def __init__(self, num_instances, base_config_path, combined_output_path, simulator_binary, temp_base_path, backend="multiprocessing", keep_temp=False, extra_columns=None):
+    def __init__(self, num_instances, base_config_path, combined_output_path, simulator_binary, temp_base_path, backend="multiprocessing", keep_temp=False, extra_columns=None, max_retries: int=5):
         self.num_instances = num_instances
         self.base_config_path = base_config_path
         self.combined_output_path = combined_output_path
@@ -76,6 +76,7 @@ class PogobotLauncher:
         self.temp_dirs = []
         self.dataframes = []  # Will hold DataFrames loaded from each run
         self.extra_columns = extra_columns or {}
+        self.max_retries = max_retries
 
     @staticmethod
     def modify_config_static(base_config_path, output_dir, seed):
@@ -117,14 +118,29 @@ class PogobotLauncher:
 
     @staticmethod
     def worker(args):
-        i, base_config_path, simulator_binary, temp_base_path = args
-        # Create a temporary directory in the specified base path.
-        temp_dir = tempfile.mkdtemp(prefix=f"sim_instance_{i}_", dir=temp_base_path)
-        # Modify the configuration file with a unique seed and output paths.
-        config_path = PogobotLauncher.modify_config_static(base_config_path, temp_dir, seed=i)
-        logging.debug(f"Launching instance {i} with config {config_path} in {temp_dir}")
-        # Launch the simulator and wait for it to finish.
-        PogobotLauncher.launch_simulator_static(config_path, simulator_binary)
+        (i, base_cfg, sim_bin, tmp_base, max_retries) = args
+        attempt = 0
+        while True:
+            # create a fresh sub-directory for every attempt
+            temp_dir = tempfile.mkdtemp(
+                prefix=f"sim_{i}_try{attempt}_", dir=tmp_base)
+
+            try:
+                cfg_path = PogobotLauncher.modify_config_static(
+                    base_cfg, temp_dir, seed=i)
+                PogobotLauncher.launch_simulator_static(cfg_path, sim_bin)
+                break                       # success
+            except subprocess.CalledProcessError as exc:
+                logging.warning(
+                    "Instance %d – crash on attempt %d/%d: %s",
+                    i, attempt + 1, max_retries, exc)
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                attempt += 1
+                if attempt > max_retries:
+                    logging.error("Instance %d – gave up after %d retries",
+                                  i, max_retries)
+                    return (None, None)     # hard failure
+                continue                    # retry
 
         # Load the Feather file as soon as the simulator instance finishes.
         feather_path = os.path.join(temp_dir, "frames", "data.feather")
@@ -157,7 +173,7 @@ class PogobotLauncher:
     def launch_all(self):
         # Prepare the arguments for each simulation instance.
         args_list = [
-            (i, self.base_config_path, self.simulator_binary, self.temp_base_path)
+            (i, self.base_config_path, self.simulator_binary, self.temp_base_path, self.max_retries)
             for i in range(self.num_instances)
         ]
 
@@ -211,7 +227,7 @@ class PogobotBatchRunner:
     a PogobotLauncher for each combination.
     """
     def __init__(self, multi_config_file, runs, simulator_binary, temp_base, output_dir,
-                 backend="multiprocessing", keep_temp=False, verbose=False):
+                 backend="multiprocessing", keep_temp=False, verbose=False, retries: int = 5):
         self.multi_config_file = multi_config_file
         self.runs = runs
         self.simulator_binary = simulator_binary
@@ -220,6 +236,7 @@ class PogobotBatchRunner:
         self.backend = backend
         self.keep_temp = keep_temp
         self.verbose = verbose
+        self.retries = retries
 
         # Initialize logging via utils.
         utils.init_logging(self.verbose)
@@ -347,12 +364,13 @@ class PogobotBatchRunner:
         launcher = PogobotLauncher(
             num_instances        = self.runs,
             base_config_path     = temp_config_path,
-            combined_output_path = tmp_output,          #  ←  TEMP
+            combined_output_path = tmp_output,
             simulator_binary     = self.simulator_binary,
             temp_base_path       = self.temp_base,
             backend              = self.backend,
             keep_temp            = self.keep_temp,
             extra_columns        = extra_columns,
+            max_retries          = self.retries
         )
         launcher.launch_all()
         os.remove(temp_config_path)
@@ -438,6 +456,7 @@ def main():
                         help="Keep temporary directories after simulation runs.")
     parser.add_argument("-v", "--verbose", default=False, action="store_true", help="Verbose mode")
     parser.add_argument("-V", "--version", default=False, action="store_true", help="Return version")
+    parser.add_argument("-R", "--retries", type=int, default=5, help="How many times to relaunch a run when the simulator crashes (default: 5).")
     args = parser.parse_args()
 
     if args.version:
@@ -456,7 +475,8 @@ def main():
         output_dir=args.output_dir,
         backend=args.backend,
         keep_temp=args.keep_temp,
-        verbose=args.verbose
+        verbose=args.verbose,
+        retries=args.retries
     )
     runner.run_all()
 
