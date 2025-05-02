@@ -9,6 +9,7 @@
 #include <sstream>
 #include <vector>
 #include <utility>
+#include <type_traits>
 
 /**
  * @brief Class for managing hierarchical configuration parameters.
@@ -97,25 +98,55 @@ private:
 };
 
 
+namespace detail {
+
+/// compile-time branch for arithmetic targets
+template<typename T>
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type
+numeric_fallback(const YAML::Node& n, const T& default_value) {
+    try {
+        // integral → go through double, floating-point → long double
+        typedef typename std::conditional<
+                std::is_integral<T>::value, double, long double>::type tmp_t;
+
+        tmp_t tmp = n.as<tmp_t>();            // may still throw
+        return static_cast<T>(tmp);
+    }
+    catch (const YAML::Exception&) {
+        return default_value;                 // out-of-range, etc.
+    }
+}
+
+/// branch for *non-arithmetic* targets – just forward the default
+template<typename T>
+typename std::enable_if<!std::is_arithmetic<T>::value, T>::type
+numeric_fallback(const YAML::Node&, const T& default_value) {
+    return default_value;
+}
+
+} // namespace detail
+
 template<typename T>
 T Configuration::get(const T& default_value) const {
-    try {
-        if (node_) {
-            /* Give priority to "default_option" if the node is a map */
-            if (node_.IsMap()) {
-                const YAML::Node opt = node_["default_option"];
-                if (opt) {
-                    return opt.as<T>();   // may still throw → caught below
-                }
-            }
-
-            /* Normal behaviour */
-            return node_.as<T>();
-        }
-    } catch (const YAML::Exception&) {
-        // fall through
+    if (!node_) {                      // nothing stored here
+        return default_value;
     }
-    return default_value;
+
+    /* honour an eventual "default_option" sub-key ---------------- */
+    YAML::Node target = node_;
+    if (target.IsMap()) {
+        YAML::Node opt = target["default_option"];
+        if (opt) { target = opt; }
+    }
+
+    /* -------- 1st attempt – let yaml-cpp do the conversion ------ */
+    try {
+        return target.as<T>();         // success? great, we’re done.
+    }
+    catch (const YAML::Exception&) {
+        /* -------- 2nd attempt – only if T is numeric ------------ */
+        return detail::numeric_fallback(target, default_value);
+    }
 }
 
 template<typename T>
