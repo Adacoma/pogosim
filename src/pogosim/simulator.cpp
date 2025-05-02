@@ -368,7 +368,7 @@ void Simulation::init_SDL() {
 
     if (!enable_gui) {
         /*--------------------------------------------------------------------
-          In SDL == 2.32.xx there is a bug where sdl_quit segfaults
+          In SDL == 2.32.xx there is a bug when sdl_quit segfaults
           ------------------------------------------------------------------*/
         if (version.major == 2 && version.minor == 32) {
             // ...
