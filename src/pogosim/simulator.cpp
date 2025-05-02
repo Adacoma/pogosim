@@ -363,7 +363,16 @@ void Simulation::init_config() {
 
 void Simulation::init_SDL() {
     if (!enable_gui) {
+        /*--------------------------------------------------------------------
+          In SDL < 2.0.22 the hint does not exist, but you can still achieve
+          the same effect by setting the environment variable instead.
+          ------------------------------------------------------------------*/
+#if SDL_VERSION_ATLEAST(2, 0, 22)   // compile-time check :contentReference[oaicite:1]{index=1}
         SDL_SetHint(SDL_HINT_VIDEODRIVER, "offscreen");
+#else
+        /*  SDL_setenv appeared in 2.0.2; fall back for older headers */
+        SDL_setenv("SDL_VIDEODRIVER", "offscreen", /*overwrite =*/1);
+#endif
     }
 
     // Initialize SDL
