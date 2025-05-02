@@ -362,17 +362,28 @@ void Simulation::init_config() {
 
 
 void Simulation::init_SDL() {
+    SDL_version version;
+    SDL_GetVersion(&version);
+    glogger->info("Initializing SDL version {}.{}.{}", version.major, version.minor, version.patch);
+
     if (!enable_gui) {
         /*--------------------------------------------------------------------
-          In SDL < 2.0.22 the hint does not exist, but you can still achieve
-          the same effect by setting the environment variable instead.
+          In SDL == 2.32.xx there is a bug where sdl_quit segfaults
           ------------------------------------------------------------------*/
+        if (version.major == 2 && version.minor == 32) {
+            // ...
+        } else {
+            /*--------------------------------------------------------------------
+              In SDL < 2.0.22 the hint does not exist, but you can still achieve
+              the same effect by setting the environment variable instead.
+              ------------------------------------------------------------------*/
 #if SDL_VERSION_ATLEAST(2, 0, 22)   // compile-time check :contentReference[oaicite:1]{index=1}
-        SDL_SetHint(SDL_HINT_VIDEODRIVER, "offscreen");
+            SDL_SetHint(SDL_HINT_VIDEODRIVER, "offscreen");
 #else
-        /*  SDL_setenv appeared in 2.0.2; fall back for older headers */
-        SDL_setenv("SDL_VIDEODRIVER", "offscreen", /*overwrite =*/1);
+            /*  SDL_setenv appeared in 2.0.2; fall back for older headers */
+            SDL_setenv("SDL_VIDEODRIVER", "offscreen", /*overwrite =*/1);
 #endif
+        }
     }
 
     // Initialize SDL
