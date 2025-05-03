@@ -5,6 +5,7 @@
 #include "distances.h"
 #include "simulator.h"
 
+#include <cmath>
 #include "SDL2_gfxPrimitives.h"
 
 
