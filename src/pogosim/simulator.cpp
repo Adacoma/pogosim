@@ -599,6 +599,7 @@ void Simulation::compute_neighbors() {
 
     // Merge neighbors (without duplicates) from all IR emitters/receivers into the direction ir_all
     for (auto a : robots) {
+        a->neighbors[ir_all].clear();
         for (std::size_t i = 0; i < IR_RX_COUNT; ++i) {
             for (auto* r : a->neighbors[i]) {
                 // Check if r is already in neighbors[ir_all]
