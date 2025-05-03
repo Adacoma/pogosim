@@ -18,6 +18,7 @@ frames_name: "frames/f{:010.4f}.png"
 
 seed: 0
 show_communication_channels: false  # In the GUI, can enabled/disabled using F5
+show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
 show_lateral_LEDs: true             # In the GUI, can enabled/disabled using F6
 show_light_levels: false            # In the GUI, can enabled/disabled using F6
 GUI: true

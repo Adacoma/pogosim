@@ -345,6 +345,7 @@ void Simulation::init_config() {
     mm_to_pixels = 0.0f;
     adjust_mm_to_pixels(config["mm_to_pixels"].get(1.0f));
     show_comm = config["show_communication_channels"].get(false);
+    show_comm_above_all = config["show_communication_channels_above_all"].get(false);
     show_lateral_leds = config["show_lateral_LEDs"].get(true);
     show_light_levels = config["show_light_levels"].get(false);
 
@@ -476,7 +477,7 @@ void Simulation::help_message() {
     glogger->info(" - F1: Help message");
     glogger->info(" - F3: Slow down the simulation");
     glogger->info(" - F4: Speed up the simulation");
-    glogger->info(" - F5: Show/Hide the communication channels");
+    glogger->info(" - F5: Show/Hide the communication channels, below/above the other objects");
     glogger->info(" - F6: Show/Hide the lateral LEDs");
     glogger->info(" - F7: Show/Hide the light level");
     glogger->info(" - ESC: quit the simulation");
@@ -506,7 +507,14 @@ void Simulation::handle_SDL_events() {
                     speed_up();
                     break;
                 case SDLK_F5:
-                    show_comm = !show_comm;
+                    if (show_comm && !show_comm_above_all) {
+                        show_comm_above_all = true;
+                    } else if (show_comm && show_comm_above_all) {
+                        show_comm = false;
+                    } else {
+                        show_comm = true;
+                        show_comm_above_all = false;
+                    }
                     break;
                 case SDLK_F6:
                     show_lateral_leds = !show_lateral_leds;
@@ -685,6 +693,13 @@ void Simulation::render_all() {
         SDL_RenderClear(renderer);
     }
 
+    // Render the communication channels
+    if (show_comm && !show_comm_above_all) {
+        for (auto robot : robots) {
+            robot->render_communication_channels(renderer, worldId);
+        }
+    }
+
     //renderWalls(renderer); // Render the walls
     for(auto const& poly : arena_polygons) {
         draw_polygon(renderer, poly);
@@ -692,15 +707,19 @@ void Simulation::render_all() {
 
     // Render objects
     for (auto robot : robots) {
-        robot->show_comm = show_comm;
         robot->show_lateral_leds = show_lateral_leds;
         robot->render(renderer, worldId);
     }
     //SDL_RenderPresent(renderer);
 
-    for (const auto& [cat_name, obj_vec] : objects) {
-        for (auto const& obj : obj_vec) {
-            obj->render(renderer, worldId);
+    for (auto const& obj : non_robots) {
+        obj->render(renderer, worldId);
+    }
+
+    // Render the communication channels
+    if (show_comm && show_comm_above_all) {
+        for (auto robot : robots) {
+            robot->render_communication_channels(renderer, worldId);
         }
     }
 

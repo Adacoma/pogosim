@@ -266,9 +266,7 @@ public:
     float radius;                   ///< Radius of this robot.
     float left_motor_speed  = 0;    ///< Current speed of the left motor.
     float right_motor_speed = 0;    ///< Current speed of the right motor.
-    bool show_comm = false;         ///< Whether to render communication channels.
     bool show_lateral_leds = false; ///< Whether to render lateral LEDs.
-
 
 
     /**
@@ -278,6 +276,14 @@ public:
      * @param world_id The Box2D world identifier (unused in rendering).
      */
     virtual void render(SDL_Renderer*, b2WorldId) const override;
+
+    /**
+     * @brief Renders the communication channels originating from this robot.
+     *
+     * @param renderer Pointer to the SDL_Renderer.
+     * @param world_id The Box2D world identifier (unused in rendering).
+     */
+    virtual void render_communication_channels(SDL_Renderer*, b2WorldId) const;
 
     /**
      * @brief Updates the motor speed of the robot and recalculates its velocities.
@@ -463,7 +469,6 @@ public:
      * @param world_id The Box2D world identifier (unused in rendering).
      */
     virtual void render(SDL_Renderer*, b2WorldId) const override;
-
 };
 
 
@@ -547,6 +552,14 @@ public:
      * @param world_id The Box2D world identifier (unused in rendering).
      */
     virtual void render(SDL_Renderer*, b2WorldId) const override { }
+
+    /**
+     * @brief Renders the communication channels originating from this robot.
+     *
+     * @param renderer Pointer to the SDL_Renderer.
+     * @param world_id The Box2D world identifier (unused in rendering).
+     */
+    virtual void render_communication_channels(SDL_Renderer*, b2WorldId) const override { }
 
     /**
      * @brief Returns whether this object is tangible (e.g. collisions, etc) or not.

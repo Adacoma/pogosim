@@ -51,6 +51,7 @@ class Simulation {
     bool paused = false;                  ///< Flag indicating whether the simulation is paused.
     bool running = true;                  ///< Flag indicating whether the simulation is running.
     bool show_comm = false;               ///< Flag indicating whether to show the communication channels between robots.
+    bool show_comm_above_all = false;     ///< Flag indicating if the communication channels must be drawn above the objects (true) or below.
     bool show_lateral_leds = false;       ///< Flag indicating whether to show the lateral LEDs.
     bool show_light_levels = false;       ///< Flag indicating whether to show the light level.
 

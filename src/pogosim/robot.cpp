@@ -293,23 +293,23 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
                       arrow_left.x, arrow_left.y,
                       arrow_right.x, arrow_right.y,
                       arrowR, arrowG, arrowB, 255);
+}
 
+void PogobotObject::render_communication_channels(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId worldId) const {
     // Draw communication channels if needed
-    if (show_comm) {
-        for (int i = 0; i < IR_RX_COUNT; i++ ) {
-            // Find IR emitter position
-            //b2Vec2 ir_position = get_IR_emitter_position((ir_direction)i, 1.f / VISUALIZATION_SCALE);
-            b2Vec2 ir_position = get_position();
-            auto const ir_pos = visualization_position(ir_position.x * VISUALIZATION_SCALE, ir_position.y * VISUALIZATION_SCALE);
-            // Get color from colormap
-            uint8_t r, g, b;
-            qualitative_colormap(i, &r, &g, &b);
-            // Draw communication channels
-            for (PogobotObject* robot : neighbors[i]) {
-                b2Vec2 const r_pos = robot->get_position();
-                auto const r_circle_pos = visualization_position(r_pos.x * VISUALIZATION_SCALE, r_pos.y * VISUALIZATION_SCALE);
-                thickLineRGBA(renderer, ir_pos.x, ir_pos.y, r_circle_pos.x, r_circle_pos.y, 4, r, g, b, 150);
-            }
+    for (int i = 0; i < IR_RX_COUNT; i++ ) {
+        // Find IR emitter position
+        //b2Vec2 ir_position = get_IR_emitter_position((ir_direction)i, 1.f / VISUALIZATION_SCALE);
+        b2Vec2 ir_position = get_position();
+        auto const ir_pos = visualization_position(ir_position.x * VISUALIZATION_SCALE, ir_position.y * VISUALIZATION_SCALE);
+        // Get color from colormap
+        uint8_t r, g, b;
+        qualitative_colormap(i, &r, &g, &b);
+        // Draw communication channels
+        for (PogobotObject* robot : neighbors[i]) {
+            b2Vec2 const r_pos = robot->get_position();
+            auto const r_circle_pos = visualization_position(r_pos.x * VISUALIZATION_SCALE, r_pos.y * VISUALIZATION_SCALE);
+            thickLineRGBA(renderer, ir_pos.x, ir_pos.y, r_circle_pos.x, r_circle_pos.y, 4, r, g, b, 150);
         }
     }
 }
@@ -556,25 +556,6 @@ void PogobjectObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId 
 
     // Draw the main robot body (outline)
     circleRGBA(renderer, circle_pos.x, circle_pos.y, radius * mm_to_pixels, 0, 0, 0, 255);
-
-    // Draw communication channels if needed
-    if (show_comm) {
-        for (int i = 0; i < IR_RX_COUNT; i++ ) {
-            // Find IR emitter position
-            //b2Vec2 ir_position = get_IR_emitter_position((ir_direction)i, 1.f / VISUALIZATION_SCALE);
-            b2Vec2 ir_position = get_position();
-            auto const ir_pos = visualization_position(ir_position.x * VISUALIZATION_SCALE, ir_position.y * VISUALIZATION_SCALE);
-            // Get color from colormap
-            uint8_t r, g, b;
-            qualitative_colormap(i, &r, &g, &b);
-            // Draw communication channels
-            for (PogobotObject* robot : neighbors[i]) {
-                b2Vec2 const r_pos = robot->get_position();
-                auto const r_circle_pos = visualization_position(r_pos.x * VISUALIZATION_SCALE, r_pos.y * VISUALIZATION_SCALE);
-                thickLineRGBA(renderer, ir_pos.x, ir_pos.y, r_circle_pos.x, r_circle_pos.y, 4, r, g, b, 150);
-            }
-        }
-    }
 }
 
 /************* Pogowalls *************/ // {{{1
