@@ -8,6 +8,10 @@
 #include <cstdint>
 #include <cmath>
 #include "SDL2_gfxPrimitives.h"
+#include <unordered_map>
+#include <bit>
+#include <ranges>
+
 
 #include "robot.h"
 #include "spogobot.h"
@@ -295,52 +299,94 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
                       arrowR, arrowG, arrowB, 255);
 }
 
+
+constexpr float arrow_head_size_world = 0.08f;
+
 void PogobotObject::render_communication_channels(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId worldId) const {
-    /* ---------------------------------------------------------------------
-     * 1.  Collect neighbours and remember on which channels they appear.
-     * ------------------------------------------------------------------ */
-    std::unordered_map<PogobotObject*, std::uint32_t> neighbour_mask;   // ptr → bitmask
+    /* 1.  Aggregate which channels each neighbour is on ------------------- */
+    std::unordered_map<PogobotObject*, std::uint32_t> neighbour_mask;
     for (int ch = 0; ch < IR_RX_COUNT; ++ch) {
-        for (PogobotObject* neighbour : neighbors[ch]) {
-            neighbour_mask[neighbour] |= 1u << ch;                      // set bit ‘ch’
+        for (PogobotObject* nbr : neighbors[ch]) {
+            neighbour_mask[nbr] |= 1u << ch;
         }
     }
 
-    /* ---------------------------------------------------------------------
-     * 2.  Pre-compute our own screen position (used for every segment).
-     * ------------------------------------------------------------------ */
-    b2Vec2 const self_pos_world   = get_position();
-    auto  const self_pos_screen   = visualization_position(self_pos_world.x * VISUALIZATION_SCALE,
-                                                           self_pos_world.y * VISUALIZATION_SCALE);
-    std::uint32_t const full_mask = (1u << IR_RX_COUNT) - 1u;           // e.g. 0b11111111 for 8 ch.
+    /* 2.  Pre-compute our own positions (world + screen) ------------------ */
+    b2Vec2 const self_w = get_position();
+    auto  const self_s = visualization_position(self_w.x * VISUALIZATION_SCALE,
+                                                self_w.y * VISUALIZATION_SCALE);
 
-    /* ---------------------------------------------------------------------
-     * 3.  Draw one segment per neighbour.
-     * ------------------------------------------------------------------ */
-    for (auto const& [neighbour, mask] : neighbour_mask) {
-        /* ----- Decide colour ------------------------------------------------ */
+    std::uint32_t const all_bits = (1u << IR_RX_COUNT) - 1u;
+
+    /* 3.  Draw one segment per neighbour ---------------------------------- */
+    for (auto const& [nbr, mask] : neighbour_mask) {
+        /* ----- colour ------------------------------------------------------ */
         uint8_t r, g, b;
-
-        if (mask == full_mask) {            // Heard on *all* channels → black
-            r = g = b = 0;
+        if (mask == all_bits) {
+            r = g = b = 0;                       // black → heard on every channel
         } else {
-            /* choose a representative channel to pick a colour from
-               (here: the least-significant set bit)                       */
-            int const channel_idx = std::countr_zero(mask);
-            qualitative_colormap(channel_idx, &r, &g, &b);
+            int const repr_ch = std::countr_zero(mask);
+            qualitative_colormap(repr_ch, &r, &g, &b);
         }
 
-        /* ----- Neighbour position & drawing --------------------------------- */
-        b2Vec2 const nbr_pos_world = neighbour->get_position();
-        auto  const nbr_pos_screen = visualization_position(nbr_pos_world.x * VISUALIZATION_SCALE,
-                                                            nbr_pos_world.y * VISUALIZATION_SCALE);
+        /* ----- neighbour positions ----------------------------------------- */
+        b2Vec2 const nbr_w = nbr->get_position();
+        auto  const nbr_s = visualization_position(nbr_w.x * VISUALIZATION_SCALE,
+                                                   nbr_w.y * VISUALIZATION_SCALE);
 
         thickLineRGBA(renderer,
-                      self_pos_screen.x, self_pos_screen.y,
-                      nbr_pos_screen.x,  nbr_pos_screen.y,
-                      4,                 // line thickness
-                      r, g, b,           // colour
-                      150);              // alpha
+                      self_s.x, self_s.y,
+                      nbr_s.x,  nbr_s.y,
+                      4,
+                      r, g, b,
+                      255);
+
+        /* ----- bidirectional? --------------------------------------------- */
+        bool const they_see_us =
+            std::ranges::any_of(std::views::iota(0, IR_RX_COUNT),
+                                [&](int ch) {
+                                    auto const& their_vec = nbr->neighbors[ch];
+                                    return std::ranges::find(their_vec, this) != their_vec.end();
+                                });
+
+        /* ----- arrow-head(s) – computed in world space -------------------- */
+        auto draw_arrow = [&](b2Vec2 const& tip_w,        // arrow tip (world)
+                              bool back_to_self) {
+            float const dx_w = back_to_self ? self_w.x - nbr_w.x
+                                            : nbr_w.x  - self_w.x;
+            float const dy_w = back_to_self ? self_w.y - nbr_w.y
+                                            : nbr_w.y  - self_w.y;
+
+            float const len = std::sqrt(dx_w * dx_w + dy_w * dy_w);
+            if (len == 0.0f) { return; }                  // Guard: same position.
+
+            float const cos_a = dx_w / len;
+            float const sin_a = dy_w / len;
+
+            float const arrow_left_x  = tip_w.x - arrow_head_size_world * (cos_a * 0.7f + sin_a * 0.5f);
+            float const arrow_left_y  = tip_w.y - arrow_head_size_world * (sin_a * 0.7f - cos_a * 0.5f);
+            float const arrow_right_x = tip_w.x - arrow_head_size_world * (cos_a * 0.7f - sin_a * 0.5f);
+            float const arrow_right_y = tip_w.y - arrow_head_size_world * (sin_a * 0.7f + cos_a * 0.5f);
+
+            auto const tip_s        = visualization_position(tip_w.x  * VISUALIZATION_SCALE,
+                                                             tip_w.y  * VISUALIZATION_SCALE);
+            auto const arrow_left_s = visualization_position(arrow_left_x  * VISUALIZATION_SCALE,
+                                                             arrow_left_y  * VISUALIZATION_SCALE);
+            auto const arrow_right_s= visualization_position(arrow_right_x * VISUALIZATION_SCALE,
+                                                             arrow_right_y * VISUALIZATION_SCALE);
+
+            filledTrigonRGBA(renderer,
+                             tip_s.x,        tip_s.y,
+                             arrow_left_s.x, arrow_left_s.y,
+                             arrow_right_s.x,arrow_right_s.y,
+                             r, g, b, 255);
+        };
+
+        /* one-way → arrow only at neighbour end; two-way → both ends -------- */
+        draw_arrow(nbr_w, false);          // always draw arrow pointing *towards* nbr
+        if (they_see_us) {
+            draw_arrow(self_w, true);      // reciprocal ⇒ arrow back to us
+        }
     }
 }
 
