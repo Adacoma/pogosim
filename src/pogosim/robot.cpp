@@ -296,23 +296,54 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
 }
 
 void PogobotObject::render_communication_channels(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId worldId) const {
-    // Draw communication channels if needed
-    for (int i = 0; i < IR_RX_COUNT; i++ ) {
-        // Find IR emitter position
-        //b2Vec2 ir_position = get_IR_emitter_position((ir_direction)i, 1.f / VISUALIZATION_SCALE);
-        b2Vec2 ir_position = get_position();
-        auto const ir_pos = visualization_position(ir_position.x * VISUALIZATION_SCALE, ir_position.y * VISUALIZATION_SCALE);
-        // Get color from colormap
-        uint8_t r, g, b;
-        qualitative_colormap(i, &r, &g, &b);
-        // Draw communication channels
-        for (PogobotObject* robot : neighbors[i]) {
-            b2Vec2 const r_pos = robot->get_position();
-            auto const r_circle_pos = visualization_position(r_pos.x * VISUALIZATION_SCALE, r_pos.y * VISUALIZATION_SCALE);
-            thickLineRGBA(renderer, ir_pos.x, ir_pos.y, r_circle_pos.x, r_circle_pos.y, 4, r, g, b, 150);
+    /* ---------------------------------------------------------------------
+     * 1.  Collect neighbours and remember on which channels they appear.
+     * ------------------------------------------------------------------ */
+    std::unordered_map<PogobotObject*, std::uint32_t> neighbour_mask;   // ptr → bitmask
+    for (int ch = 0; ch < IR_RX_COUNT; ++ch) {
+        for (PogobotObject* neighbour : neighbors[ch]) {
+            neighbour_mask[neighbour] |= 1u << ch;                      // set bit ‘ch’
         }
     }
+
+    /* ---------------------------------------------------------------------
+     * 2.  Pre-compute our own screen position (used for every segment).
+     * ------------------------------------------------------------------ */
+    b2Vec2 const self_pos_world   = get_position();
+    auto  const self_pos_screen   = visualization_position(self_pos_world.x * VISUALIZATION_SCALE,
+                                                           self_pos_world.y * VISUALIZATION_SCALE);
+    std::uint32_t const full_mask = (1u << IR_RX_COUNT) - 1u;           // e.g. 0b11111111 for 8 ch.
+
+    /* ---------------------------------------------------------------------
+     * 3.  Draw one segment per neighbour.
+     * ------------------------------------------------------------------ */
+    for (auto const& [neighbour, mask] : neighbour_mask) {
+        /* ----- Decide colour ------------------------------------------------ */
+        uint8_t r, g, b;
+
+        if (mask == full_mask) {            // Heard on *all* channels → black
+            r = g = b = 0;
+        } else {
+            /* choose a representative channel to pick a colour from
+               (here: the least-significant set bit)                       */
+            int const channel_idx = std::countr_zero(mask);
+            qualitative_colormap(channel_idx, &r, &g, &b);
+        }
+
+        /* ----- Neighbour position & drawing --------------------------------- */
+        b2Vec2 const nbr_pos_world = neighbour->get_position();
+        auto  const nbr_pos_screen = visualization_position(nbr_pos_world.x * VISUALIZATION_SCALE,
+                                                            nbr_pos_world.y * VISUALIZATION_SCALE);
+
+        thickLineRGBA(renderer,
+                      self_pos_screen.x, self_pos_screen.y,
+                      nbr_pos_screen.x,  nbr_pos_screen.y,
+                      4,                 // line thickness
+                      r, g, b,           // colour
+                      150);              // alpha
+    }
 }
+
 
 void PogobotObject::set_motor(motor_id motor, int speed) {
     // Update motor speeds
@@ -398,7 +429,7 @@ void PogobotObject::send_to_neighbors(ir_direction dir, message_t *const message
     // Define a uniform real distribution between 0.0 and 1.0
     std::uniform_real_distribution<float> dis(0.0f, 1.0f);
 
-    double const payload_size = static_cast<double>(message->header.payload_length); 
+    double const payload_size = static_cast<double>(message->header.payload_length);
     double const msg_size = payload_size + (message->header._packet_type == ir_t_short ? sizeof(message_short_header_t) : sizeof(message_header_t));
     double const p_send = static_cast<double>(percent_msgs_sent_per_ticks) / 100.0;
     double const cluster_size = static_cast<double>(neighbors[dir].size() + 1);
@@ -786,7 +817,7 @@ void MembraneObject::move(float _x, float _y) {
         b2Body_SetTransform(d.body_id, pos, rot);
     }
 
-    PogobotObject::move(_x, _y); 
+    PogobotObject::move(_x, _y);
 }
 
 static std::vector<b2Vec2>
