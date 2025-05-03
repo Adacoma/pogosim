@@ -803,7 +803,7 @@ void MembraneObject::create_robot_body([[maybe_unused]] b2WorldId world_id) {
     }
 }
 
-void MembraneObject::move(float _x, float _y) {
+void MembraneObject::move(float _x, float _y, float _theta) {
     /* Offset expressed in Box2D world units */
     const float dx = (_x - x) / VISUALIZATION_SCALE;
     const float dy = (_y - y) / VISUALIZATION_SCALE;
@@ -817,7 +817,7 @@ void MembraneObject::move(float _x, float _y) {
         b2Body_SetTransform(d.body_id, pos, rot);
     }
 
-    PogobotObject::move(_x, _y);
+    PogobotObject::move(_x, _y, _theta);
 }
 
 static std::vector<b2Vec2>

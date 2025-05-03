@@ -556,9 +556,11 @@ void Object::parse_configuration(Configuration const& config, Simulation* simula
     geom = object_geometry_factory(config, simulation); // XXX never destroyed
 }
 
-void Object::move(float _x, float _y) {
+void Object::move(float _x, float _y, float _theta) {
     x = _x;
     y = _y;
+    if (!std::isnan(_theta))
+        theta = _theta;
 }
 
 arena_polygons_t Object::generate_contours(std::size_t points_per_contour) const {
@@ -722,11 +724,14 @@ void PhysicalObject::create_body(b2WorldId world_id) {
     b2Body_SetLinearVelocity(body_id, velocity);
 }
 
-void PhysicalObject::move(float _x, float _y) {
-    Object::move(_x, _y);
+void PhysicalObject::move(float _x, float _y, float _theta) {
+    Object::move(_x, _y, _theta);
     if (b2Body_IsValid(body_id)) {
         b2Vec2 position = {_x / VISUALIZATION_SCALE, _y / VISUALIZATION_SCALE};
-        b2Rot rotation = b2Body_GetRotation(body_id);
+        b2Rot rotation = {std::sinf(_theta), std::cosf(_theta)};
+        if (std::isnan(_theta)) {
+            rotation = b2Body_GetRotation(body_id);
+        }
         b2Body_SetTransform(body_id, position, rotation);
     }
 }

@@ -148,15 +148,13 @@ b2Vec2 generate_random_point_within_polygon(const std::vector<b2Vec2>& polygon) 
     }
 
     // Random number generator
-    std::random_device rd;
-    std::mt19937 gen(rd());
     std::uniform_real_distribution<float> disX(minX, maxX);
     std::uniform_real_distribution<float> disY(minY, maxY);
 
     // Generate random points until one is inside the polygon
     while (true) {
-        float x = disX(gen);
-        float y = disY(gen);
+        float x = disX(rnd_gen);
+        float y = disY(rnd_gen);
 
         if (is_point_within_polygon(polygon, x, y)) {
             return b2Vec2{x, y};
@@ -279,8 +277,6 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
     }
 
     // ─── random‑number engine ─────────────────────────────────────────────
-    std::random_device rd;
-    std::mt19937 gen(rd());
     std::uniform_real_distribution<float> dis_x(min_x, max_x);
     std::uniform_real_distribution<float> dis_y(min_y, max_y);
 
@@ -291,8 +287,8 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
 
         // ─── rejection‑sampling loop ──────────────────────────────────────
         while (points.size() < n_points) {
-            const float x = dis_x(gen);
-            const float y = dis_y(gen);
+            const float x = dis_x(rnd_gen);
+            const float y = dis_y(rnd_gen);
 
             const float r_curr = reserve_radii[points.size()];
 

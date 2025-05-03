@@ -178,10 +178,12 @@ void Simulation::create_objects() {
 
     // Move all objects to the new coordinates
     size_t current_point_idx = 0;
+    std::uniform_real_distribution<float> angle_distrib(0.0f, 2.0f * M_PI);
     for (const auto& obj : objects_to_move) {
         float const x = points[current_point_idx].x;
         float const y = points[current_point_idx].y;
-        obj->move(x, y);
+        float const theta = angle_distrib(rnd_gen);
+        obj->move(x, y, theta);
         current_point_idx++;
     }
 

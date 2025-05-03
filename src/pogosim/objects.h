@@ -580,8 +580,9 @@ public:
      *
      * @param x X coordinate.
      * @param y Y coordinate.
+     * @param theta Orientation, in rad.
      */
-    virtual void move(float x, float y);
+    virtual void move(float x, float y, float theta = NAN);
 
     /**
      * @brief Returns whether this object is tangible (e.g. collisions, etc) or not.
@@ -604,6 +605,7 @@ public:
     // Physical information
     float x;                            ///< X position
     float y;                            ///< Y position
+    float theta;                        ///< Orientation (in rad)
 
     // Base information
     std::string category;               ///< Category of the object
@@ -768,8 +770,9 @@ public:
      *
      * @param x X coordinate.
      * @param y Y coordinate.
+     * @param theta Orientation, in rad.
      */
-    virtual void move(float x, float y) override;
+    virtual void move(float x, float y, float theta = NAN) override;
 
     /**
      * @brief Returns whether this object is tangible (e.g. collisions, etc) or not.

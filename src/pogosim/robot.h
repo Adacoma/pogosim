@@ -571,8 +571,9 @@ public:
      *
      * @param x X coordinate.
      * @param y Y coordinate.
+     * @param theta Orientation, in rad.
      */
-    virtual void move([[maybe_unused]] float x, [[maybe_unused]] float y) override { }
+    virtual void move([[maybe_unused]] float x, [[maybe_unused]] float y, [[maybe_unused]] float theta = NAN) override { }
 };
 
 
@@ -688,8 +689,9 @@ public:
      *
      * @param x X coordinate.
      * @param y Y coordinate.
+     * @param theta Orientation, in rad.
      */
-    virtual void move([[maybe_unused]] float x, [[maybe_unused]] float y) override;
+    virtual void move([[maybe_unused]] float x, [[maybe_unused]] float y, [[maybe_unused]] float theta = NAN) override;
 
     /**
      * @brief Return one or more polygonal contours that represent the current geometry of the object.
