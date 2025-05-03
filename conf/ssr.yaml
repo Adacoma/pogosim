@@ -28,7 +28,12 @@ simulation_time: 100.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 10.0         # How much the visualisation in the GUI should be sped up
 
-initial_formation: random # Can be "random" (all robots are placed randomly in the arena), or "disk" (robots are placed uniformly in a disk shape at the center of the arena)
+# The initial positions of the robot, set as a formation.
+# "initial_formation" can be:
+#   - "random": all robots are placed randomly in the arena, with random direction,
+#   - "aligned_random": all robots are placed randomly in the arena, all with with pi/2 direction.
+#   - "disk": robots are placed uniformly in a disk shape at the center of the arena.
+initial_formation: random
 
 # List of objects created in the simulation, by category
 objects:

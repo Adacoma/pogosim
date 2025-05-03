@@ -163,14 +163,22 @@ void Simulation::create_objects() {
 
     // Generate random coordinates for all objects of all categories
     std::vector<b2Vec2> points;
+    std::vector<float> thetas(objects_radii);
+    std::uniform_real_distribution<float> angle_distrib(0.0f, 2.0f * M_PI);
     try {
         if (initial_formation == "random") {
             points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "aligned_random") {
+            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "disk") {
             points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);
+            std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else {
             glogger->error("Unknown 'initial_formation' value: '{}'. Assuming random formation...", initial_formation);
             points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         }
     } catch (const std::exception& e) {
         throw std::runtime_error("Impossible to create robots (number may be too high for the provided arena): " + std::string(e.what()));
@@ -178,11 +186,10 @@ void Simulation::create_objects() {
 
     // Move all objects to the new coordinates
     size_t current_point_idx = 0;
-    std::uniform_real_distribution<float> angle_distrib(0.0f, 2.0f * M_PI);
     for (const auto& obj : objects_to_move) {
         float const x = points[current_point_idx].x;
         float const y = points[current_point_idx].y;
-        float const theta = angle_distrib(rnd_gen);
+        float const theta = thetas[current_point_idx];
         obj->move(x, y, theta);
         current_point_idx++;
     }
