@@ -729,7 +729,7 @@ void PhysicalObject::move(float _x, float _y, float _theta) {
     Object::move(_x, _y, _theta);
     if (b2Body_IsValid(body_id)) {
         b2Vec2 position = {_x / VISUALIZATION_SCALE, _y / VISUALIZATION_SCALE};
-        b2Rot rotation = {std::sinf(_theta), std::cosf(_theta)};
+        b2Rot rotation = {sinf(_theta), cosf(_theta)};
         if (std::isnan(_theta)) {
             rotation = b2Body_GetRotation(body_id);
         }
