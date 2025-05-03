@@ -16,6 +16,16 @@ DataLogger::~DataLogger() {
     }
 }
 
+void DataLogger::add_metadata(const std::string& key, const std::string& value) {
+    if (file_opened_) {
+        throw std::runtime_error("Cannot add metadata after the file has been opened.");
+    }
+    if (key.empty()) {
+        throw std::runtime_error("Metadata key must not be empty.");
+    }
+    user_metadata_[key] = value;    // Overwrite if the key already exists
+}
+
 // Add fields dynamically before opening the file
 void DataLogger::add_field(const std::string& name, std::shared_ptr<arrow::DataType> type) {
     if (file_opened_) {
@@ -34,14 +44,15 @@ void DataLogger::open_file(const std::string& filename) {
     // Define schema
     schema_ = arrow::schema(fields_);
 
-    // Define custom metadata (e.g., program version)
-    arrow::KeyValueMetadata::Make({"program_version"},
-                                  {POGOSIM_VERSION});
-    // Add metadata to schema
+    // Assemble built-in and user metadata
+    std::vector<std::string> keys   = {"program_version"};
+    std::vector<std::string> values = {POGOSIM_VERSION};
+    for (const auto& kv : user_metadata_) {
+        keys.push_back(kv.first);
+        values.push_back(kv.second);
+    }
     schema_ = schema_->WithMetadata(
-        std::make_shared<arrow::KeyValueMetadata>(
-            std::vector<std::string>{"program_version"},
-            std::vector<std::string>{POGOSIM_VERSION}));
+        std::make_shared<arrow::KeyValueMetadata>(std::move(keys), std::move(values)));
 
     // Check if parent directory exists
     ensure_directories_exist(filename);

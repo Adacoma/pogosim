@@ -638,6 +638,9 @@ void Simulation::init_data_logger() {
 
     data_logger = std::make_unique<DataLogger>();
 
+    // Save configuration as metadata
+    data_logger->add_metadata("configuration", config.summary());
+
     // Init base schema
     data_logger->add_field("time", arrow::float64());
     data_logger->add_field("robot_category", arrow::utf8());

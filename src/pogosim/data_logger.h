@@ -32,6 +32,19 @@ public:
     virtual ~DataLogger();
 
     /**
+     * @brief Adds arbitrary string metadata to be embedded in the Feather file.
+     *
+     * This can be called any time **before** `open_file()`.  
+     * If the same key is supplied more than once the value is overwritten.
+     *
+     * @param key   The metadata key (UTF-8, non-empty).
+     * @param value The metadata value (UTF-8, may be empty).
+     *
+     * @throw std::runtime_error if the file has already been opened.
+     */
+    void add_metadata(const std::string& key, const std::string& value);
+
+    /**
      * @brief Adds a new field to the schema.
      *
      * Adds a field with the specified name and data type to the internal schema. This must be called
@@ -167,6 +180,8 @@ private:
     std::unordered_map<std::string, std::variant<int64_t, int32_t, int16_t, int8_t, double, std::string, bool>> row_values_;
     /// Flag indicating whether the file has been opened.
     bool file_opened_ = false;
+    /// Stores user-supplied metadata until the file is opened.
+    std::unordered_map<std::string, std::string> user_metadata_;
 
     /**
      * @brief Checks if the specified column exists and if the file is open.
