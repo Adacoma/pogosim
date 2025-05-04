@@ -1,6 +1,29 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.2] - 2025-05-05
+
+### Added
+ - support for occlusions in detecting neighbors
+ - communication: "show\_communication\_channels\_above\_all" parameter (+ F5 in GUI) to show communication channels above/below all other objects
+ - communication channels now show bidirectionnal links using arrows
+ - pogobatch: support retries if the simulation segfaults
+ - initial formations: add 'lloyd' and 'power\_lloyd' algorithms for uniform distribution, and 'aligned\_random' formation (same behavior as "random" in v0.10.1)
+ - add macros to specify Pogosim version numbers, inspired from SDL
+ - save configuration in feather files, as YAML-formatted metadata
+
+### Changed
+ - only draw robot arrow if it is large enough with current zoom
+ - configuration: automatically convert float from/to int if needed
+ - random orientation in initial formation
+ - power\_lloyd is now the default formation
+ - changed algorithm to simulate communication channels: enable occlusions by default
+
+### Fixed
+ - fix a bug where robots don't update correctly their neighbor list when moving
+ - fix headless mode to support SDL2 versions below 2.0.22
+
+
 ## [0.10.1] - 2025-05-01
 
 ### Added
