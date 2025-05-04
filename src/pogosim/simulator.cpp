@@ -175,6 +175,12 @@ void Simulation::create_objects() {
         } else if (initial_formation == "disk") {
             points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "lloyd") {
+            points = generate_points_voronoi_lloyd(arena_polygons, objects_radii.size());
+            std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "power_lloyd") {
+            points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
+            std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else {
             glogger->error("Unknown 'initial_formation' value: '{}'. Assuming random formation...", initial_formation);
             points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);

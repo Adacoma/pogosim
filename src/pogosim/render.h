@@ -135,6 +135,76 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
         std::uint32_t attempts_per_point = 100U,
         std::uint32_t max_restarts = 100U);
 
+/**
+ * Generate approximately equi-spaced random points inside a (possibly holed)
+ * polygonal domain by running a few iterations of Lloyd’s relaxation
+ * (a.k.a. “K-means” on a dense uniform sample).
+ *
+ *  1. Draw `n_samples` uniform random points inside the domain.
+ *  2. Initialise `k` cluster centres by picking `k` of those samples at random.
+ *  3. Repeat `kmeans_iterations` times (or until convergence):
+ *     • Assign every sample to its closest centre.
+ *     • Replace each centre by the arithmetic mean of the samples in its
+ *       cluster.  If the mean falls outside the domain, snap it to the
+ *       in-domain sample that is nearest to the mean.
+ *  4. Return the final centres.
+ *
+ * In practice after ~15–25 iterations you already get a centroidal Voronoi
+ * tessellation good enough for swarm-robot initialisation.
+ *
+ * @param polygons              outer polygon first, holes afterwards
+ * @param k                     number of points to generate
+ * @param n_samples             size of the uniform background sample
+ * @param kmeans_iterations     maximum number of Lloyd relaxations
+ * @param max_restarts          how many times we may restart if a step fails
+ * @throws std::runtime_error   if the domain is invalid or no solution is found
+ */
+std::vector<b2Vec2> generate_points_voronoi_lloyd(const std::vector<std::vector<b2Vec2>> &polygons,
+                                                  std::size_t k,
+                                                  std::size_t n_samples      = 20'000,
+                                                  std::size_t kmeans_iterations = 20,
+                                                  std::uint32_t max_restarts = 3);
+
+
+/**
+ * @brief Uniformly sample approximately equi-spaced points in a (possibly holed)
+ *        polygonal domain, while respecting *per-point* exclusion radii.
+ *
+ * The routine performs **Lloyd relaxation in power-distance space**:
+ *   1. Draw `n_samples` uniform random points inside the domain.
+ *   2. Initialise `k = reserve_radii.size()` centres with random samples.
+ *   3. Iterate *kmeans_iterations* times (or until all moves < *convergence_eps*):
+ *        • Assign every sample to the centre that minimises the
+ *          power distance ‖p − c‖² − rᵢ².
+ *        • Replace each centre by the arithmetic mean of its samples.
+ *          If that mean falls outside the domain, snap it back to the
+ *          closest *in-domain* sample in the same cluster.
+ *   4. Run a lightweight “push-apart” pass so that no two centres end up
+ *      closer than rᵢ + rⱼ (handles the rare residual overlaps).
+ *
+ * The power metric naturally enlarges Voronoi cells for large radii, giving
+ * a blue-noise layout where big robots get more space.
+ *
+ * @param polygons            0-th entry = outer boundary, 1…N = holes
+ * @param reserve_radii       desired exclusion radius per point (size k)
+ * @param n_samples           size of the background uniform sample cloud
+ * @param kmeans_iterations   maximum Lloyd iterations (≈15–30 is plenty)
+ * @param convergence_eps     stop early if every shift < this (world units)
+ * @param max_restarts        number of times we may restart on hard failure
+ *
+ * @return std::vector<b2Vec2>  the *k* centre positions
+ *
+ * @throws std::runtime_error  if the domain is invalid or the algorithm
+ *                             fails after `max_restarts` attempts.
+ */
+std::vector<b2Vec2> generate_random_points_power_lloyd(
+        const std::vector<std::vector<b2Vec2>> &polygons,
+        const std::vector<float>               &reserve_radii,
+        std::size_t        n_samples          = 25'000,
+        std::size_t        kmeans_iterations  = 25,
+        float              convergence_eps    = 1e-3f,
+        std::uint32_t      max_restarts       = 3);
+
 
 /**
  * @brief Computes the width and height of a polygon.

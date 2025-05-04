@@ -332,6 +332,303 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
     throw std::runtime_error("Impossible to create random points within polygon: too many points or radii too large, even after multiple restarts.");
 }
 
+inline float sqr(float v) { return v * v; }
+
+float euclidean_distance_sq(const b2Vec2 &a, const b2Vec2 &b) {
+    return sqr(a.x - b.x) + sqr(a.y - b.y);
+}
+
+std::vector<b2Vec2> generate_points_voronoi_lloyd(const std::vector<std::vector<b2Vec2>> &polygons,
+                                                  std::size_t k,
+                                                  std::size_t n_samples,
+                                                  std::size_t kmeans_iterations,
+                                                  std::uint32_t max_restarts) {
+    // ─── sanity checks ───────────────────────────────────────────────────
+    if (polygons.empty()) {
+        throw std::runtime_error("At least one polygon must be supplied.");
+    }
+    if (k == 0U) { return {}; }
+
+    for (const auto &p : polygons) {
+        if (p.size() < 3) {
+            throw std::runtime_error("Every polygon needs ≥ 3 vertices.");
+        }
+    }
+
+    // ─── compute bounding box of outer polygon ───────────────────────────
+    const auto &outer = polygons.front();
+    float min_x = std::numeric_limits<float>::max();
+    float min_y = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::lowest();
+    float max_y = std::numeric_limits<float>::lowest();
+    for (const auto &v : outer) {
+        min_x = std::min(min_x, v.x);  min_y = std::min(min_y, v.y);
+        max_x = std::max(max_x, v.x);  max_y = std::max(max_y, v.y);
+    }
+    std::uniform_real_distribution<float> dis_x(min_x, max_x);
+    std::uniform_real_distribution<float> dis_y(min_y, max_y);
+
+    // ─── outer restart loop (rarely needed) ──────────────────────────────
+    for (std::uint32_t restart = 0; restart < max_restarts; ++restart) {
+
+        // 1️⃣  Dense uniform sampling inside the domain
+        std::vector<b2Vec2> samples;  samples.reserve(n_samples);
+        while (samples.size() < n_samples) {
+            const float x = dis_x(rnd_gen);
+            const float y = dis_y(rnd_gen);
+            if (!is_point_within_polygon(outer, x, y)) { continue; }
+
+            bool in_hole = false;
+            for (std::size_t h = 1; h < polygons.size() && !in_hole; ++h) {
+                if (is_point_within_polygon(polygons[h], x, y)) { in_hole = true; }
+            }
+            if (!in_hole) { samples.push_back({x, y}); }
+        }
+
+        // 2️⃣  Random-init cluster centres (K-means++ gives nicer convergence,
+        //     but plain random is simpler and good enough here)
+        if (k > samples.size()) { throw std::runtime_error("Too few domain samples."); }
+
+        std::vector<std::size_t> indices(samples.size());
+        std::iota(indices.begin(), indices.end(), 0);
+        std::shuffle(indices.begin(), indices.end(), rnd_gen);
+
+        std::vector<b2Vec2> centres;
+        centres.reserve(k);
+        for (std::size_t i = 0; i < k; ++i) { centres.push_back(samples[indices[i]]); }
+
+        // 3️⃣  Lloyd relaxations
+        std::vector<std::size_t> membership(samples.size());
+        const float converge_eps_sq = sqr(1e-3f);   // stop if every move < 1 mm
+        bool converged = false;
+
+        for (std::size_t it = 0; it < kmeans_iterations && !converged; ++it) {
+            // Assignment step --------------------------------------------------
+            for (std::size_t s = 0; s < samples.size(); ++s) {
+                float best_d = std::numeric_limits<float>::max();
+                std::size_t best_c = 0;
+                for (std::size_t c = 0; c < k; ++c) {
+                    float d = euclidean_distance_sq(samples[s], centres[c]);
+                    if (d < best_d) { best_d = d; best_c = c; }
+                }
+                membership[s] = best_c;
+            }
+
+            // Update step ------------------------------------------------------
+            std::vector<b2Vec2> new_centres(k, {0.f, 0.f});
+            std::vector<std::size_t> counts(k, 0);
+            for (std::size_t s = 0; s < samples.size(); ++s) {
+                const auto &pt = samples[s];
+                std::size_t c  = membership[s];
+                new_centres[c].x += pt.x;
+                new_centres[c].y += pt.y;
+                ++counts[c];
+            }
+            // Handle empty clusters by re-seeding them with a random sample
+            for (std::size_t c = 0; c < k; ++c) {
+                if (counts[c] == 0) {
+                    std::uniform_int_distribution<std::size_t> dis(0, samples.size() - 1);
+                    new_centres[c] = samples[dis(rnd_gen)];
+                    counts[c] = 1;
+                } else {
+                    new_centres[c].x /= static_cast<float>(counts[c]);
+                    new_centres[c].y /= static_cast<float>(counts[c]);
+                    // If centroid left the domain (possible for highly concave
+                    // shapes), snap to nearest in-domain sample of the cluster.
+                    if (!is_point_within_polygon(outer, new_centres[c].x, new_centres[c].y)) {
+                        float best_d = std::numeric_limits<float>::max();
+                        std::size_t best_s = 0;
+                        for (std::size_t s = 0; s < samples.size(); ++s) {
+                            if (membership[s] != c) { continue; }
+                            float d = euclidean_distance_sq(samples[s], new_centres[c]);
+                            if (d < best_d) { best_d = d; best_s = s; }
+                        }
+                        new_centres[c] = samples[best_s];
+                    }
+                }
+            }
+
+            // Convergence test -------------------------------------------------
+            converged = true;
+            for (std::size_t c = 0; c < k; ++c) {
+                if (euclidean_distance_sq(centres[c], new_centres[c]) > converge_eps_sq) {
+                    converged = false; break;
+                }
+            }
+            centres.swap(new_centres);
+        }
+
+        // 4️⃣  All good → return
+        return centres;
+    }
+
+    throw std::runtime_error("Failed to create centroidal Voronoi points after several restarts.");
+}
+
+
+std::vector<b2Vec2> generate_random_points_power_lloyd(
+        const std::vector<std::vector<b2Vec2>> &polygons,
+        const std::vector<float>               &reserve_radii,
+        std::size_t        n_samples,
+        std::size_t        kmeans_iterations,
+        float              convergence_eps,
+        std::uint32_t      max_restarts) {
+    const std::size_t k = reserve_radii.size();
+    if (k == 0U) { return {}; }
+
+    // ─── basic input sanity checks ───────────────────────────────────────
+    if (polygons.empty()) {
+        throw std::runtime_error("At least one polygon must be supplied.");
+    }
+    for (const auto &poly : polygons) {
+        if (poly.size() < 3) {
+            throw std::runtime_error("Every polygon needs ≥ 3 vertices.");
+        }
+    }
+
+    // ─── axis-aligned bounding box of the *outer* polygon ───────────────
+    const auto &outer = polygons.front();
+    float min_x = std::numeric_limits<float>::max();
+    float min_y = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::lowest();
+    float max_y = std::numeric_limits<float>::lowest();
+
+    for (const auto &v : outer) {
+        min_x = std::min(min_x, v.x);  min_y = std::min(min_y, v.y);
+        max_x = std::max(max_x, v.x);  max_y = std::max(max_y, v.y);
+    }
+    if (min_x >= max_x || min_y >= max_y) {
+        throw std::runtime_error("Degenerate outer polygon.");
+    }
+
+    std::uniform_real_distribution<float> dis_x(min_x, max_x);
+    std::uniform_real_distribution<float> dis_y(min_y, max_y);
+
+    // ─── outer restart loop (rarely taken) ───────────────────────────────
+    for (std::uint32_t restart = 0U; restart < max_restarts; ++restart) {
+
+        // 1️⃣  Dense uniform sampling inside the domain -------------------
+        std::vector<b2Vec2> samples;
+        samples.reserve(n_samples);
+        while (samples.size() < n_samples) {
+            const float x = dis_x(rnd_gen);
+            const float y = dis_y(rnd_gen);
+            if (!is_point_within_polygon(outer, x, y)) { continue; }
+
+            bool inside_hole = false;
+            for (std::size_t h = 1; h < polygons.size() && !inside_hole; ++h) {
+                if (is_point_within_polygon(polygons[h], x, y)) { inside_hole = true; }
+            }
+            if (!inside_hole) { samples.push_back({x, y}); }
+        }
+
+        // 2️⃣  Random-initialise the centres ------------------------------
+        if (k > samples.size()) {
+            throw std::runtime_error("Not enough domain samples for the requested k.");
+        }
+        std::vector<std::size_t> perm(samples.size());
+        std::iota(perm.begin(), perm.end(), 0);
+        std::shuffle(perm.begin(), perm.end(), rnd_gen);
+
+        std::vector<b2Vec2> centres(k);
+        for (std::size_t i = 0; i < k; ++i) { centres[i] = samples[perm[i]]; }
+
+        // radii must follow the centre order (copy once so we may shuffle)
+        std::vector<float> radii = reserve_radii;
+
+        // 3️⃣  Lloyd iterations in POWER space ----------------------------
+        std::vector<std::size_t> membership(samples.size());
+        const float eps_sq = sqr(convergence_eps);
+        bool converged = false;
+
+        for (std::size_t it = 0; it < kmeans_iterations && !converged; ++it) {
+
+            // — assignment step (power distance) —
+            for (std::size_t s = 0; s < samples.size(); ++s) {
+                float best_val = std::numeric_limits<float>::max();
+                std::size_t best_c = 0;
+                const auto &p = samples[s];
+                for (std::size_t c = 0; c < k; ++c) {
+                    float val = euclidean_distance_sq(p, centres[c]) - sqr(radii[c]);
+                    if (val < best_val) { best_val = val; best_c = c; }
+                }
+                membership[s] = best_c;
+            }
+
+            // — update step: arithmetic mean of each cluster —
+            std::vector<b2Vec2> new_centres(k, {0.f, 0.f});
+            std::vector<std::size_t> counts(k, 0);
+
+            for (std::size_t s = 0; s < samples.size(); ++s) {
+                std::size_t c = membership[s];
+                new_centres[c].x += samples[s].x;
+                new_centres[c].y += samples[s].y;
+                ++counts[c];
+            }
+            // handle empty clusters by reseeding them
+            std::uniform_int_distribution<std::size_t> dis_sample(0, samples.size() - 1);
+            for (std::size_t c = 0; c < k; ++c) {
+                if (counts[c] == 0) {
+                    new_centres[c] = samples[dis_sample(rnd_gen)];
+                    counts[c] = 1;
+                } else {
+                    new_centres[c].x /= static_cast<float>(counts[c]);
+                    new_centres[c].y /= static_cast<float>(counts[c]);
+                }
+
+                // snap back into domain if centroid drifted outside
+                if (!is_point_within_polygon(outer, new_centres[c].x, new_centres[c].y)) {
+                    float best_d = std::numeric_limits<float>::max();
+                    std::size_t best_s = 0;
+                    for (std::size_t s = 0; s < samples.size(); ++s) {
+                        if (membership[s] != c) { continue; }
+                        float d = euclidean_distance_sq(samples[s], new_centres[c]);
+                        if (d < best_d) { best_d = d; best_s = s; }
+                    }
+                    new_centres[c] = samples[best_s]; // guaranteed to exist
+                }
+            }
+
+            // — convergence test —
+            converged = true;
+            for (std::size_t c = 0; c < k && converged; ++c) {
+                if (euclidean_distance_sq(centres[c], new_centres[c]) > eps_sq) {
+                    converged = false;
+                }
+            }
+            centres.swap(new_centres);
+        }
+
+        // 4️⃣  quick push-apart pass to eliminate residual overlaps --------
+        constexpr std::size_t overlap_relax_iters = 4;
+        for (std::size_t pass = 0; pass < overlap_relax_iters; ++pass) {
+            bool overlap_found = false;
+            for (std::size_t i = 0; i < k; ++i) {
+                for (std::size_t j = i + 1; j < k; ++j) {
+                    const float min_sep = radii[i] + radii[j];
+                    b2Vec2 d = centres[j] - centres[i];
+                    const float dist_sq = sqr(d.x) + sqr(d.y);
+                    if (dist_sq < sqr(min_sep) && dist_sq > 1e-12f) {
+                        overlap_found = true;
+                        const float dist = std::sqrt(dist_sq);
+                        const float push = 0.5f * (min_sep - dist);
+                        d *= (push / dist);  // normalised * push
+                        centres[i] -= d;
+                        centres[j] += d;
+                    }
+                }
+            }
+            if (!overlap_found) { break; }
+        }
+
+        return centres;                 // success on this restart
+    }
+
+    // — all restarts failed —
+    throw std::runtime_error("Power-Lloyd sampler failed after multiple restarts; "
+                             "check radii or decrease k.");
+}
+
 
 std::pair<float, float> compute_polygon_dimensions(const std::vector<b2Vec2>& polygon) {
     float minX = std::numeric_limits<float>::max();

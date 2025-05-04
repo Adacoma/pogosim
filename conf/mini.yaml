@@ -33,6 +33,11 @@ GUI_speed_up: 0.01         # How much the visualisation in the GUI should be spe
 #   - "random": all robots are placed randomly in the arena, with random direction,
 #   - "aligned_random": all robots are placed randomly in the arena, all with with pi/2 direction.
 #   - "disk": robots are placed uniformly in a disk shape at the center of the arena.
+#   - "lloyd": robots are placed randomly with an approximately equi-spaced distribution
+#       by running a few iterations of Lloyd’s relaxation (a.k.a. “K-means” on a dense uniform sample).
+#       This method assumes all objects/robots have the same radius.
+#   - "power_lloyd": Similar approach to "lloyd", but using a weighted approach (Laguerre diagrams) to handle
+#       cases where objects/robots do not have the same radius.
 initial_formation: random
 
 
