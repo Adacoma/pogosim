@@ -356,6 +356,7 @@ void Simulation::init_config() {
     window_height = config["window_height"].get(800);
 
     arena_surface = config["arena_surface"].get(1e6f);
+    comm_ignore_occlusions = config["communication_ignore_occlusions"].get(false);
 
     mm_to_pixels = 0.0f;
     adjust_mm_to_pixels(config["mm_to_pixels"].get(1.0f));
@@ -608,7 +609,7 @@ void Simulation::handle_SDL_events() {
 void Simulation::compute_neighbors() {
     // Find robots that are neighbors
     for (int i = 0; i < IR_RX_COUNT; i++ ) {
-        find_neighbors((ir_direction)i, robots, max_comm_radius / VISUALIZATION_SCALE);
+        find_neighbors((ir_direction)i, robots, max_comm_radius / VISUALIZATION_SCALE, !comm_ignore_occlusions);
         find_neighbors_to_pogowalls(wall_objects, (ir_direction)i, robots);
     }
 

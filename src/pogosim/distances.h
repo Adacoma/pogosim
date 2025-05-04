@@ -35,8 +35,17 @@ float euclidean_distance(const b2Vec2& a, const b2Vec2& b);
  *               returning a b2Vec2, and contain a public member "neighbors" (e.g., a vector)
  *               that can store pointers to neighboring Robot objects.
  * @param maxDistance The maximum distance within which two robots are considered neighbors.
+ * @param detect_line_of_sight Whether to detect line of sight (i.e. simple way of handling occlusions).
  */
-void find_neighbors(ir_direction dir, std::vector<std::shared_ptr<PogobotObject>>& robots, float maxDistance);
+void find_neighbors(ir_direction dir, std::vector<std::shared_ptr<PogobotObject>>& robots,
+        float maxDistance,
+        bool detect_line_of_sight = true);
+
+bool has_line_of_sight(const b2Vec2& emitter,
+                       const b2Vec2& target,
+                       std::span<const b2Vec2> centres,
+                       float robot_radius);
+
 
 /**
  * @brief Compute, for every robot, the distance from its IR–emitter @p dir to the

@@ -65,7 +65,8 @@ class Simulation {
     float arena_width = 1000.0;           ///< Arena width in millimeters.
     float arena_height = 1000.0;          ///< Arena height in millimeters.
     float arena_surface = 1e6;            ///< Arena surface area in mm².
-    float max_comm_radius = 00.0f;        ///< Max communication radius across all types of objects
+    float max_comm_radius = 00.0f;        ///< Max communication radius across all types of objects.
+    float comm_ignore_occlusions = false; ///< Whether or to ignore occlusions when computing communication channels and neighbors.
 
     b2WorldId worldId;                    ///< Identifier for the Box2D world.
     //std::vector<Robot> robots;          ///< Vector of robots in the simulation.

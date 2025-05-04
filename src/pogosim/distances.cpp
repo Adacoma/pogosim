@@ -84,11 +84,54 @@ inline GridCell getGridCell(float x, float y, float cellSize) {
             static_cast<int>(std::floor(y / cellSize))};
 }
 
+
+//inline float length_squared(const b2Vec2& v) {
+//    return b2Dot(v, v);
+//}
+//
+//// XXX Take into account robot communication radius !!!
+//bool has_line_of_sight(const b2Vec2& emitter_pos,
+//                       const b2Vec2& target_pos,
+//                       std::span<const b2Vec2> all_centres,
+//                       float robot_radius) {
+//    const b2Vec2 seg = target_pos - emitter_pos;
+//    const float  seg_len_sq = length_squared(seg);
+//    if (seg_len_sq == 0.0f) {          // identical points ⇒ undefined LOS
+//        return false;
+//    }
+//
+//    const float radius_sq = robot_radius * robot_radius;
+//
+//    for (const b2Vec2& c : all_centres) {
+//        /* Skip the target itself and anything farther than the target
+//           along the segment direction. */
+//        const float t = b2Dot(c - emitter_pos, seg) / seg_len_sq;
+//        if (t <= 0.0f || t >= 1.0f) {
+//            continue;
+//        }
+//
+//        const b2Vec2 proj = emitter_pos + t * seg;
+//        if (length_squared(c - proj) < radius_sq) {
+//            return false;              // segment hits another robot ⇒ blocked
+//        }
+//    }
+//    return true;                       // no blocker found
+//}
+
 // XXX Take into account robot communication radius !!!
-void find_neighbors(ir_direction dir, std::vector<std::shared_ptr<PogobotObject>>& robots, float maxDistance) {
+void find_neighbors(ir_direction dir, std::vector<std::shared_ptr<PogobotObject>>& robots, float maxDistance, bool detect_line_of_sight) {
     const float cellSize = maxDistance;
     const float maxDistSq = maxDistance * maxDistance;
     const size_t N = robots.size();
+    const float radius = robots[0]->radius; // XXX assume all robots have the same radius
+
+    // XXX
+//    // Cache robot centres once – we need them for LOS
+//    std::vector<b2Vec2> centres(N);
+//    for (size_t i = 0; i < N; ++i) {
+//        centres[i] = robots[i]->get_position();
+//    }
+//    std::span<const b2Vec2> centres_view{centres};
 
     // 1) Build separate x and y arrays (SoA layout).
     //    This avoids calling get_position() repeatedly and also helps cache locality.
@@ -114,9 +157,10 @@ void find_neighbors(ir_direction dir, std::vector<std::shared_ptr<PogobotObject>
         robots[i]->neighbors[dir].clear();
 
         GridCell cell = getGridCell(xs[i], ys[i], cellSize);
+        b2Vec2 emitter_pos{xs[i], ys[i]};
 
         for (const auto& offset : precomputedNeighborCells) {
-     GridCell neighborCell{ cell.x + offset.x, cell.y + offset.y };
+            GridCell neighborCell{ cell.x + offset.x, cell.y + offset.y };
             auto it = spatialHash.find(neighborCell);
             if (it != spatialHash.end()) {
                 // For each candidate robot in this neighbor cell
@@ -131,11 +175,20 @@ void find_neighbors(ir_direction dir, std::vector<std::shared_ptr<PogobotObject>
                     if (distSq <= maxDistSq) {
                         // Robot i and otherIdx are neighbors
                         robots[i]->neighbors[dir].push_back(robots[otherIdx].get());
+                        // XXX
+                        //if (!detect_line_of_sight ||
+                        //        has_line_of_sight(emitter_pos,
+                        //            centres[otherIdx],
+                        //            centres_view,
+                        //            radius)) {
+                        //    // Robot i and otherIdx are neighbors
+                        //    robots[i]->neighbors[dir].push_back(robots[otherIdx].get());
+                        //}
                     }
-                }
-            }
-        }
-    }
+                } // for
+            } // if
+        } // for
+    } // for
 }
 
 

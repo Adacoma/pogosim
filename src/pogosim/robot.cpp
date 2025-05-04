@@ -387,6 +387,9 @@ void PogobotObject::render_communication_channels(SDL_Renderer* renderer, [[mayb
         if (they_see_us) {
             draw_arrow(self_w, true);      // reciprocal ⇒ arrow back to us
         }
+        //else {
+        //    glogger->info("UNIDIRECTIONAL communication channel DETECTED");
+        //}
     }
 }
 
