@@ -107,8 +107,8 @@ struct Candidate {
 /* ------------------------------------------------------------------------ */
 namespace angles {
     inline float wrap(float a) {
-        while (a <= -M_PI<float>) a += 2 * M_PI<float>;
-        while (a >   M_PI<float>) a -= 2 * M_PI<float>;
+        while (a <= -M_PI) a += 2 * M_PI;
+        while (a >   M_PI) a -= 2 * M_PI;
         return a;
     }
 
