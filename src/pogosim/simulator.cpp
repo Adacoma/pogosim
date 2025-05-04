@@ -182,8 +182,8 @@ void Simulation::create_objects() {
             points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else {
-            glogger->error("Unknown 'initial_formation' value: '{}'. Assuming random formation...", initial_formation);
-            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            glogger->error("Unknown 'initial_formation' value: '{}'. Assuming 'power_lloyd' formation...", initial_formation);
+            points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         }
     } catch (const std::exception& e) {
@@ -364,7 +364,7 @@ void Simulation::init_config() {
     show_lateral_leds = config["show_lateral_LEDs"].get(true);
     show_light_levels = config["show_light_levels"].get(false);
 
-    initial_formation = config["initial_formation"].get(std::string("random"));
+    initial_formation = config["initial_formation"].get(std::string("power_lloyd"));
     formation_min_space_between_neighbors = config["formation_min_space_between_neighbors"].get(0.0f);
     formation_max_space_between_neighbors = config["formation_max_space_between_neighbors"].get(INFINITY);
     formation_attempts_per_point = config["formation_attempts_per_point"].get(100U);
