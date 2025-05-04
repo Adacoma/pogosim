@@ -4,6 +4,7 @@
 #include <box2d/box2d.h>
 #include <unordered_map>
 #include <vector>
+#include <cmath>
 
 #include "utils.h"
 #include "spogobot.h"
@@ -106,9 +107,8 @@ struct Candidate {
 /* ------------------------------------------------------------------------ */
 namespace angles {
     inline float wrap(float a) {
-        using std::numbers::pi_v;
-        while (a <= -pi_v<float>) a += 2 * pi_v<float>;
-        while (a >   pi_v<float>) a -= 2 * pi_v<float>;
+        while (a <= -M_PI<float>) a += 2 * M_PI<float>;
+        while (a >   M_PI<float>) a -= 2 * M_PI<float>;
         return a;
     }
 
