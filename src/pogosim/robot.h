@@ -308,6 +308,16 @@ public:
      */
     virtual b2Vec2 get_IR_emitter_position(ir_direction dir) const;
 
+    /**
+     * @brief World-frame bearing of the chosen IR emitter.
+     *
+     * For the four perimeter LEDs the bearing is the angle of the outward
+     * normal of the robot’s hull at that LED (i.e. ±90° from the tangent).
+     * For dir == MIDDLE we return the robot’s *forward* heading, so the caller
+     * still receives a meaningful direction.
+     */
+    virtual float get_IR_emitter_angle(ir_direction dir) const;
+
     // LED control
     std::vector<color_t> leds = std::vector<color_t>(5, {0, 0, 0}); ///< LED colors for the robot.
 
@@ -546,6 +556,16 @@ public:
     virtual b2Vec2 get_IR_emitter_position(ir_direction dir) const override;
 
     /**
+     * @brief World-frame bearing of the chosen IR emitter.
+     *
+     * For the four perimeter LEDs the bearing is the angle of the outward
+     * normal of the robot’s hull at that LED (i.e. ±90° from the tangent).
+     * For dir == MIDDLE we return the robot’s *forward* heading, so the caller
+     * still receives a meaningful direction.
+     */
+    virtual float get_IR_emitter_angle(ir_direction dir) const override;
+
+    /**
      * @brief Renders the robot on the given SDL renderer.
      *
      * @param renderer Pointer to the SDL_Renderer.
@@ -661,15 +681,6 @@ public:
      * @return b2Vec2 The current position.
      */
     virtual b2Vec2 get_position() const override;
-
-    /**
-     * @brief Retrieves the IR emitters current positions
-     *
-     * Returns the position of one of the robot's IR emitter as a Box2D vector.
-     *
-     * @return b2Vec2 The current position.
-     */
-    virtual b2Vec2 get_IR_emitter_position(ir_direction dir) const override;
 
     /**
      * @brief Renders the robot on the given SDL renderer.

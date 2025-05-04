@@ -610,6 +610,7 @@ void Simulation::compute_neighbors() {
     // Find robots that are neighbors
     for (int i = 0; i < IR_RX_COUNT; i++ ) {
         find_neighbors((ir_direction)i, robots, max_comm_radius / VISUALIZATION_SCALE, !comm_ignore_occlusions);
+        //find_neighbors((ir_direction)i, robots, max_comm_radius / VISUALIZATION_SCALE);
         find_neighbors_to_pogowalls(wall_objects, (ir_direction)i, robots);
     }
 

@@ -14,181 +14,166 @@ float euclidean_distance(const b2Vec2& a, const b2Vec2& b) {
     return std::sqrt(dx * dx + dy * dy);
 }
 
-/**
- * @brief Represents a cell in a spatial grid.
- *
- * A GridCell is defined by its integer coordinates (x, y) and is used in spatial
- * hashing to partition a 2D space into discrete cells.
- */
-struct GridCell {
-    int x, y; ///< The x and y coordinates of the grid cell.
 
-    /**
-     * @brief Compares two GridCell objects for equality.
-     *
-     * @param other The other GridCell to compare against.
-     * @return true if both the x and y coordinates are equal.
-     * @return false otherwise.
-     */
-    bool operator==(const GridCell& other) const {
-        return x == other.x && y == other.y;
+using angles::Interval;
+void angles::add_interval(float a, float b, std::vector<Interval>& ivs) {
+    std::size_t p = 0;
+    while (p < ivs.size() && ivs[p].b < a) ++p;
+    while (p < ivs.size() && ivs[p].a <= b) {
+        a = std::min(a, ivs[p].a);
+        b = std::max(b, ivs[p].b);
+        ivs.erase(ivs.begin() + p);
     }
-};
+    ivs.insert(ivs.begin() + p, Interval{a,b});
+}
 
-/**
- * @brief Hash functor for GridCell.
- *
- * This structure provides a hash function for GridCell objects, allowing them to be used
- * as keys in unordered associative containers.
- */
-struct GridCellHash {
-    /**
-     * @brief Computes a hash value for a GridCell.
-     *
-     * Combines the hash of the x and y coordinates.
-     *
-     * @param cell The GridCell to hash.
-     * @return std::size_t The computed hash value.
-     */
-    std::size_t operator()(const GridCell& cell) const {
-        // Simple hash combining for x and y.
-        return std::hash<int>()(cell.x) ^ (std::hash<int>()(cell.y) << 1);
+bool angles::fully_covered(float a, float b, const std::vector<Interval>& ivs) {
+    for (auto const& iv : ivs) {
+        if (iv.b <= a) continue;
+        if (iv.a >  a) return false;
+        a = iv.b;
+        if (a >= b)    return true;
     }
-};
+    return false;
+}
 
-/**
- * @brief Precomputed offsets for neighbor grid cells.
- *
- * This constant array contains the relative offsets for a cell's neighbors in a 3x3 grid,
- * including the cell itself. It is used to quickly access adjacent cells during spatial queries.
- */
-constexpr std::array<GridCell, 9> precomputedNeighborCells{
-    GridCell{-1, -1}, GridCell{-1,  0}, GridCell{-1,  1},
-    GridCell{ 0, -1}, GridCell{ 0,  0}, GridCell{ 0,  1},
-    GridCell{ 1, -1}, GridCell{ 1,  0}, GridCell{ 1,  1},
-};
+/* ─────────────────  section 5 — building blocks ───────────────────────── */
+std::unordered_map<GridCell,std::vector<std::size_t>,GridCellHash>
+build_spatial_hash(std::span<const float> xs,
+                   std::span<const float> ys,
+                   float cell_size) {
+    std::unordered_map<GridCell,std::vector<std::size_t>,GridCellHash> h;
+    h.reserve(xs.size());
+    for (std::size_t i = 0; i < xs.size(); ++i)
+        h[get_grid_cell(xs[i], ys[i], cell_size)].push_back(i);
+    return h;
+}
 
-/**
- * @brief Converts a 2D position to a grid cell index.
- *
- * This inline function maps the provided (x, y) coordinates into a GridCell based on
- * the specified cell size. It uses std::floor to determine the appropriate cell index.
- *
- * @param x The x-coordinate of the position.
- * @param y The y-coordinate of the position.
- * @param cellSize The size of a single grid cell.
- * @return GridCell The corresponding grid cell for the given position.
- */
-inline GridCell getGridCell(float x, float y, float cellSize) {
-    return {static_cast<int>(std::floor(x / cellSize)),
-            static_cast<int>(std::floor(y / cellSize))};
+std::vector<Candidate>
+collect_candidates(std::size_t                  i,
+                   std::span<const float>       xs,
+                   std::span<const float>       ys,
+                   std::span<const float>       cx,
+                   std::span<const float>       cy,
+                   std::span<const float>       body_rad,
+                   std::span<const float>       comm_rad,
+                   std::span<const float>       led_dir,
+                   const std::unordered_map<GridCell,
+                                            std::vector<std::size_t>,
+                                            GridCellHash>& hash,
+                   float cell_size,
+                   bool  clip_fov) {
+    using std::numbers::pi_v;
+    constexpr float k_led_half_fov = std::numbers::pi_v<float> / 2;
+    const GridCell c0 = get_grid_cell(xs[i], ys[i], cell_size);
+    const float    comm_sq = comm_rad[i] * comm_rad[i];
+
+    std::vector<Candidate> out;
+    out.reserve(16);
+
+    for (auto off : precomputed_neighbor_cells) {
+        auto it = hash.find({c0.x + off.x, c0.y + off.y});
+        if (it == hash.end()) continue;
+
+        for (std::size_t j : it->second) {
+            if (j == i) continue;
+
+            float dx = cx[j] - xs[i];
+            float dy = cy[j] - ys[i];
+            float bearing = std::atan2(dy, dx);
+            if (clip_fov && !angles::in_fov(bearing, led_dir[i], k_led_half_fov))
+                continue;                                               /* self-block */
+            float d2 = dx*dx + dy*dy;
+            if (d2 > comm_sq) continue;
+
+            float d   = std::sqrt(d2);
+            float hap = std::asin(std::clamp(body_rad[j] / d, 0.0f, 1.0f));
+            out.push_back({j, d2, bearing, hap});
+        }
+    }
+    std::ranges::sort(out, [](auto const& a, auto const& b){ return a.dist_sq < b.dist_sq; });
+    return out;
+}
+
+std::vector<std::size_t>
+filter_visible(const std::vector<Candidate>& cand) {
+    using angles::wrap;
+    std::vector<Interval> shadow;
+    std::vector<std::size_t> visible;
+    shadow.reserve(cand.size());
+
+    for (auto const& c : cand) {
+        float a = wrap(c.angle - c.half_ap);
+        float b = wrap(c.angle + c.half_ap);
+
+        std::vector<std::pair<float,float>> parts;
+        if (a <= b) parts.emplace_back(a, b);
+        else {
+            using std::numbers::pi_v;
+            parts.emplace_back(a,  pi_v<float>);
+            parts.emplace_back(-pi_v<float>, b);
+        }
+
+        bool vis = false;
+        for (auto [s,e] : parts) {
+            if (!angles::fully_covered(s, e, shadow)) {
+                vis = true;
+                angles::add_interval(s, e, shadow);
+            }
+        }
+        if (vis) visible.push_back(c.idx);
+    }
+    return visible;
 }
 
 
-//inline float length_squared(const b2Vec2& v) {
-//    return b2Dot(v, v);
-//}
-//
-//// XXX Take into account robot communication radius !!!
-//bool has_line_of_sight(const b2Vec2& emitter_pos,
-//                       const b2Vec2& target_pos,
-//                       std::span<const b2Vec2> all_centres,
-//                       float robot_radius) {
-//    const b2Vec2 seg = target_pos - emitter_pos;
-//    const float  seg_len_sq = length_squared(seg);
-//    if (seg_len_sq == 0.0f) {          // identical points ⇒ undefined LOS
-//        return false;
-//    }
-//
-//    const float radius_sq = robot_radius * robot_radius;
-//
-//    for (const b2Vec2& c : all_centres) {
-//        /* Skip the target itself and anything farther than the target
-//           along the segment direction. */
-//        const float t = b2Dot(c - emitter_pos, seg) / seg_len_sq;
-//        if (t <= 0.0f || t >= 1.0f) {
-//            continue;
-//        }
-//
-//        const b2Vec2 proj = emitter_pos + t * seg;
-//        if (length_squared(c - proj) < radius_sq) {
-//            return false;              // segment hits another robot ⇒ blocked
-//        }
-//    }
-//    return true;                       // no blocker found
-//}
+void find_neighbors(ir_direction dir,
+                    std::vector<std::shared_ptr<PogobotObject>>& robots,
+                    float max_distance,
+                    bool enable_occlusion) {
+    /* --- SoA caches ----------------------------------------------------- */
+    const std::size_t N = robots.size();
+    std::vector<float> led_dir(N);          /* NEW */
+    std::vector<float> xs(N), ys(N), cx(N), cy(N),
+                       body_rad(N), comm_rad(N);
 
-// XXX Take into account robot communication radius !!!
-void find_neighbors(ir_direction dir, std::vector<std::shared_ptr<PogobotObject>>& robots, float maxDistance, bool detect_line_of_sight) {
-    const float cellSize = maxDistance;
-    const float maxDistSq = maxDistance * maxDistance;
-    const size_t N = robots.size();
-    const float radius = robots[0]->radius; // XXX assume all robots have the same radius
-
-    // XXX
-//    // Cache robot centres once – we need them for LOS
-//    std::vector<b2Vec2> centres(N);
-//    for (size_t i = 0; i < N; ++i) {
-//        centres[i] = robots[i]->get_position();
-//    }
-//    std::span<const b2Vec2> centres_view{centres};
-
-    // 1) Build separate x and y arrays (SoA layout).
-    //    This avoids calling get_position() repeatedly and also helps cache locality.
-    std::vector<float> xs(N), ys(N);
-    for (size_t i = 0; i < N; i++) {
-        b2Vec2 pos = robots[i]->get_IR_emitter_position(dir);
-        xs[i] = pos.x;
-        ys[i] = pos.y;
+    for (std::size_t i = 0; i < N; ++i) {
+        b2Vec2 em = robots[i]->get_IR_emitter_position(dir);
+        b2Vec2 ct = robots[i]->get_position();
+        xs[i]=em.x; ys[i]=em.y;
+        cx[i]=ct.x; cy[i]=ct.y;
+        body_rad[i] = robots[i]->radius;
+        comm_rad[i] = robots[i]->communication_radius;
+        led_dir[i]  = robots[i]->get_IR_emitter_angle(dir);   /* radians */
     }
 
-    // 2) Build a spatial hash from GridCell -> list of robot indices.
-    std::unordered_map<GridCell, std::vector<size_t>, GridCellHash> spatialHash;
-    spatialHash.reserve(N); // optional, to reduce rehashes if you know approximate N
+    /* --- spatial hash --------------------------------------------------- */
+    auto hash = build_spatial_hash(xs, ys, max_distance);
 
-    for (size_t i = 0; i < N; i++) {
-        GridCell cell = getGridCell(xs[i], ys[i], cellSize);
-        spatialHash[cell].push_back(i);
-    }
-
-    // 3) For each robot, find neighbors in the same or adjacent cells.
-    for (size_t i = 0; i < N; i++) {
-        // Clear the old neighbor list
+    /* --- per-robot neighbour search ------------------------------------- */
+    for (std::size_t i = 0; i < N; ++i) {
         robots[i]->neighbors[dir].clear();
 
-        GridCell cell = getGridCell(xs[i], ys[i], cellSize);
-        b2Vec2 emitter_pos{xs[i], ys[i]};
+        if (comm_rad[i] == 0.0f)              /* silent robot               */
+            continue;
 
-        for (const auto& offset : precomputedNeighborCells) {
-            GridCell neighborCell{ cell.x + offset.x, cell.y + offset.y };
-            auto it = spatialHash.find(neighborCell);
-            if (it != spatialHash.end()) {
-                // For each candidate robot in this neighbor cell
-                for (size_t otherIdx : it->second) {
-                    if (otherIdx == i) {
-                        continue; // skip self
-                    }
-                    // 4) Compare squared distances to avoid sqrt.
-                    float dx = xs[i] - xs[otherIdx];
-                    float dy = ys[i] - ys[otherIdx];
-                    float distSq = dx*dx + dy*dy;
-                    if (distSq <= maxDistSq) {
-                        // Robot i and otherIdx are neighbors
-                        robots[i]->neighbors[dir].push_back(robots[otherIdx].get());
-                        // XXX
-                        //if (!detect_line_of_sight ||
-                        //        has_line_of_sight(emitter_pos,
-                        //            centres[otherIdx],
-                        //            centres_view,
-                        //            radius)) {
-                        //    // Robot i and otherIdx are neighbors
-                        //    robots[i]->neighbors[dir].push_back(robots[otherIdx].get());
-                        //}
-                    }
-                } // for
-            } // if
-        } // for
-    } // for
+        auto cand = collect_candidates(i, xs, ys, cx, cy,
+                                       body_rad, comm_rad,
+                                       led_dir,
+                                       hash, max_distance,
+                                       enable_occlusion);
+
+        std::vector<std::size_t> final_idxs;
+        if (enable_occlusion) {
+            final_idxs = filter_visible(cand);        /* LOS filter        */
+        } else {
+            final_idxs.reserve(cand.size());          /* range-only filter */
+            for (auto const& c : cand) final_idxs.push_back(c.idx);
+        }
+
+        for (std::size_t j : final_idxs)
+            robots[i]->neighbors[dir].push_back(robots[j].get());
+    }
 }
 
 

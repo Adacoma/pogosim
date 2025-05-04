@@ -460,6 +460,38 @@ b2Vec2 PogobotObject::get_IR_emitter_position(ir_direction dir) const {
     return pos;
 }
 
+float PogobotObject::get_IR_emitter_angle(ir_direction dir) const {
+    /* body orientation as (cos θ, sin θ) -------------------------------- */
+    b2Rot rot   = b2Body_GetRotation(body_id);
+    float cos_t = rot.c;
+    float sin_t = rot.s;
+
+    /* local unit vectors for each emitter (robot frame) ----------------- */
+    /*  front = ( 0,-1), right = ( 1,0), back = (0, 1), left = (-1,0)      */
+    static constexpr b2Vec2 local_dirs[5] = {
+        { 0.0f, -1.0f},     /* FRONT  */
+        { 1.0f,  0.0f},     /* RIGHT  */
+        { 0.0f,  1.0f},     /* BACK   */
+        {-1.0f,  0.0f},     /* LEFT   */
+        { 0.0f,  0.0f}      /* MIDDLE */
+    };
+
+    b2Vec2 v = local_dirs[dir];
+
+    /* Special-case the middle LED: point along robot’s forward axis ----- */
+    if (v.x == 0.0f && v.y == 0.0f) {
+        /* forward in local frame is (0,-1) — same as FRONT                */
+        v.x = 0.0f;
+        v.y = -1.0f; 
+    }
+
+    /* rotate into world frame: R(θ)·v ----------------------------------- */
+    float vx =  cos_t * v.x - sin_t * v.y;
+    float vy =  sin_t * v.x + cos_t * v.y;
+
+    return std::atan2(vy, vx);          /* bearing in radians              */
+}
+
 void PogobotObject::send_to_neighbors(ir_direction dir, short_message_t *const message) {
     // Reconstruct a long message from the short message
     message_t m;
@@ -674,6 +706,11 @@ b2Vec2 Pogowall::get_IR_emitter_position([[maybe_unused]] ir_direction dir) cons
     return {NAN, NAN};
 }
 
+float Pogowall::get_IR_emitter_angle([[maybe_unused]] ir_direction dir) const {
+    return NAN;
+}
+
+
 /************* MembraneObject *************/ // {{{1
 
 MembraneObject::MembraneObject(uint16_t _id, float _x, float _y,
@@ -723,9 +760,6 @@ void MembraneObject::parse_configuration(Configuration const& config, Simulation
     colormap = config["colormap"].get(std::string("rainbow"));
 }
 
-b2Vec2 MembraneObject::get_IR_emitter_position([[maybe_unused]] ir_direction dir) const {
-    return {NAN, NAN};
-}
 
 b2Vec2 MembraneObject::get_position() const {
     if (!dots.size())

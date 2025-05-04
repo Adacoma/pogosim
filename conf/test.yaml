@@ -42,6 +42,9 @@ initial_formation: random # Can be "random" (all robots are placed randomly in t
 formation_min_space_between_neighbors: 0.0
 formation_max_space_between_neighbors: .inf
 
+# Whether or not to ignore occlusions (e.g. other robots, focal robot) when computing communication exchanges and neighbors lists
+communication_ignore_occlusions: false
+
 
 # List of objects created in the simulation, by category
 objects:
