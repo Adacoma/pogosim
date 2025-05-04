@@ -37,10 +37,9 @@ bool angles::fully_covered(float a, float b, const std::vector<Interval>& ivs) {
     return false;
 }
 
-/* ─────────────────  section 5 — building blocks ───────────────────────── */
 std::unordered_map<GridCell,std::vector<std::size_t>,GridCellHash>
-build_spatial_hash(std::span<const float> xs,
-                   std::span<const float> ys,
+build_spatial_hash(span_t<float> xs,
+                   span_t<float> ys,
                    float cell_size) {
     std::unordered_map<GridCell,std::vector<std::size_t>,GridCellHash> h;
     h.reserve(xs.size());
@@ -50,21 +49,20 @@ build_spatial_hash(std::span<const float> xs,
 }
 
 std::vector<Candidate>
-collect_candidates(std::size_t                  i,
-                   std::span<const float>       xs,
-                   std::span<const float>       ys,
-                   std::span<const float>       cx,
-                   std::span<const float>       cy,
-                   std::span<const float>       body_rad,
-                   std::span<const float>       comm_rad,
-                   std::span<const float>       led_dir,
+collect_candidates(std::size_t         i,
+                   span_t<float>       xs,
+                   span_t<float>       ys,
+                   span_t<float>       cx,
+                   span_t<float>       cy,
+                   span_t<float>       body_rad,
+                   span_t<float>       comm_rad,
+                   span_t<float>       led_dir,
                    const std::unordered_map<GridCell,
                                             std::vector<std::size_t>,
                                             GridCellHash>& hash,
                    float cell_size,
                    bool  clip_fov) {
-    using std::numbers::pi_v;
-    constexpr float k_led_half_fov = std::numbers::pi_v<float> / 2;
+    constexpr float k_led_half_fov = M_PI / 2;
     const GridCell c0 = get_grid_cell(xs[i], ys[i], cell_size);
     const float    comm_sq = comm_rad[i] * comm_rad[i];
 
@@ -109,9 +107,8 @@ filter_visible(const std::vector<Candidate>& cand) {
         std::vector<std::pair<float,float>> parts;
         if (a <= b) parts.emplace_back(a, b);
         else {
-            using std::numbers::pi_v;
-            parts.emplace_back(a,  pi_v<float>);
-            parts.emplace_back(-pi_v<float>, b);
+            parts.emplace_back(a,  M_PI);
+            parts.emplace_back(-M_PI, b);
         }
 
         bool vis = false;

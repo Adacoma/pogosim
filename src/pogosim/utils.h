@@ -10,6 +10,18 @@
 #include <random>
 #include <algorithm>
 
+#define _USE_MATH_DEFINES
+
+
+#if defined(__cpp_lib_span) && __cpp_lib_span >= 202002L
+  #include <span>
+  template<class T> using span_t = std::span<const T>;
+#else
+  #include <vector>
+  template<class T> using span_t = const std::vector<T>&;   // read-only view
+#endif
+
+
 /// Global logger for general logging.
 extern std::shared_ptr<spdlog::logger> glogger;
 /// Global logger for robot-specific logging.

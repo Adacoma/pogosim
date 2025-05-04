@@ -134,8 +134,8 @@ namespace angles {
 
 /* Build a spatial hash of LED positions. */
 std::unordered_map<GridCell,std::vector<std::size_t>,GridCellHash>
-build_spatial_hash(std::span<const float> xs,
-                   std::span<const float> ys,
+build_spatial_hash(span_t<float> xs,
+                   span_t<float> ys,
                    float cell_size);
 
 /* Collect robots that lie                                           *
@@ -143,13 +143,13 @@ build_spatial_hash(std::span<const float> xs,
  *   – inside emitter i’s communication radius                       */
 std::vector<Candidate>
 collect_candidates(std::size_t                  i,
-                   std::span<const float>       xs,
-                   std::span<const float>       ys,
-                   std::span<const float>       cx,
-                   std::span<const float>       cy,
-                   std::span<const float>       body_rad,
-                   std::span<const float>       comm_rad,
-                   std::span<const float>       led_dir,
+                   span_t<float>       xs,
+                   span_t<float>       ys,
+                   span_t<float>       cx,
+                   span_t<float>       cy,
+                   span_t<float>       body_rad,
+                   span_t<float>       comm_rad,
+                   span_t<float>       led_dir,
                    const std::unordered_map<GridCell,
                                             std::vector<std::size_t>,
                                             GridCellHash>& hash,
@@ -181,11 +181,6 @@ filter_visible(const std::vector<Candidate>& cand);
 void find_neighbors(ir_direction dir, std::vector<std::shared_ptr<PogobotObject>>& robots,
         float maxDistance,
         bool  enable_occlusion = true);
-
-bool has_line_of_sight(const b2Vec2& emitter,
-                       const b2Vec2& target,
-                       std::span<const b2Vec2> centres,
-                       float robot_radius);
 
 
 /**
