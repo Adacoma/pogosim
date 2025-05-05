@@ -236,7 +236,14 @@ void Simulation::create_arena() {
             polygon.pop_back();
         }
 
-        std::vector<b2Vec2> outer_polygon = offset_polygon(polygon, -1.0f * WALL_THICKNESS);
+        // Rescale the polygon
+        auto scaled_polygon = std::vector<b2Vec2>(polygon.size());
+        for (size_t i = 0; i < polygon.size(); ++i) {
+            scaled_polygon[i] = {polygon[i].x / VISUALIZATION_SCALE, polygon[i].y / VISUALIZATION_SCALE};
+        }
+        scaled_arena_polygons.push_back(scaled_polygon);
+
+        std::vector<b2Vec2> outer_polygon = offset_polygon(scaled_polygon, -1.0f * WALL_THICKNESS);
 
         // Define the static body for each wall segment
         b2BodyDef wallBodyDef = b2DefaultBodyDef();
@@ -254,13 +261,15 @@ void Simulation::create_arena() {
             }
 
             // Calculate the center of the rectangle
-            b2Vec2 center = (p1 + p2) * 0.5f * (1.0f/VISUALIZATION_SCALE);
+            //b2Vec2 center = (p1 + p2) * 0.5f * (1.0f/VISUALIZATION_SCALE);
+            b2Vec2 center = (p1 + p2) * 0.5f * (1.0f);
 
             // Calculate the angle of the rectangle
             float angle = atan2f(p2.y - p1.y, p2.x - p1.x);
 
             // Calculate the length of the rectangle
-            float length = b2Distance(p1, p2) / VISUALIZATION_SCALE;
+            //float length = b2Distance(p1, p2) / VISUALIZATION_SCALE;
+            float length = b2Distance(p1, p2);
 
             // Create the wall body
             wallBodyDef.position = center;
@@ -342,7 +351,7 @@ void Simulation::create_walls() {
 
 void Simulation::init_box2d() {
     // Initialize Box2D world
-    b2Vec2 gravity = {0.0f, 0.0f}; // No gravity for robots
+b2Vec2 gravity = {0.0f, 0.0f}; // No gravity for robots
     b2WorldDef worldDef = b2DefaultWorldDef();
     worldDef.gravity = gravity;
     worldId = b2CreateWorld(&worldDef);
@@ -648,6 +657,9 @@ void Simulation::init_data_logger() {
 
     // Save configuration as metadata
     data_logger->add_metadata("configuration", config.summary());
+
+    // Save arena geometry as metadata
+    data_logger->add_metadata("arena_polygons", polygons_to_yaml(scaled_arena_polygons));
 
     // Init base schema
     data_logger->add_field("time", arrow::float64());

@@ -1,6 +1,5 @@
 #include <SDL2/SDL.h>
 #include <box2d/box2d.h>
-#include <vector>
 #include <random>
 #include <iostream>
 #include <fstream>

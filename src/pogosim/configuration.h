@@ -2,6 +2,7 @@
 #define CONFIGURATION_H
 
 #include "pogosim.h"
+#include "geometry.h"
 
 #include <yaml-cpp/yaml.h>
 #include <string>
@@ -10,6 +11,48 @@
 #include <vector>
 #include <utility>
 #include <type_traits>
+
+/**
+ * @brief Convert an \c arena_polygons_t structure into a compact YAML string.
+ * @param polygons   Polygons to serialise (outer vector = polygons, inner
+ *                   vector = ordered vertices).
+ * @return A UTF-8 YAML document (no trailing newline) suitable for Arrow
+ *         metadata.
+ *
+ * @note The generated YAML uses a two-level nested sequence:
+ * @code{yaml}
+ * - - x: 0.0
+ *     y: 0.0
+ *   - x: 1.0
+ *     y: 0.0
+ *   - x: 1.0
+ *     y: 1.0
+ *   - x: 0.0
+ *     y: 1.0
+ * - - x: 2.0
+ *     y: 2.0
+ *   ...
+ * @endcode
+ */
+inline std::string polygons_to_yaml(const arena_polygons_t &polygons) {
+    YAML::Node root(YAML::NodeType::Sequence);
+
+    for (const auto &poly : polygons) {
+        YAML::Node poly_node(YAML::NodeType::Sequence);
+        for (const auto &v : poly) {
+            YAML::Node vtx;
+            vtx["x"] = v.x;
+            vtx["y"] = v.y;
+            poly_node.push_back(vtx);
+        }
+        root.push_back(poly_node);
+    }
+
+    YAML::Emitter emitter;
+    emitter << root;              // Default = block style, indented
+    return {emitter.c_str(), static_cast<std::size_t>(emitter.size())};
+}
+
 
 /**
  * @brief Class for managing hierarchical configuration parameters.

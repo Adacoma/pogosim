@@ -4,6 +4,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <box2d/box2d.h>
+#include <vector>
+#include <string>
+#include <cstdint>
 
 typedef std::vector<std::vector<b2Vec2>> arena_polygons_t;
 

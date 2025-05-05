@@ -71,6 +71,7 @@ class Simulation {
     b2WorldId worldId;                    ///< Identifier for the Box2D world.
     //std::vector<Robot> robots;          ///< Vector of robots in the simulation.
     arena_polygons_t arena_polygons;      ///< Arena polygon definitions.
+    arena_polygons_t scaled_arena_polygons;      ///< Arena polygon definitions.
 
     // Objects
     std::map<std::string, std::vector<std::shared_ptr<Object>>> objects;    ///< Dictionary of simulation objects, by category name.
