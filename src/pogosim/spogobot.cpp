@@ -147,15 +147,33 @@ uint32_t pogobot_infrared_sendRawLongMessage( message_t *const message ) {
     // relative orientations.
 
     ir_direction dir = ir_all;
+    bool directions[4]{false};
     if (get_infrared_emitter_dir(ir_front, message->header._emitting_power_list) > 0) {
+        directions[0] = true;
+    }
+    if (get_infrared_emitter_dir(ir_right, message->header._emitting_power_list) > 0) {
+        directions[1] = true;
+    }
+    if (get_infrared_emitter_dir(ir_back, message->header._emitting_power_list) > 0) {
+        directions[2] = true;
+    }
+    if (get_infrared_emitter_dir(ir_left, message->header._emitting_power_list) > 0) {
+        directions[3] = true;
+    }
+
+    if (directions[0] && directions[1] && directions[2] && directions[3]) {
+        dir = ir_all;
+    } else if (directions[0]) {
         dir = ir_front;
-    } else if (get_infrared_emitter_dir(ir_right, message->header._emitting_power_list) > 0) {
+    } else if (directions[1]) {
         dir = ir_right;
-    } else if (get_infrared_emitter_dir(ir_back, message->header._emitting_power_list) > 0) {
+    } else if (directions[2]) {
         dir = ir_back;
-    } else if (get_infrared_emitter_dir(ir_left, message->header._emitting_power_list) > 0) {
+    } else if (directions[3]) {
         dir = ir_left;
     }
+
+    //glogger->debug("sendRawLongMessage: {} ({}, {}, {}, {})", (uint8_t)dir, directions[0], directions[1],directions[2],directions[3]);
 
     current_robot->send_to_neighbors(dir, message);
     return 0;
