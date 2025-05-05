@@ -58,7 +58,7 @@ def scale_points(pts: List[Tuple[float, float]],
 def write_csv(path: str, pts: List[Tuple[float, float]]) -> None:
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["X_mm", "Y_mm"])
+        #w.writerow(["X_mm", "Y_mm"])
         for x, y in pts:
             w.writerow([f"{x:.6f}", f"{y:.6f}"])
 
