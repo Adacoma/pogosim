@@ -288,42 +288,65 @@ E.g.:
 ```yaml
 arena_file:        # Test the results on two arenas
     batch_options: ["arenas/disk.csv", "arenas/arena8.csv"]
+    default_option: arenas/disk.csv    # OPTIONAL: Value to use for "arena_file" when this configuration is used directly by the simulator, not pogobatch
 objects:
+    robots:
         type: pogobot       # Category type pertaining to Pogobots
         nb:                 # Number of objects (Pogobots) in this category
             batch_options: [100, 200]          # Test the results on three different swarm sizes
+            default_option: arenas/disk.csv    # OPTIONAL: Value to use for "objects.robots.nb" when this configuration is used directly by the simulator, not pogobatch
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
+
 # Format of the generated dataframes, one for each configuration
-result_filename_format: "result_{objects.robots.nb}_{arena_file}.feather"
+result_filename_format: "result_{objects.robots.nb}.feather"
+
+# List of new columns to add in the generated dataframes
+result_new_columns: ["arena_file"]
 ```
 These configuration entries specify that either 100 or 200 robots should be considered, on arenas "disk" and "8", resulting in 4 possibly configurations. The configuration entry "result\_filename\_format" corresponds to the name of a given configuration combination.
-See "conf/batch/test.yaml" for a complete example.
+See "conf/batch/test.yaml" for a complete example. The entry "result\_new\_columns" indicates which columns (and associated configurations) are *stored* inside feather files as additional columns.
 
 You can use pogobatch script on this compounded configuration file to launch several runs on each configuration combination:
 ```shell
 pogobatch -c conf/batch/test.yaml -S ./examples/hanabi/hanabi -r 10 -t tmp -o results
 
-Created output directory: results
-Found 4 combination(s) to run.
-Task: Config file pogosim/tmp/combo_h917gmch.yaml -> Output: results/result_100_disk.feather
-Task: Config file pogosim/tmp/combo_a8n9ajc_.yaml -> Output: results/result_200_disk.feather
-Task: Config file pogosim/tmp/combo_9km0o_46.yaml -> Output: results/result_100_arena8.feather
-Task: Config file pogosim/tmp/combo_zs36a3tv.yaml -> Output: results/result_200_arena8.feather
-Launching PogobotLauncher for config: pogosim/tmp/combo_h917gmch.yaml with output: results/result_100_disk.feather
-Combined data saved to results/result_100_disk.feather
-Launching PogobotLauncher for config: pogosim/tmp/combo_a8n9ajc_.yaml with output: results/result_200_disk.feather
-Combined data saved to results/result_200_disk.feather
-Launching PogobotLauncher for config: pogosim/tmp/combo_9km0o_46.yaml with output: results/result_100_arena8.feather
-Combined data saved to results/result_100_arena8.feather
-Launching PogobotLauncher for config: pogosim/tmp/combo_zs36a3tv.yaml with output: results/result_200_arena8.feather
-Combined data saved to results/result_200_arena8.feather
+Found 6 combination(s) to run.
+Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_kdmvxpzf.yaml -> Output: results/result_50.feather
+Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_cqfk3lrl.yaml -> Output: results/result_100.feather
+Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_ckx7t160.yaml -> Output: results/result_150.feather
+Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_401kcmam.yaml -> Output: results/result_50.feather
+Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_wiilbu4e.yaml -> Output: results/result_100.feather
+Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_q3yxls9z.yaml -> Output: results/result_150.feather
+Removed stale result file: results/result_50.feather
+Removed stale result file: results/result_150.feather
+Removed stale result file: results/result_100.feather
+Launch → tmp tmp/run_c03834a11a87406384efdcf8d2376dd4.feather  (will merge into results/result_50.feather)
+Combined data saved to tmp/run_c03834a11a87406384efdcf8d2376dd4.feather
+Created results/result_50.feather with 49500 rows
+Launch → tmp tmp/run_2628efb844fc4e2e83da56f7e98e8084.feather  (will merge into results/result_100.feather)
+Combined data saved to tmp/run_2628efb844fc4e2e83da56f7e98e8084.feather
+Created results/result_100.feather with 99000 rows
+Launch → tmp tmp/run_3c868b57dff0483c920ebf656b8c2eff.feather  (will merge into results/result_150.feather)
+Combined data saved to tmp/run_3c868b57dff0483c920ebf656b8c2eff.feather
+Created results/result_150.feather with 148500 rows
+Launch → tmp tmp/run_9e26f0240f8a4105aaf6851e5614ab93.feather  (will merge into results/result_50.feather)
+Combined data saved to tmp/run_9e26f0240f8a4105aaf6851e5614ab93.feather
+Appended 49500 rows to results/result_50.feather
+Launch → tmp tmp/run_143db3464fdd456c8cac379f621ae474.feather  (will merge into results/result_100.feather)
+Combined data saved to tmp/run_143db3464fdd456c8cac379f621ae474.feather
+Appended 99000 rows to results/result_100.feather
+Launch → tmp tmp/run_84b9da00ad624d788d7bcce6c301f8ca.feather  (will merge into results/result_150.feather)
+Combined data saved to tmp/run_84b9da00ad624d788d7bcce6c301f8ca.feather
+Appended 148500 rows to results/result_150.feather
 Batch run completed. Generated output files:
- - results/result_100_disk.feather
- - results/result_200_disk.feather
- - results/result_100_arena8.feather
- - results/result_200_arena8.feather
+ - results/result_50.feather
+ - results/result_100.feather
+ - results/result_150.feather
+ - results/result_50.feather
+ - results/result_100.feather
+ - results/result_150.feather
 ```
 
 If you want to implement more complex deployment behaviors, you can write your own Python scripts and extend the class "pogosim.pogobatch.PogobotBatchRunner".
