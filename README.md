@@ -395,6 +395,11 @@ If you want to compile the pogosim library with debugging symbols and options (e
 ./build.sh Debug
 ```
 
+This is useful if you want to debug an error, e.g. with:
+```shell
+gdb --args ./examples/run_and_tumble/run_and_tumble -c conf/simple.yaml 
+```
+
 To generate Doxygen documentation:
 ```shell
 doxygen
