@@ -1,5 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="255" height="240" viewBox="0 0 51 48">
-<title>Five Pointed Star</title>
-<path fill="none" stroke="#000" d="m25,1 6,17h18l-14,11 5,17-15-10-15,10 5-17-14-11h18z"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="678.370mm" height="635.972mm"
+     viewBox="0 0 678.370 635.972">
+  <polygon points="339.185,0.000 423.982,240.256 678.370,240.256 480.512,395.716 551.176,635.972 339.185,494.645 127.194,635.972 197.858,395.716 0.000,240.256 254.389,240.256"
+           fill="none"
+           stroke="black"
+           stroke-width="0.5"/>
 </svg>
