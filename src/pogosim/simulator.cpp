@@ -130,30 +130,37 @@ void Simulation::create_objects() {
             // Create object from configuration
             if (std::isnan(x) or std::isnan(y)) {
                 obj_vec.emplace_back(object_factory(this, current_id, 0.0f, 0.0f, worldId, obj_config, light_map.get(), userdatasize, name));
-                if (obj_vec.back()->is_tangible()) {
+                //if (obj_vec.back()->is_tangible()) {
                     objects_to_move.push_back(obj_vec.back());
                     float radius = obj_vec.back()->get_geometry()->compute_bounding_disk().radius;
                     if (radius < formation_min_space_between_neighbors)
                         radius = formation_min_space_between_neighbors;
                     objects_radii.push_back(radius);
-                }
+                //}
             } else {
                 obj_vec.emplace_back(object_factory(this, current_id, x, y, worldId, obj_config, light_map.get(), userdatasize, name));
             }
 
             // Check if the object is a robot, and store it if this is the case
-            if (auto wall = std::dynamic_pointer_cast<Pogowall>(obj_vec.back())) {
-                wall->id = current_other_id;
-                current_other_id--;
-                wall_objects.push_back(wall);
-                robots.push_back(wall);
-            } else if (auto robot = std::dynamic_pointer_cast<PogobotObject>(obj_vec.back())) {
-                robots.push_back(robot);
-                current_id++;
-                // Update max communication radius
-                float const tot_radius = robot->radius + robot->communication_radius;
-                if (max_comm_radius < tot_radius)
-                    max_comm_radius = tot_radius;
+            if (auto phys_obj = std::dynamic_pointer_cast<PhysicalObject>(obj_vec.back())) {
+                if (auto wall = std::dynamic_pointer_cast<Pogowall>(obj_vec.back())) {
+                    wall->id = current_other_id;
+                    current_other_id--;
+                    wall_objects.push_back(wall);
+                    robots.push_back(wall);
+                } else if (auto robot = std::dynamic_pointer_cast<PogobotObject>(obj_vec.back())) {
+                    robots.push_back(robot);
+                    current_id++;
+                    // Update max communication radius
+                    float const tot_radius = robot->radius + robot->communication_radius;
+                    if (max_comm_radius < tot_radius)
+                        max_comm_radius = tot_radius;
+                } else {
+                    non_robots.push_back(obj_vec.back());
+                    phys_obj->id = current_other_id;
+                    current_other_id--;
+                }
+                phys_objects.push_back(phys_obj);
             } else {
                 non_robots.push_back(obj_vec.back());
             }
@@ -163,7 +170,7 @@ void Simulation::create_objects() {
 
     // Generate random coordinates for all objects of all categories
     std::vector<b2Vec2> points;
-    std::vector<float> thetas(objects_radii);
+    std::vector<float> thetas;
     std::uniform_real_distribution<float> angle_distrib(0.0f, 2.0f * M_PI);
     try {
         if (initial_formation == "random") {
@@ -181,6 +188,12 @@ void Simulation::create_objects() {
         } else if (initial_formation == "power_lloyd") {
             points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "imported") {
+            if (formation_filename == "") {
+                throw std::runtime_error("Parameter 'formation_filename' is empty!");
+            }
+            std::tie(points, thetas) = import_points_from_file(arena_polygons, objects_radii.size(), formation_filename, imported_formation_min_coords, imported_formation_max_coords);
+            glogger->info("DEBUG imported: {}, {}", points.size(), thetas.size());
         } else {
             glogger->error("Unknown 'initial_formation' value: '{}'. Assuming 'power_lloyd' formation...", initial_formation);
             points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
@@ -189,6 +202,7 @@ void Simulation::create_objects() {
     } catch (const std::exception& e) {
         throw std::runtime_error("Impossible to create robots (number may be too high for the provided arena): " + std::string(e.what()));
     }
+    glogger->info("DEBUG points:{}  thetas:{}", points.size(), thetas.size());
 
     // Move all objects to the new coordinates
     size_t current_point_idx = 0;
@@ -196,6 +210,7 @@ void Simulation::create_objects() {
         float const x = points[current_point_idx].x;
         float const y = points[current_point_idx].y;
         float const theta = thetas[current_point_idx];
+        glogger->info("DEBUG move {}: {}, {}, {}", current_point_idx, x, y, theta);
         obj->move(x, y, theta);
         current_point_idx++;
     }
@@ -379,6 +394,9 @@ void Simulation::init_config() {
     formation_max_space_between_neighbors = config["formation_max_space_between_neighbors"].get(INFINITY);
     formation_attempts_per_point = config["formation_attempts_per_point"].get(100U);
     formation_max_restarts = config["formation_max_restarts"].get(100U);
+    formation_filename = config["formation_filename"].get(std::string(""));
+    imported_formation_min_coords = config["imported_formation_min_coords"].get<decltype(imported_formation_min_coords)>({NAN, NAN});
+    imported_formation_max_coords = config["imported_formation_max_coords"].get<decltype(imported_formation_min_coords)>({NAN, NAN});
 
     enable_gui = config["GUI"].get(true);
     GUI_speed_up = config["GUI_speed_up"].get(1.0f);
@@ -783,20 +801,23 @@ void Simulation::export_frames() {
 }
 
 void Simulation::export_data() {
-    for (auto robot : robots) {
+    for (auto obj : phys_objects) {
         data_logger->set_value("time", t);
-        data_logger->set_value("robot_category", robot->category);
-        data_logger->set_value("robot_id", (int32_t) robot->id);
-        data_logger->set_value("pogobot_ticks", (int64_t) robot->pogobot_ticks);
-        auto const pos = robot->get_position();
+        data_logger->set_value("robot_category", obj->category);
+        data_logger->set_value("robot_id", (int32_t) obj->id);
+        auto const pos = obj->get_position();
         data_logger->set_value("x", pos.x);
         data_logger->set_value("y", pos.y);
-        data_logger->set_value("angle", robot->get_angle());
+        data_logger->set_value("angle", obj->get_angle());
 
         // User-defined values
-        if (robot->callback_export_data != nullptr) {
-            set_current_robot(*robot.get());
-            robot->callback_export_data();
+        if (auto robot = std::dynamic_pointer_cast<PogobotObject>(obj)) {
+            // For robots
+            data_logger->set_value("pogobot_ticks", (int64_t) robot->pogobot_ticks);
+            if (robot->callback_export_data != nullptr) {
+                set_current_robot(*robot.get());
+                robot->callback_export_data();
+            }
         }
 
         data_logger->save_row();
@@ -837,6 +858,12 @@ void Simulation::main_loop() {
         tqdmrange.update();
     }
     double gui_delay = time_step_duration;
+
+    // Save data at t=0, if needed
+    if (enable_data_logging) {
+        last_data_saved_t = t;
+        export_data();
+    }
 
     // Main loop for all robots
     while (running && t < simulation_time) {

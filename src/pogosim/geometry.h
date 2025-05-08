@@ -6,6 +6,8 @@
 #include <box2d/box2d.h>
 #include <vector>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <cstdint>
 
 typedef std::vector<std::vector<b2Vec2>> arena_polygons_t;
@@ -269,6 +271,42 @@ float point_to_line_segment_distance(const b2Vec2& p, const b2Vec2& a, const b2V
  * @return vector<b2Vec2>  the generated points (size == reserve_radii.size()).
  */
 std::vector<b2Vec2> generate_regular_disk_points_in_polygon( const std::vector<std::vector<b2Vec2>>& polygons, const std::vector<float>& reserve_radii);
+
+
+/**
+ * @brief Import and rescale robot formation points.
+ *
+ * This routine loads a formation description from @p formation_filename,
+ * rescales every (x, y) so that the entire formation fits inside the bounding
+ * box of @p scaled_arena_polygons, and preserves θ exactly as provided.  The
+ * caller must supply the minimum and maximum (x, y) that were present in the
+ * file (these can be pre‑computed with a simple pass over the input).
+ *
+ * @param scaled_arena_polygons  Destination geometry (already scaled).
+ * @param nb_objects             Number of objects.
+ * @param formation_filename     Path to a *.csv* or *.feather* file with three
+ *                               numeric columns: *x*, *y*, *theta*.
+ * @param imported_formation_min_coords  Minimum (x, y) encountered in the
+ *                                       source file.
+ * @param imported_formation_max_coords  Maximum (x, y) encountered in the
+ *                                       source file.
+ *
+ * @return std::tuple containing:
+ *   - **std::vector<b2Vec2>** – positions mapped to arena space.
+ *   - **std::vector<float>**  – corresponding headings (in radians).
+ *
+ * @throws std::runtime_error if the file cannot be read or the extension is
+ *                            unsupported.
+ *
+ * @note No attempt is made to normalise θ; it is copied verbatim.
+ */
+std::tuple<std::vector<b2Vec2>, std::vector<float>>
+import_points_from_file(const arena_polygons_t& scaled_arena_polygons,
+                        const size_t nb_objects,
+                        const std::string&      formation_filename,
+                        const std::pair<float, float>& imported_formation_min_coords,
+                        const std::pair<float, float>& imported_formation_max_coords);
+
 
 #endif // GEOMETRY_H
 

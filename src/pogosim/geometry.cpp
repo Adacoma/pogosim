@@ -5,6 +5,17 @@
 #include <fstream>
 #include <sstream>
 
+#include <algorithm>
+#include <arrow/api.h>
+#include <arrow/io/file.h>
+#include <arrow/ipc/feather.h>
+#include <box2d/box2d.h>
+#include <filesystem>
+#include <limits>
+#include <string>
+#include <tuple>
+#include <vector>
+
 #include "utils.h"
 #include "distances.h"
 #include "render.h"
@@ -800,6 +811,327 @@ std::vector<b2Vec2> generate_regular_disk_points_in_polygon(
             "Impossible to place all requested points with the given reserve_radii.");
     }
     return result;
+}
+
+
+
+//////////////////////////////////// IMPORT FROM FILE //////////////////////////////////// {{{1
+
+using arrow::Status;
+using arrow::Result;
+using arrow::DoubleArray;
+using arrow::FloatArray;
+using arrow::Int32Array;
+using arrow::Int64Array;
+
+namespace {
+
+/*----------------------------------------------------------------------
+ * Utility helpers
+ *--------------------------------------------------------------------*/
+
+inline float random_angle() {
+    static thread_local std::uniform_real_distribution<float> d(
+        0.0f, 2.0f * static_cast<float>(M_PI));
+    return d(rnd_gen);
+}
+
+struct bbox_t {
+    float min_x{ std::numeric_limits<float>::max() };
+    float max_x{ std::numeric_limits<float>::lowest() };
+    float min_y{ std::numeric_limits<float>::max() };
+    float max_y{ std::numeric_limits<float>::lowest() };
+};
+
+bbox_t accumulate_bbox(const arena_polygons_t& polys) {
+    bbox_t bb;
+    for (auto& poly : polys)
+        for (auto& p : poly) {
+            bb.min_x = std::min(bb.min_x, p.x);
+            bb.max_x = std::max(bb.max_x, p.x);
+            bb.min_y = std::min(bb.min_y, p.y);
+            bb.max_y = std::max(bb.max_y, p.y);
+        }
+    return bb;
+}
+
+inline float map_lin(float v, float smin, float smax,
+                     float dmin, float dmax) {
+    if (std::fabs(smax - smin) < std::numeric_limits<float>::epsilon())
+        return 0.5f * (dmin + dmax);
+    return dmin + (v - smin) * (dmax - dmin) / (smax - smin);
+}
+
+
+/* robust numeric → double (allows surrounding blanks, “nan”, “NaN”) */
+double parse_num(const std::string& s) {
+    if (s.empty()) return std::numeric_limits<double>::quiet_NaN();
+
+    const char* c = s.c_str();
+    char* end     = nullptr;
+    double v      = std::strtod(c, &end);
+
+    /* skip any trailing spaces / tabs */
+    while (end && std::isspace(static_cast<unsigned char>(*end))) ++end;
+
+    if (*end == '\0') return v;                 // fully consumed → ok
+
+    std::string lc;
+    lc.reserve(s.size());
+    for (char ch : s) lc.push_back(std::tolower(static_cast<unsigned char>(ch)));
+    return (lc == "nan") ? std::numeric_limits<double>::quiet_NaN()
+                         : std::numeric_limits<double>::quiet_NaN();
+}
+
+
+void read_csv(const std::filesystem::path& file,
+              std::vector<b2Vec2>& pts,
+              std::vector<float>&  ths) {
+    std::ifstream in(file);
+    if (!in) throw std::runtime_error("Cannot open CSV " + file.string());
+
+    auto split = [](const std::string& l) {
+        std::vector<std::string> v;
+        std::stringstream ss(l);
+        std::string tok;
+        while (std::getline(ss, tok, ',')) v.push_back(tok);
+        return v;
+    };
+
+    /* ---------- detect header ---------- */
+    std::string line;
+    while (std::getline(in, line) &&
+           line.find_first_not_of(" \t\r\n") == std::string::npos) {}
+    if (in.eof()) return;                            // empty file
+
+    std::vector<std::string> first = split(line);
+    bool has_header = std::any_of(first.begin(), first.end(), [](const std::string& t) {
+        return t.find_first_not_of("0123456789+-.eE") != std::string::npos;
+    });
+
+    int ix_x = 0, ix_y = 1, ix_theta = -1, ix_time = -1;
+    if (has_header) {
+        auto find = [&](std::initializer_list<std::string> names) -> int {
+            for (size_t i = 0; i < first.size(); ++i) {
+                std::string n = first[i];
+                std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+                if (std::find(names.begin(), names.end(), n) != names.end())
+                    return static_cast<int>(i);
+            }
+            return -1;
+        };
+        ix_x     = find({ "x" });
+        ix_y     = find({ "y" });
+        ix_theta = find({ "theta", "angle" });
+        ix_time  = find({ "time" });
+
+        if (ix_x < 0 || ix_y < 0)
+            throw std::runtime_error("CSV header missing x or y column");
+        /* data starts on next getline() */
+    } else {
+        in.seekg(0);                                 // first line is data
+    }
+
+    const int max_optional =
+        std::max({ ix_theta, ix_time, ix_x, ix_y }); // highest column we may access
+
+    struct row_t { float x, y, theta; double time; bool has_time; };
+    std::vector<row_t> rows;
+    double t_min = std::numeric_limits<double>::infinity();
+
+    while (std::getline(in, line)) {
+        auto f = split(line);
+        if (static_cast<int>(f.size()) <= std::max(ix_x, ix_y))
+            continue;                                // x or y missing → skip
+
+        /* pad with empty strings so indexing is always safe */
+        if (static_cast<int>(f.size()) <= max_optional)
+            f.resize(max_optional + 1);
+
+        double x = parse_num(f[ix_x]);
+        double y = parse_num(f[ix_y]);
+        if (std::isnan(x) || std::isnan(y)) continue;
+
+        double theta_raw = (ix_theta >= 0) ? parse_num(f[ix_theta])
+                                           : std::numeric_limits<double>::quiet_NaN();
+
+        bool   has_time = ix_time >= 0;
+        double time_raw = has_time ? parse_num(f[ix_time])
+                                   : std::numeric_limits<double>::quiet_NaN();
+
+        if (has_time && !std::isnan(time_raw) && time_raw < t_min) t_min = time_raw;
+
+        rows.push_back({ static_cast<float>(x),
+                         static_cast<float>(y),
+                         static_cast<float>(theta_raw),
+                         time_raw,
+                         has_time });
+    }
+
+    /* ---------- keep rows with min-time (if any) ---------- */
+    const double eps = 1e-9;
+    for (const auto& r : rows) {
+        if (r.has_time && std::fabs(r.time - t_min) > eps) continue;
+
+        float th = (!std::isnan(r.theta)) ? r.theta : random_angle();
+        pts.emplace_back(r.x, r.y);
+        ths.emplace_back(th);
+    }
+}
+
+
+double scalar_at(const std::shared_ptr<arrow::Array>& arr, int64_t i) {
+    if (!arr->IsValid(i)) return std::numeric_limits<double>::quiet_NaN();
+
+    switch (arr->type_id()) {
+        case arrow::Type::DOUBLE:
+            return static_cast<const arrow::DoubleArray&>(*arr).Value(i);
+        case arrow::Type::FLOAT:
+            return static_cast<const arrow::FloatArray&>(*arr).Value(i);
+        case arrow::Type::INT64:
+            return static_cast<const arrow::Int64Array&>(*arr).Value(i);
+        case arrow::Type::INT32:
+            return static_cast<const arrow::Int32Array&>(*arr).Value(i);
+        default:
+            return std::numeric_limits<double>::quiet_NaN();
+    }
+}
+
+void read_feather(const std::filesystem::path& file,
+                  std::vector<b2Vec2>& pts,
+                  std::vector<float>&  ths) {
+    /* open -------------------------------------------------------------- */
+    auto rf_res = arrow::io::ReadableFile::Open(file.string());
+    if (!rf_res.ok()) throw std::runtime_error(rf_res.status().ToString());
+    std::shared_ptr<arrow::io::ReadableFile> rf = *rf_res;
+
+    auto r_res = arrow::ipc::feather::Reader::Open(rf);
+    if (!r_res.ok()) throw std::runtime_error(r_res.status().ToString());
+    std::shared_ptr<arrow::ipc::feather::Reader> rdr = *r_res;
+
+    std::shared_ptr<arrow::Table> tbl;
+    if (!rdr->Read(&tbl).ok())
+        throw std::runtime_error("Feather: cannot read table");
+
+    /* make each column a single contiguous array */
+    auto comb_res = tbl->CombineChunks(arrow::default_memory_pool());
+    if (!comb_res.ok()) throw std::runtime_error(comb_res.status().ToString());
+    tbl = *comb_res;
+
+    /* locate columns ---------------------------------------------------- */
+    auto find = [&](std::initializer_list<std::string> names)->int{
+        for (int i=0;i<tbl->num_columns();++i){
+            std::string n = tbl->field(i)->name();
+            std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+            if (std::find(names.begin(), names.end(), n)!=names.end()) return i;
+        }
+        return -1;
+    };
+
+    int ix_x     = find({ "x" });
+    int ix_y     = find({ "y" });
+    int ix_theta = find({ "theta", "angle" });
+    int ix_time  = find({ "time" });
+
+    if (ix_x < 0 || ix_y < 0)
+        throw std::runtime_error("Feather missing x or y column");
+
+    /* choose rows (min-time) ------------------------------------------- */
+    std::vector<int64_t> rows;
+    if (ix_time >= 0) {
+        auto time_arr = tbl->column(ix_time)->chunk(0);
+        double t_min = std::numeric_limits<double>::infinity();
+        for (int64_t r=0;r<time_arr->length();++r){
+            double v = scalar_at(time_arr,r);
+            if (!std::isnan(v) && v < t_min) t_min = v;
+        }
+        for (int64_t r=0;r<time_arr->length();++r)
+            if (scalar_at(time_arr,r)==t_min) rows.push_back(r);
+    } else {
+        rows.resize(tbl->num_rows());
+        std::iota(rows.begin(), rows.end(), 0);
+    }
+
+    /* extract ----------------------------------------------------------- */
+    auto col_x = tbl->column(ix_x)->chunk(0);
+    auto col_y = tbl->column(ix_y)->chunk(0);
+    std::shared_ptr<arrow::Array> col_th =
+        ix_theta >= 0 ? tbl->column(ix_theta)->chunk(0) : nullptr;
+
+    pts.reserve(rows.size());
+    ths.reserve(rows.size());
+
+    for (auto r : rows) {
+        float x = static_cast<float>(scalar_at(col_x, r));
+        float y = static_cast<float>(scalar_at(col_y, r));
+
+        float th = random_angle();
+        if (col_th) {
+            double raw = scalar_at(col_th, r);
+            if (!std::isnan(raw)) th = static_cast<float>(raw);
+        }
+        pts.emplace_back(x, y);
+        ths.emplace_back(th);
+    }
+}
+
+
+} // anonymous namespace
+
+std::tuple<std::vector<b2Vec2>, std::vector<float>>
+import_points_from_file(const arena_polygons_t &scaled_arena_polygons,
+                        const size_t nb_objects,
+                        const std::string &formation_filename,
+                        const std::pair<float, float> &imported_formation_min_coords,
+                        const std::pair<float, float> &imported_formation_max_coords) {
+    std::vector<b2Vec2> points;
+    std::vector<float> thetas;
+
+    // Load formation file ---------------------------------------------------
+    std::filesystem::path path { formation_filename };
+    std::string ext = path.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    if (ext == ".csv") {
+        read_csv(path, points, thetas);
+    } else if (ext == ".feather") {
+        read_feather(path, points, thetas);
+    } else {
+        throw std::runtime_error("Unsupported formation file extension: " + ext);
+    }
+    if (points.empty()) {
+        throw std::runtime_error("Formation file contains no valid rows");
+    }
+
+    // Decide whether rescaling is requested ---------------------------------
+    bool do_rescale = std::isfinite(imported_formation_min_coords.first) &&
+                      std::isfinite(imported_formation_max_coords.first) &&
+                      std::isfinite(imported_formation_min_coords.second) &&
+                      std::isfinite(imported_formation_max_coords.second);
+
+    if (do_rescale) {
+        float src_min_x = imported_formation_min_coords.first;
+        float src_max_x = imported_formation_max_coords.first;
+        float src_min_y = imported_formation_min_coords.second;
+        float src_max_y = imported_formation_max_coords.second;
+
+        const bbox_t arena_bbox = accumulate_bbox(scaled_arena_polygons);
+        for (auto &p : points) {
+            p.x = map_lin(p.x, src_min_x, src_max_x, arena_bbox.min_x, arena_bbox.max_x);
+            p.y = map_lin(p.y, src_min_y, src_max_y, arena_bbox.min_y, arena_bbox.max_y);
+        }
+    } else {
+        for (auto &p : points) {
+            p.x *= VISUALIZATION_SCALE;
+            p.y *= VISUALIZATION_SCALE;
+        }
+    }
+
+    if (points.size() < nb_objects || thetas.size() < nb_objects) {
+        throw std::runtime_error("Not enough points in imported data file: " + std::to_string(points.size()) + " but at least " + std::to_string(nb_objects) + " are needed.");
+    }
+
+    return { std::move(points), std::move(thetas) };
 }
 
 

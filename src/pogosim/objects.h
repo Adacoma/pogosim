@@ -708,6 +708,7 @@ public:
     /**
      * @brief Constructs a PhysicalObject.
      *
+     * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
@@ -719,7 +720,7 @@ public:
      * @param _restitution Restitution (bounciness) of the body shape (default is 0.5f).
      * @param category Name of the category of the object.
      */
-    PhysicalObject(float _x, float _y,
+    PhysicalObject(uint16_t _id, float _x, float _y,
            ObjectGeometry& geom, b2WorldId world_id,
            float _linear_damping = 0.0f, float _angular_damping = 0.0f,
            float _density = 10.0f, float _friction = 0.3f, float _restitution = 0.5f,
@@ -729,13 +730,14 @@ public:
      * @brief Constructs a PhysicalObject from a configuration entry.
      *
      * @param simulation Pointer to the underlying simulation.
+     * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param world_id The Box2D world identifier.
      * @param config Configuration entry describing the object properties.
      * @param category Name of the category of the object.
      */
-    PhysicalObject(Simulation* simulation, float _x, float _y,
+    PhysicalObject(Simulation* simulation, uint16_t _id, float _x, float _y,
            b2WorldId world_id, Configuration const& config,
            std::string const& _category = "objects");
 
@@ -792,6 +794,9 @@ public:
      */
     virtual arena_polygons_t generate_contours(std::size_t points_per_contour = 0) const override;
 
+    // Base info
+    uint16_t id;                         ///< Object identifier.
+
 
 protected:
     /**
@@ -831,6 +836,7 @@ public:
     /**
      * @brief Constructs a PassiveObject.
      *
+     * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
@@ -843,7 +849,7 @@ public:
      * @param _colormap Name of the colormap to use to set the color of the object
      * @param category Name of the category of the object.
      */
-    PassiveObject(float _x, float _y,
+    PassiveObject(uint16_t _id, float _x, float _y,
            ObjectGeometry& geom, b2WorldId world_id,
            float _linear_damping = 0.0f, float _angular_damping = 0.0f,
            float _density = 10.0f, float _friction = 0.3f, float _restitution = 0.5f,
@@ -854,13 +860,14 @@ public:
      * @brief Constructs a PassiveObject from a configuration entry.
      *
      * @param simulation Pointer to the underlying simulation.
+     * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param world_id The Box2D world identifier.
      * @param config Configuration entry describing the object properties.
      * @param category Name of the category of the object.
      */
-    PassiveObject(Simulation* simulation, float _x, float _y,
+    PassiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
            b2WorldId world_id, Configuration const& config,
            std::string const& _category = "objects");
 

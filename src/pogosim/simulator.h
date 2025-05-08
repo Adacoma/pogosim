@@ -76,6 +76,7 @@ class Simulation {
     // Objects
     std::map<std::string, std::vector<std::shared_ptr<Object>>> objects;    ///< Dictionary of simulation objects, by category name.
     std::vector<std::shared_ptr<Pogowall>> wall_objects;                    ///< Vector of pogowalls in the simulation.
+    std::vector<std::shared_ptr<PhysicalObject>> phys_objects;              ///< Vector of objects with physical properties and an ID
     std::vector<std::shared_ptr<PogobotObject>> robots;                     ///< Vector of robots in the simulation.
     std::vector<std::shared_ptr<Object>> non_robots;                        ///< Vector of objects that are not robots in the simulation.
     std::unique_ptr<LightLevelMap> light_map;                               ///< Light map of the arena.
@@ -84,6 +85,9 @@ class Simulation {
     float formation_max_space_between_neighbors;                            ///< Max space between neighbors when creating the initial formation.
     uint32_t formation_attempts_per_point;                                  ///< When creating random formation, number of attempt to place a point.
     uint32_t formation_max_restarts;                                        ///< When creating random formation, how many times the entire formation creation process can be restarted.
+    std::string formation_filename;                                         ///< Name of the csv/feather file containing the initial positions of the robots.
+    std::pair<float, float> imported_formation_min_coords;                  ///< Min coordinates of the csv/feather imported file.
+    std::pair<float, float> imported_formation_max_coords;                  ///< Max coordinates of the csv/feather imported file.
 
     double last_frame_shown_t = -1.0;     ///< Time when the last frame was rendered.
     double last_frame_saved_t = -1.0;     ///< Time when the last frame was saved.
@@ -264,7 +268,7 @@ public:
     void export_frames();
 
     /**
-     * @brief Exports simulation data.
+     * @brief Exports simulation data from the current robot.
      *
      * Iterates over all robots, logs their state to the DataLogger, and saves the data row.
      */

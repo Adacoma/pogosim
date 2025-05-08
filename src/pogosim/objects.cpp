@@ -652,12 +652,13 @@ void StaticLightObject::launch_user_step(float t) {
 
 /************* PhysicalObject *************/ // {{{1
 
-PhysicalObject::PhysicalObject(float _x, float _y,
+PhysicalObject::PhysicalObject(uint16_t _id, float _x, float _y,
        ObjectGeometry& geom, b2WorldId world_id,
        float _linear_damping, float _angular_damping,
        float _density, float _friction, float _restitution,
        std::string const& _category)
     : Object(_x, _y, geom, _category),
+      id(_id),
       linear_damping(_linear_damping),
       angular_damping(_angular_damping),
       density(_density),
@@ -666,10 +667,10 @@ PhysicalObject::PhysicalObject(float _x, float _y,
     create_body(world_id);
 }
 
-PhysicalObject::PhysicalObject(Simulation* simulation, float _x, float _y,
+PhysicalObject::PhysicalObject(Simulation* simulation, uint16_t _id, float _x, float _y,
        b2WorldId world_id, Configuration const& config,
        std::string const& _category)
-    : Object(simulation, _x, _y, config, _category) {
+    : Object(simulation, _x, _y, config, _category), id(_id) {
     parse_configuration(config, simulation);
     create_body(world_id);
 }
@@ -745,23 +746,23 @@ arena_polygons_t PhysicalObject::generate_contours(std::size_t points_per_contou
 
 /************* PassiveObject *************/ // {{{1
 
-PassiveObject::PassiveObject(float _x, float _y,
+PassiveObject::PassiveObject(uint16_t _id, float _x, float _y,
        ObjectGeometry& geom, b2WorldId world_id,
        float _linear_damping, float _angular_damping,
        float _density, float _friction, float _restitution,
        std::string _colormap,
        std::string const& _category)
-    : PhysicalObject(_x, _y, geom, world_id,
+    : PhysicalObject(_id, _x, _y, geom, world_id,
       _linear_damping, _angular_damping,
       _density, _friction, _restitution, _category),
       colormap(_colormap) {
     // ...
 }
 
-PassiveObject::PassiveObject(Simulation* simulation, float _x, float _y,
+PassiveObject::PassiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
        b2WorldId world_id, Configuration const& config,
        std::string const& _category)
-    : PhysicalObject(simulation, _x, _y, world_id, config, _category) {
+    : PhysicalObject(simulation, _id, _x, _y, world_id, config, _category) {
     parse_configuration(config, simulation);
     // ...
 }
@@ -821,7 +822,7 @@ Object* object_factory(Simulation* simulation, uint16_t id, float x, float y, b2
         res = new StaticLightObject(simulation, x, y, light_map, config, category);
 
     } else if (type == "passive_object") {
-        res = new PassiveObject(simulation, x, y, world_id, config, category);
+        res = new PassiveObject(simulation, id, x, y, world_id, config, category);
 
     } else if (type == "pogobot") {
         res = new PogobotObject(simulation, id, x, y, world_id, userdatasize, config, category);

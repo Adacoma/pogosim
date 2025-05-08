@@ -38,6 +38,17 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 #       This method assumes all objects/robots have the same radius.
 #   - "power_lloyd" (default): Similar approach to "lloyd", but using a weighted approach (Laguerre diagrams)
 #       to handle cases where objects/robots do not have the same radius.
+#   - "imported": import the (X, Y, angle) coordinates from a csv or feather dataframe specified by parameter "formation_filename".
+#       E.g.:
+#               formation_filename: "/tmp/data.feather"
+#       By default, the coordinates from the csv/feather file will not be rescaled, and must be in the same units as the simulation.
+#       As such, a feather file generated from the results of another simulation with the same arena can directly be used: if a 'time' column is present in the
+#       dataframe, only the coordinates of agents at t=0s are used. If the coordinates do not originate from a simulation, they may be specified in different
+#       units as the simulation: in this case, it is necessary to specify the "imported_formation_min_coords" and "imported_formation_max_coords" to correspond
+#       to the lower and upper bounds of the coordinate system. All provided coordinates will then be rescaled to match those of the simulation. E.g.
+#               imported_formation_min_coords: [0.0, 0.0]
+#               imported_formation_max_coords: [17.0, 17.0]
+#       Note that the angle (aka "theta") column is optional: if it is not provided, the angle will be sampled from a [-pi, pi] uniform distribution.
 initial_formation: random
 
 # Whether or not to ignore occlusions (e.g. other robots, focal robot) when computing communication exchanges and neighbors lists
