@@ -234,11 +234,13 @@ std::vector<b2Vec2> offset_polygon(const std::vector<b2Vec2>& polygon, float off
  * respecting a per‑point exclusion radius and a global connectivity limit.
  *
  * A candidate is accepted only if it is:
- *   1. Inside the outer polygon and outside every “hole” polygon.
+ *   1. Inside the outer polygon and outside every "hole" polygon.
  *   2. At a distance ≥ r_i + r_j from every previously accepted point j.
  *   3. Within `max_neighbor_distance` of at least one previously accepted
  *      point (unless it is the very first point or `max_neighbor_distance`
  *      is +∞).
+ *
+ * If radius is NaN for a point, it will be set to {NaN, NaN} in the result.
  *
  * If it fails to build the whole set after `attempts_per_point` rejected
  * candidates, the algorithm discards all progress and restarts.  It will
@@ -264,8 +266,27 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
     const std::size_t n_points = reserve_radii.size();
     if (n_points == 0U) { return {}; }
 
+    // Count non-NaN points that need to be placed
+    std::size_t n_points_to_place = 0;
+    for (const auto &radius : reserve_radii) {
+        if (!std::isnan(radius)) {
+            n_points_to_place++;
+        }
+    }
+    
+    // If all points are NaN, return a vector of NaN points
+    if (n_points_to_place == 0) {
+        std::vector<b2Vec2> nan_points(n_points, b2Vec2{NAN, NAN});
+        return nan_points;
+    }
+
     // ─── conservative bounding‑box (contracted by largest radius) ─────────
-    const float bb_margin = *std::max_element(reserve_radii.begin(), reserve_radii.end());
+    float bb_margin = 0.0f;
+    for (const auto &radius : reserve_radii) {
+        if (!std::isnan(radius)) {
+            bb_margin = std::max(bb_margin, radius);
+        }
+    }
 
     float min_x = std::numeric_limits<float>::max();
     float min_y = std::numeric_limits<float>::max();
@@ -292,18 +313,46 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
 
     // ─── outer restart loop ───────────────────────────────────────────────
     for (std::uint32_t restart = 0U; restart < max_restarts; ++restart) {
-        std::vector<b2Vec2> points; points.reserve(n_points);
+        // Pre-fill result vector with placeholders
+        std::vector<b2Vec2> result(n_points);
+        // Track which indices have been filled with real points
+        std::vector<bool> filled(n_points, false);
+        // Create a separate vector to hold the actually placed points for distance checking
+        std::vector<b2Vec2> placed_points;
+        // Map from placed_points index to result index
+        std::vector<std::size_t> placed_to_result_index;
+        
         std::uint32_t attempts = 0U;
+        std::size_t next_idx_to_try = 0;
 
         // ─── rejection‑sampling loop ──────────────────────────────────────
-        while (points.size() < n_points) {
+        while (placed_points.size() < n_points_to_place) {
+            // Find next unfilled non-NaN position
+            while (next_idx_to_try < n_points && 
+                  (filled[next_idx_to_try] || std::isnan(reserve_radii[next_idx_to_try]))) {
+                // If this is a NaN radius and not yet filled, mark it as NaN point
+                if (!filled[next_idx_to_try] && std::isnan(reserve_radii[next_idx_to_try])) {
+                    result[next_idx_to_try] = b2Vec2{NAN, NAN};
+                    filled[next_idx_to_try] = true;
+                }
+                next_idx_to_try++;
+            }
+            
+            // If all indices have been processed, we're done
+            if (next_idx_to_try >= n_points) {
+                break;
+            }
+            
             const float x = dis_x(rnd_gen);
             const float y = dis_y(rnd_gen);
 
-            const float r_curr = reserve_radii[points.size()];
+            const float r_curr = reserve_radii[next_idx_to_try];
 
             // 1️⃣ inside outer polygon?
-            if (!is_point_within_polygon(outer_poly, x, y)) { continue; }
+            if (!is_point_within_polygon(outer_poly, x, y)) { 
+                if (++attempts >= attempts_per_point) break;
+                continue; 
+            }
 
             // 2️⃣ outside every hole polygon?
             bool ok = true;
@@ -312,11 +361,12 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
             }
 
             // 3️⃣ exclusion radius + connectivity checks
-            if (ok && !points.empty()) {
+            if (ok && !placed_points.empty()) {
                 float min_dist = std::numeric_limits<float>::infinity();
-                for (std::size_t i = 0; i < points.size(); ++i) {
-                    const float min_sep = reserve_radii[i] + r_curr;
-                    const float d = euclidean_distance(points[i], {x, y});
+                for (std::size_t i = 0; i < placed_points.size(); ++i) {
+                    const std::size_t result_idx = placed_to_result_index[i];
+                    const float min_sep = reserve_radii[result_idx] + r_curr;
+                    const float d = euclidean_distance(placed_points[i], {x, y});
                     if (d < min_sep) { ok = false; break; } // too close
                     min_dist = std::min(min_dist, d);
                 }
@@ -325,7 +375,11 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
 
             // 4️⃣ accept or reject
             if (ok) {
-                points.push_back({x, y});
+                result[next_idx_to_try] = {x, y};
+                filled[next_idx_to_try] = true;
+                placed_points.push_back({x, y});
+                placed_to_result_index.push_back(next_idx_to_try);
+                next_idx_to_try++;
                 attempts = 0U;                  // reset attempt counter
             } else if (++attempts >= attempts_per_point) {
                 // Give up on this run and start over.
@@ -333,14 +387,22 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
             }
         }
 
-        if (points.size() == n_points) {
-            return points; // success
+        // Check if we successfully placed all non-NaN points
+        if (placed_points.size() == n_points_to_place) {
+            // Fill any remaining NaN points before returning
+            for (std::size_t i = 0; i < n_points; ++i) {
+                if (!filled[i]) {
+                    result[i] = b2Vec2{NAN, NAN};
+                }
+            }
+            return result; // success
         }
     }
 
     // If we fall through the loop, all restarts failed.
     throw std::runtime_error("Impossible to create random points within polygon: too many points or radii too large, even after multiple restarts.");
 }
+
 
 inline float sqr(float v) { return v * v; }
 
@@ -873,64 +935,6 @@ std::vector<b2Vec2> generate_regular_disk_points_in_polygon(
     }
 
     return result;
-}
-
-
-// After placing all points, apply a relaxation step to improve alignment
-void relax_positions(std::vector<b2Vec2>& points, 
-                    const std::vector<float>& radii,
-                    const std::vector<std::vector<b2Vec2>>& polygons) {
-    const int iterations = 5;
-    const float relax_factor = 0.1f;
-    
-    for (int iter = 0; iter < iterations; ++iter) {
-        std::vector<b2Vec2> forces(points.size(), b2Vec2{0.0f, 0.0f});
-        
-        // Calculate repulsion forces between points
-        for (size_t i = 0; i < points.size(); ++i) {
-            if (std::isnan(points[i].x) || std::isnan(radii[i])) continue;
-            
-            for (size_t j = 0; j < points.size(); ++j) {
-                if (i == j || std::isnan(points[j].x) || std::isnan(radii[j])) continue;
-                
-                float dist = euclidean_distance(points[i], points[j]);
-                float min_dist = radii[i] + radii[j];
-                
-                // If too close, add repulsion force
-                if (dist < min_dist * 1.05f) {
-                    float force_magnitude = (min_dist * 1.05f - dist) / min_dist;
-                    float dx = points[i].x - points[j].x;
-                    float dy = points[i].y - points[j].y;
-                    float normalizer = dist > 0.0001f ? 1.0f / dist : 1000.0f;
-                    
-                    forces[i].x += dx * normalizer * force_magnitude;
-                    forces[i].y += dy * normalizer * force_magnitude;
-                }
-            }
-        }
-        
-        // Apply forces with boundary constraints
-        for (size_t i = 0; i < points.size(); ++i) {
-            if (std::isnan(points[i].x) || std::isnan(radii[i])) continue;
-            
-            b2Vec2 new_pos{
-                points[i].x + forces[i].x * relax_factor,
-                points[i].y + forces[i].y * relax_factor
-            };
-            
-            // Check if new position is valid
-            bool valid = is_point_within_polygon(polygons[0], new_pos.x, new_pos.y);
-            for (size_t h = 1; h < polygons.size() && valid; ++h) {
-                if (is_point_within_polygon(polygons[h], new_pos.x, new_pos.y)) {
-                    valid = false;
-                }
-            }
-            
-            if (valid) {
-                points[i] = new_pos;
-            }
-        }
-    }
 }
 
 

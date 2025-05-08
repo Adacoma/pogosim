@@ -128,6 +128,8 @@ std::vector<b2Vec2> offset_polygon(const std::vector<b2Vec2>& polygon, float off
  *      point (unless it is the very first point or `max_neighbor_distance`
  *      is +∞).
  *
+ * If radius is NaN for a point, it will be set to {NaN, NaN} in the result.
+ *
  * If it fails to build the whole set after `attempts_per_point` rejected
  * candidates, the algorithm discards all progress and restarts.  It will
  * attempt the whole sampling process up to `max_restarts` times before
@@ -307,10 +309,6 @@ import_points_from_file(const arena_polygons_t& scaled_arena_polygons,
                         const std::pair<float, float>& imported_formation_min_coords,
                         const std::pair<float, float>& imported_formation_max_coords);
 
-
-void relax_positions(std::vector<b2Vec2>& points, 
-                    const std::vector<float>& radii,
-                    const std::vector<std::vector<b2Vec2>>& polygons);
 
 #endif // GEOMETRY_H
 

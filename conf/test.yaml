@@ -7,7 +7,7 @@ window_height: 600      # In pixels
 #arena_file: arenas/arena8.csv
 #arena_file: arenas/star.csv
 arena_file: arenas/square.csv
-arena_surface: 1.0e6 # 1.0e6    # In mm²
+arena_surface: 5.0e6 # 1.0e6    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
@@ -51,7 +51,7 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 #               imported_formation_min_coords: [0.0, 0.0]
 #               imported_formation_max_coords: [17.0, 17.0]
 #       Note that the angle (aka "theta") column is optional: if it is not provided, the angle will be sampled from a [-pi, pi] uniform distribution.
-initial_formation: disk # imported # random # imported
+initial_formation: random # random # imported
 formation_min_space_between_neighbors: 0.0
 formation_max_space_between_neighbors: .inf
 

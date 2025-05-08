@@ -182,10 +182,6 @@ void Simulation::create_objects() {
         } else if (initial_formation == "aligned_random") {
             points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
-        } else if (initial_formation == "relaxed_random") {
-            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
-            relax_positions(points, objects_radii, arena_polygons);
-            std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "disk") {
             points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
@@ -209,7 +205,6 @@ void Simulation::create_objects() {
     } catch (const std::exception& e) {
         throw std::runtime_error("Impossible to create robots (number may be too high for the provided arena): " + std::string(e.what()));
     }
-    glogger->info("DEBUG points:{}  thetas:{}", points.size(), thetas.size());
 
     // Move all objects to the new coordinates
     size_t current_point_idx = 0;
@@ -217,7 +212,6 @@ void Simulation::create_objects() {
         float const x = points[current_point_idx].x;
         float const y = points[current_point_idx].y;
         float const theta = thetas[current_point_idx];
-        glogger->info("DEBUG move {}: {}, {}, {}", current_point_idx, x, y, theta);
         obj->move(x, y, theta);
         current_point_idx++;
     }
