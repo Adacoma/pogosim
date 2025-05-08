@@ -138,7 +138,7 @@ void Simulation::create_objects() {
                     objects_radii.push_back(radius);
                 } else {
                     objects_to_move.push_back(obj_vec.back());
-                    objects_radii.push_back(0.0f);
+                    objects_radii.push_back(NAN);
                 }
             } else {
                 obj_vec.emplace_back(object_factory(this, current_id, x, y, worldId, obj_config, light_map.get(), userdatasize, name));
@@ -181,6 +181,10 @@ void Simulation::create_objects() {
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "aligned_random") {
             points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            std::ranges::generate(thetas, [&] { return M_PI/2.f; });
+        } else if (initial_formation == "relaxed_random") {
+            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            relax_positions(points, objects_radii, arena_polygons);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "disk") {
             points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);

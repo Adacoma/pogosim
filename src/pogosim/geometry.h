@@ -308,6 +308,10 @@ import_points_from_file(const arena_polygons_t& scaled_arena_polygons,
                         const std::pair<float, float>& imported_formation_max_coords);
 
 
+void relax_positions(std::vector<b2Vec2>& points, 
+                    const std::vector<float>& radii,
+                    const std::vector<std::vector<b2Vec2>>& polygons);
+
 #endif // GEOMETRY_H
 
 // MODELINE "{{{1
