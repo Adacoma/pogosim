@@ -974,7 +974,7 @@ void read_csv(const std::filesystem::path& file,
         if (r.has_time && std::fabs(r.time - t_min) > eps) continue;
 
         float th = (!std::isnan(r.theta)) ? r.theta : random_angle();
-        pts.emplace_back(r.x, r.y);
+        pts.push_back({r.x, r.y});
         ths.emplace_back(th);
     }
 }
@@ -1070,7 +1070,7 @@ void read_feather(const std::filesystem::path& file,
             double raw = scalar_at(col_th, r);
             if (!std::isnan(raw)) th = static_cast<float>(raw);
         }
-        pts.emplace_back(x, y);
+        pts.push_back({x, y});
         ths.emplace_back(th);
     }
 }

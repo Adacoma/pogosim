@@ -115,10 +115,10 @@ namespace fpng
 	template <typename S> static inline S maximum(S a, S b) { return (a > b) ? a : b; }
 	template <typename S> static inline S minimum(S a, S b) { return (a < b) ? a : b; }
 
-	static inline uint32_t simple_swap32(uint32_t x) { return (x >> 24) | ((x >> 8) & 0x0000FF00) | ((x << 8) & 0x00FF0000) | (x << 24); }
+	[[maybe_unused]] static inline uint32_t simple_swap32(uint32_t x) { return (x >> 24) | ((x >> 8) & 0x0000FF00) | ((x << 8) & 0x00FF0000) | (x << 24); }
 	static inline uint64_t simple_swap64(uint64_t x) { return (((uint64_t)simple_swap32((uint32_t)x)) << 32U) | simple_swap32((uint32_t)(x >> 32U)); }
 
-	static inline uint32_t swap32(uint32_t x)
+	[[maybe_unused]] static inline uint32_t swap32(uint32_t x)
 	{
 #if defined(__GNUC__) || defined(__clang__)
 		return __builtin_bswap32(x);
@@ -127,7 +127,7 @@ namespace fpng
 #endif
 	}
 
-	static inline uint64_t swap64(uint64_t x)
+	[[maybe_unused]] static inline uint64_t swap64(uint64_t x)
 	{
 #if defined(__GNUC__) || defined(__clang__)
 		return __builtin_bswap64(x);

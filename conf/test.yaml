@@ -51,7 +51,7 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 #               imported_formation_min_coords: [0.0, 0.0]
 #               imported_formation_max_coords: [17.0, 17.0]
 #       Note that the angle (aka "theta") column is optional: if it is not provided, the angle will be sampled from a [-pi, pi] uniform distribution.
-initial_formation: random # imported
+initial_formation: random # imported # random # imported
 formation_min_space_between_neighbors: 0.0
 formation_max_space_between_neighbors: .inf
 
