@@ -130,13 +130,16 @@ void Simulation::create_objects() {
             // Create object from configuration
             if (std::isnan(x) or std::isnan(y)) {
                 obj_vec.emplace_back(object_factory(this, current_id, 0.0f, 0.0f, worldId, obj_config, light_map.get(), userdatasize, name));
-                //if (obj_vec.back()->is_tangible()) {
+                if (obj_vec.back()->is_tangible()) {
                     objects_to_move.push_back(obj_vec.back());
                     float radius = obj_vec.back()->get_geometry()->compute_bounding_disk().radius;
                     if (radius < formation_min_space_between_neighbors)
                         radius = formation_min_space_between_neighbors;
                     objects_radii.push_back(radius);
-                //}
+                } else {
+                    objects_to_move.push_back(obj_vec.back());
+                    objects_radii.push_back(0.0f);
+                }
             } else {
                 obj_vec.emplace_back(object_factory(this, current_id, x, y, worldId, obj_config, light_map.get(), userdatasize, name));
             }
@@ -170,7 +173,7 @@ void Simulation::create_objects() {
 
     // Generate random coordinates for all objects of all categories
     std::vector<b2Vec2> points;
-    std::vector<float> thetas;
+    std::vector<float> thetas(objects_to_move.size());
     std::uniform_real_distribution<float> angle_distrib(0.0f, 2.0f * M_PI);
     try {
         if (initial_formation == "random") {
