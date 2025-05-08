@@ -23,6 +23,9 @@ void DataLogger::add_metadata(const std::string& key, const std::string& value) 
     if (key.empty()) {
         throw std::runtime_error("Metadata key must not be empty.");
     }
+    if (user_metadata_.contains(key)) {
+        throw std::runtime_error("Metadata key '" + key + "' already exists.");
+    }
     user_metadata_[key] = value;    // Overwrite if the key already exists
 }
 
@@ -30,6 +33,9 @@ void DataLogger::add_metadata(const std::string& key, const std::string& value) 
 void DataLogger::add_field(const std::string& name, std::shared_ptr<arrow::DataType> type) {
     if (file_opened_) {
         throw std::runtime_error("Cannot add fields after the file has been opened.");
+    }
+    if (column_indices_.find(name) != column_indices_.end()) {
+        throw std::runtime_error("Field '" + name + "' already exists in the schema.");
     }
     fields_.push_back(arrow::field(name, type));
     column_indices_[name] = fields_.size() - 1;  // Store index for quick lookup
@@ -116,6 +122,22 @@ void DataLogger::save_row() {
         throw std::runtime_error("File must be opened before saving data.");
     }
 
+    // Check if the row is complete (all columns values were provided)
+    std::vector<std::string> missing;
+    for (const auto& field : fields_) {
+        if (!row_values_.contains(field->name())) {
+            missing.push_back(field->name());
+        }
+    }
+    if (!missing.empty()) {
+        std::ostringstream oss;
+        oss << "Incomplete row. Missing values for: ";
+        for (size_t i = 0; i < missing.size(); ++i) {
+            oss << "'" << missing[i] << (i + 1 == missing.size() ? "'" : "', ");
+        }
+        throw std::runtime_error(oss.str());
+    }
+
     // Create builders dynamically based on the schema
     std::vector<std::shared_ptr<arrow::ArrayBuilder>> builders(fields_.size());
 
@@ -146,55 +168,34 @@ void DataLogger::save_row() {
         auto field_type = fields_[i]->type();
         arrow::Status status;
 
-        // Check if the field exists in row_values_, otherwise use default values
-        if (row_values_.find(field_name) == row_values_.end()) {
-            // Handle missing data gracefully
-            if (field_type->id() == arrow::Type::INT64) {
-                status = std::static_pointer_cast<arrow::Int64Builder>(builders[i])->AppendNull();
-            } else if (field_type->id() == arrow::Type::INT32) {
-                status = std::static_pointer_cast<arrow::Int32Builder>(builders[i])->AppendNull();
-            } else if (field_type->id() == arrow::Type::INT16) {
-                status = std::static_pointer_cast<arrow::Int16Builder>(builders[i])->AppendNull();
-            } else if (field_type->id() == arrow::Type::INT8) {
-                status = std::static_pointer_cast<arrow::Int8Builder>(builders[i])->AppendNull();
-            } else if (field_type->id() == arrow::Type::DOUBLE) {
-                status = std::static_pointer_cast<arrow::DoubleBuilder>(builders[i])->AppendNull();
-            } else if (field_type->id() == arrow::Type::STRING) {
-                status = std::static_pointer_cast<arrow::StringBuilder>(builders[i])->AppendNull();
-            } else if (field_type->id() == arrow::Type::BOOL) {
-                status = std::static_pointer_cast<arrow::BooleanBuilder>(builders[i])->AppendNull();
-            }
-        } else {
-            // Append actual values
-            if (field_type->id() == arrow::Type::INT64) {
-                status = std::static_pointer_cast<arrow::Int64Builder>(builders[i])->Append(
-                    std::get<int64_t>(row_values_[field_name])
-                );
-            } else if (field_type->id() == arrow::Type::INT32) {
-                status = std::static_pointer_cast<arrow::Int32Builder>(builders[i])->Append(
-                    std::get<int32_t>(row_values_[field_name])
-                );
-            } else if (field_type->id() == arrow::Type::INT16) {
-                status = std::static_pointer_cast<arrow::Int16Builder>(builders[i])->Append(
-                    std::get<int16_t>(row_values_[field_name])
-                );
-            } else if (field_type->id() == arrow::Type::INT8) {
-                status = std::static_pointer_cast<arrow::Int8Builder>(builders[i])->Append(
-                    std::get<int8_t>(row_values_[field_name])
-                );
-            } else if (field_type->id() == arrow::Type::DOUBLE) {
-                status = std::static_pointer_cast<arrow::DoubleBuilder>(builders[i])->Append(
-                    std::get<double>(row_values_[field_name])
-                );
-            } else if (field_type->id() == arrow::Type::STRING) {
-                status = std::static_pointer_cast<arrow::StringBuilder>(builders[i])->Append(
-                    std::get<std::string>(row_values_[field_name])
-                );
-            } else if (field_type->id() == arrow::Type::BOOL) {
-                status = std::static_pointer_cast<arrow::BooleanBuilder>(builders[i])->Append(
-                    std::get<bool>(row_values_[field_name])
-                );
-            }
+        if (field_type->id() == arrow::Type::INT64) {
+            status = std::static_pointer_cast<arrow::Int64Builder>(builders[i])->Append(
+                std::get<int64_t>(row_values_[field_name])
+            );
+        } else if (field_type->id() == arrow::Type::INT32) {
+            status = std::static_pointer_cast<arrow::Int32Builder>(builders[i])->Append(
+                std::get<int32_t>(row_values_[field_name])
+            );
+        } else if (field_type->id() == arrow::Type::INT16) {
+            status = std::static_pointer_cast<arrow::Int16Builder>(builders[i])->Append(
+                std::get<int16_t>(row_values_[field_name])
+            );
+        } else if (field_type->id() == arrow::Type::INT8) {
+            status = std::static_pointer_cast<arrow::Int8Builder>(builders[i])->Append(
+                std::get<int8_t>(row_values_[field_name])
+            );
+        } else if (field_type->id() == arrow::Type::DOUBLE) {
+            status = std::static_pointer_cast<arrow::DoubleBuilder>(builders[i])->Append(
+                std::get<double>(row_values_[field_name])
+            );
+        } else if (field_type->id() == arrow::Type::STRING) {
+            status = std::static_pointer_cast<arrow::StringBuilder>(builders[i])->Append(
+                std::get<std::string>(row_values_[field_name])
+            );
+        } else if (field_type->id() == arrow::Type::BOOL) {
+            status = std::static_pointer_cast<arrow::BooleanBuilder>(builders[i])->Append(
+                std::get<bool>(row_values_[field_name])
+            );
         }
 
         // Check if append operation was successful
@@ -237,8 +238,6 @@ void DataLogger::check_column(const std::string& column_name) {
 }
 
 void DataLogger::reset_row() {
-    for (const auto& field : fields_) {
-        row_values_[field->name()] = int64_t(0);
-    }
+    row_values_.clear();
 }
 
