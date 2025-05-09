@@ -27,13 +27,6 @@ extern "C" int robot_main(void);
 //void set_current_robot(Robot& robot);
 void set_current_robot(PogobotObject& robot);
 
-/**
- * @brief Prints the help message to the console.
- *
- * Displays usage instructions and available command-line options.
- */
-void print_help();
-
 
 /**
  * @brief Class representing the simulation environment.
