@@ -539,7 +539,7 @@ void Simulation::handle_SDL_events() {
         if (event.type == SDL_QUIT) {
             running = false;
 
-        } else if (event.type == SDL_KEYDOWN) {
+        } else if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
             switch (event.key.keysym.sym) {
                 case SDLK_F1:
                     help_message();
