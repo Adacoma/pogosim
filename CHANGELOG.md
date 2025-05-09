@@ -1,6 +1,28 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+
+## [0.10.3] - 2025-05-09
+
+### Added
+ - arena geometry (vectors of points of the walls) are now exported as metadata of the feather files
+ - add python script that scales csv arenas to a given total surface
+ - add a python script to compute the optimal p\_send to use given cluster size and msg size
+ - add support for the 'imported' initial formation, importing x,y,angle poses from a csv/feather file
+
+### Changed
+ - refactoring of several C++ code files: parts of render.{h,cpp} were moved to geometry.{h,cpp}; parts of simulation.{h,cpp} were moved to main.{h,cpp}
+ - updated information about pogobatch in README
+ - feather export: check if all fields are specified when adding row, check if there are no duplicate fields/metadata
+
+### Fixed
+ - fix message sending when using ir\_all and \*omni\* functions
+ - the "star" arena is now regular and normalized
+ - fix bug where walls and untangible objects were taken into account to create the initial formation
+ - fix bug where SDL>2.0.5 generated two repeated events when keys are pressed
+
+
+
 ## [0.10.2] - 2025-05-05
 
 ### Added

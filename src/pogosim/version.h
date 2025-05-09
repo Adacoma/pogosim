@@ -15,7 +15,7 @@
 /* ────────── 1. Canonical numeric components ────────── */
 #define POGOSIM_VERSION_MAJOR   0
 #define POGOSIM_VERSION_MINOR   10
-#define POGOSIM_VERSION_PATCH   2
+#define POGOSIM_VERSION_PATCH   3
 
 /* ────── 2. Internal helpers for stringification (private) ────── */
 #define POGOSIM_VERSION__STR_IMPL(x) #x
