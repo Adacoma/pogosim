@@ -45,6 +45,8 @@ cd pogosim
 ./build.sh 
 ```
 
+==** REMEMBER TO ALWAYS RECOMPILE after downloading a new version of Pogosim **==
+
 
 ## Install on WSL
 Just follow the previous section to install on Ubuntu 24.04+ using WSL.
@@ -53,6 +55,8 @@ If the simulator is really slow, it may be due to a bug with SDL2 on WSL, as exp
 export SDL_RENDER_DRIVER=software
 ```
 before launching the simulator.
+
+==** REMEMBER TO ALWAYS RECOMPILE after downloading a new version of Pogosim **==
 
 
 ## Install on MacOSX
@@ -81,6 +85,8 @@ git clone https://github.com/Adacoma/pogosim.git
 cd pogosim
 ./build.sh 
 ```
+
+==** REMEMBER TO ALWAYS RECOMPILE after downloading a new version of Pogosim **==
 
 
 ## Quickstart
