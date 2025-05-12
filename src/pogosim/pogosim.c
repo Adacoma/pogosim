@@ -62,6 +62,10 @@ void pogo_main_loop_step(void (*user_step)(void)) {
     // Update millisecond clock
     pogobot_stopwatch_reset(&timer_main_loop);
 
+    // Call user-specified step function
+    if (user_step != NULL)
+        user_step();
+
     // Messages I/O (send & receive)
     if (msg_tx_fn) {
         if (rand() % 100 < percent_msgs_sent_per_ticks) {
@@ -83,11 +87,8 @@ void pogo_main_loop_step(void (*user_step)(void)) {
                 ++nb_msgs_recv;
             }
         }
+        pogobot_infrared_clear_message_queue();
     }
-
-    // Call user-specified step function
-    if (user_step != NULL)
-        user_step();
 
     if (main_loop_hz > 0) {
         // Detect and handle time overflows
