@@ -912,7 +912,7 @@ void Simulation::main_loop() {
         compute_neighbors();
 
         // Save data, if needed
-        if (enable_data_logging && t >= last_data_saved_t + save_data_period) {
+        if (enable_data_logging && save_data_period > 0.0f && t >= last_data_saved_t + save_data_period) {
             last_data_saved_t = t;
             export_data();
         }
