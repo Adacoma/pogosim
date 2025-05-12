@@ -45,7 +45,7 @@ cd pogosim
 ./build.sh 
 ```
 
-**REMEMBER TO ALWAYS RECOMPILE after downloading a new version of Pogosim!**
+**REMEMBER TO ALWAYS RECOMPILE with "./build.sh" after downloading a new version of Pogosim!**
 
 
 ## Install on WSL
@@ -56,7 +56,7 @@ export SDL_RENDER_DRIVER=software
 ```
 before launching the simulator.
 
-**REMEMBER TO ALWAYS RECOMPILE after downloading a new version of Pogosim!**
+**REMEMBER TO ALWAYS RECOMPILE with "./build.sh" after downloading a new version of Pogosim!**
 
 
 ## Install on MacOSX
@@ -86,7 +86,7 @@ cd pogosim
 ./build.sh 
 ```
 
-**REMEMBER TO ALWAYS RECOMPILE after downloading a new version of Pogosim!**
+**REMEMBER TO ALWAYS RECOMPILE with "./build.sh" after downloading a new version of Pogosim!**
 
 
 ## Quickstart
