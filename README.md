@@ -45,7 +45,7 @@ cd pogosim
 ./build.sh 
 ```
 
-==** REMEMBER TO ALWAYS RECOMPILE after downloading a new version of Pogosim **==
+== ** REMEMBER TO ALWAYS RECOMPILE after downloading a new version of Pogosim ** ==
 
 
 ## Install on WSL
