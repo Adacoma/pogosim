@@ -621,14 +621,13 @@ void Simulation::handle_SDL_events() {
             if (dragging_pos_by_mouse) {
                 int dx = event.motion.x - last_mouse_x;
                 int dy = event.motion.y - last_mouse_y;
-                visualization_x += dx;
-                visualization_y += dy;
+                visualization_x += dx / mm_to_pixels;
+                visualization_y += dy / mm_to_pixels;
                 last_mouse_x = event.motion.x;
                 last_mouse_y = event.motion.y;
                 //printf("Visualization moved to: (%d, %d)\n", visualization_x, visualization_y);
             }
         }
-
 
     }
 }
