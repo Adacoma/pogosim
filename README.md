@@ -231,6 +231,20 @@ Options:
 - Parameter "-P" displays a progress bar of the simulation, depending on the parameter value "simulation\_time" defined in the configuration file.
 
 
+## Troubleshooting
+
+### In headless/Pogobatch mode, I get an SDL-related error
+If you get this error:
+```
+INFO: Failed to initialize SDL: offscreen not available  
+Error: Error while initializing SDL
+```
+It means that you compiled Pogosim with an SDL version < 2.0.22. Headless mode is not available in this version of SDL.
+To have access to a newer version, you can:
+    - update your system.
+    - use apptainer/singularity (cf related section below) to create an Ubuntu 24.04 image with a newer version of SDL.
+
+
 ## Access the pose and states of the robots in Python
 After a simulation is executed, it can periodically store the pose (position and orientation) and internal states of each robot into a data file.
 This feature can be enabled in the configuration file, with entries:
