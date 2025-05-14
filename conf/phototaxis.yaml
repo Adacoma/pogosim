@@ -78,7 +78,7 @@ objects:
         y: 500              # Center of the light spot, Y coordinate, in mm
         body_width: 200     # Width of the rectangle geometry, in mm
         body_height: 200    # Height of the rectangle geometry, in mm
-        value: 10000        # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+        value: 20000        # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
 
     # An object category containing a small light spot around the middle of the arena
     target_light:

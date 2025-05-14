@@ -102,7 +102,7 @@ objects:
         body_width: 500       # Width of the rectangle geometry, in mm
         body_height: 500      # Height of the rectangle geometry, in mm
         light_mode: static    # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
-        value: 10000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+        value: 20000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
 
 
     # An object category containing passive objects. They can be moved by robots, but don't have sensors/actuators/controller
