@@ -208,6 +208,7 @@ void global_setup() {
     init_from_configuration(run_duration_max);
     init_from_configuration(tumble_duration_min);
     init_from_configuration(tumble_duration_max);
+    init_from_configuration(light_goal_threshold);
 }
 #endif
 

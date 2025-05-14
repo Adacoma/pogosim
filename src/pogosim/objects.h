@@ -624,28 +624,86 @@ protected:
 
 
 /**
- * @brief StaticLightObject that contributes light to the simulation's light level map.
+ * @class StaticLightObject
+ * @brief Light-emitting object with optional radial gradient.
+ *
+ * @ingroup objects
+ *
+ * @details
+ *  A #StaticLightObject registers a callback on the global
+ *  #LightLevelMap given at construction time.  
+ *  Once invoked, the callback iterates on every covered bin and calls
+ *  #LightLevelMap::add_light_level() with the intensity calculated
+ *  according to the current @ref LightMode.
+ *
+ *  The class is **pod-friendly** (all data members are trivially
+ *  copyable / reset-able), yet provides high-level behaviour such as:
+ *  - automatic update of the light map when switching in/out of
+ *    a photo-start pulse;
+ *  - automatic gradient-radius computation if the user passes
+ *    `gradient_radius ≤ 0`.
  */
 class StaticLightObject : public Object {
 public:
 
     /**
-     * @brief Constructs a StaticLightObject object.
+     * @enum LightMode
+     * @brief Selects how intensity is distributed over the object geometry.
      *
-     * @param x Initial x-coordinate in the simulation.
-     * @param y Initial y-coordinate in the simulation.
-     * @param geom Object's geometry.
-     * @param light_map Pointer to the global light level map.
-     * @param value Light value between 0 (min) and 32767 (max).
-     * @param photo_start_at Change the light value at the specified time to trigger the synchronised photo start of the robots.
-     * @param photo_start_duration Amount of time to stay in the photo start stage.
-     * @param photo_start_value Light value during the photo start stage.
-     * @param category Name of the category of the object.
+     * @var LightMode::STATIC
+     *  All bins receive an identical intensity = #value.
+     *
+     * @var LightMode::GRADIENT
+     *  Bins receive an intensity that decays **linearly** with the distance
+     *  from the geometrical centre (`x`,`y`).  
+     *  The intensity at the outer edge of the gradient is #edge_value.
+     */
+    enum class LightMode { STATIC, GRADIENT };
+
+    /**
+     * @brief Construct a light object programmatically.
+     *
+     * @param _x                  Initial *x* coordinate of the object centre
+     *                            (in world units, mm).
+     * @param _y                  Initial *y* coordinate of the object centre.
+     * @param _geom               Reference to the geometry that delimits
+     *                            where the object exists in space.
+     * @param light_map           Pointer to the global #LightLevelMap
+     *                            (must remain valid for the lifetime
+     *                            of the object).
+     * @param _value              **Centre** intensity in the range \[0, 32767\]
+     *                            (for `STATIC` this is also the only intensity).
+     * @param _mode               Intensity distribution strategy
+     *                            (default =`STATIC`).
+     * @param _edge_value         Intensity at @p gradient_radius
+     *                            (only meaningful in `GRADIENT` mode).
+     * @param _gradient_radius    Radius, in mm, at which the intensity
+     *                            reaches @p _edge_value.  
+     *                            If ≤ 0 the radius is computed automatically
+     *                            as the farthest covered bin centre.
+     * @param _photo_start_at     Start time (seconds, simulation clock) of the
+     *                            optional photo-start pulse.  
+     *                            Set to a negative value to disable.
+     * @param _photo_start_duration
+     *                            Duration (seconds) of the pulse.
+     * @param _photo_start_value  Intensity during the pulse.  After the pulse
+     *                            the object reverts to @p _value.
+     * @param _category           Category name for profiling / filtering.
+     *
+     * @note The object automatically registers a callback on
+     *       @p light_map; **do not** call #update_light_map() manually.
      */
     StaticLightObject(float _x, float _y,
-           ObjectGeometry& _geom, LightLevelMap* light_map,
-           int16_t _value, float _photo_start_at = -1.0f, float _photo_start_duration = 1.0f, int16_t _photo_start_value = 32767,
-           std::string const& _category = "objects");
+                      ObjectGeometry& _geom, LightLevelMap* light_map,
+                      int16_t _value,
+                      LightMode _mode               = LightMode::STATIC,
+                      int16_t _edge_value           = 0,
+                      float   _gradient_radius      = -1.0f,
+                      float   _photo_start_at       = -1.0f,
+                      float   _photo_start_duration = 1.0f,
+                      int16_t _photo_start_value    = 32767,
+                      std::string const& _category  = "objects");
+
 
     /**
      * @brief Constructs a StaticLightObject object from a configuration entry.
@@ -688,13 +746,33 @@ protected:
      */
     virtual void parse_configuration(Configuration const& config, Simulation* simulation) override;
 
-    int16_t value;
-    int16_t orig_value;
-    LightLevelMap* light_map;  ///< Pointer to the global light level map.
-    float photo_start_at;
-    float photo_start_duration;
-    int16_t photo_start_value;
-    bool performing_photo_start = false;
+
+    /** Centre intensity (also the uniform level for `STATIC` mode). */
+    int16_t value = 0;
+
+    /** Saved intensity for restoring after a photo-start pulse. */
+    int16_t orig_value = 0;
+
+    /** Intensity at #gradient_radius (GRADIENT mode only). */
+    int16_t edge_value = 0;
+
+    /**
+     * Radius (mm) used for linear fall-off in GRADIENT mode.
+     * A non-positive value means “compute automatically”.
+     */
+    float gradient_radius = -1.0f;
+
+    /** Selected intensity distribution strategy. */
+    LightMode mode = LightMode::STATIC;
+
+    /** Pointer to the light map this object contributes to. */
+    LightLevelMap* light_map = nullptr;
+
+    // ---------- Photo-start pulse parameters ---------------------------- //
+    float   photo_start_at        = -1.0f;  ///< start time (s), negative ⇒ off
+    float   photo_start_duration  = 1.0f;   ///< pulse width  (s)
+    int16_t photo_start_value     = 32767;  ///< intensity during pulse
+    bool    performing_photo_start = false; ///< internal state flag
 };
 
 

@@ -571,18 +571,26 @@ arena_polygons_t Object::generate_contours(std::size_t points_per_contour) const
 
 /************* StaticLightObject *************/ // {{{1
 
-// Constructor with a light map pointer.
 StaticLightObject::StaticLightObject(float x, float y,
-                                     ObjectGeometry& geom, LightLevelMap* light_map,
-                                     int16_t value, float photo_start_at, float photo_start_duration, int16_t photo_start_value,
+                                     ObjectGeometry& geom, LightLevelMap* lmap,
+                                     int16_t _value,
+                                     LightMode _mode,
+                                     int16_t _edge_value,
+                                     float   _gradient_radius,
+                                     float   _photo_start_at,
+                                     float   _photo_start_duration,
+                                     int16_t _photo_start_value,
                                      std::string const& _category)
     : Object(x, y, geom, _category),
-      value(value),
-      orig_value(value),
-      light_map(light_map),
-      photo_start_at(photo_start_at),
-      photo_start_duration(photo_start_duration),
-      photo_start_value(photo_start_value) {
+      value(_value),
+      orig_value(_value),
+      edge_value(_edge_value),
+      gradient_radius(_gradient_radius),
+      mode(_mode),
+      light_map(lmap),
+      photo_start_at(_photo_start_at),
+      photo_start_duration(_photo_start_duration),
+      photo_start_value(_photo_start_value) {
     light_map->register_callback([this](LightLevelMap& m){ this->update_light_map(m); });
     //update_light_map();
 }
@@ -597,31 +605,79 @@ StaticLightObject::StaticLightObject(Simulation* simulation, float _x, float _y,
     //update_light_map();
 }
 
+
+//void StaticLightObject::update_light_map(LightLevelMap& l) {
+//    // Retrieve grid parameters from the light map.
+//    size_t num_bins_x = l.get_num_bins_x();
+//    size_t num_bins_y = l.get_num_bins_y();
+//    float bin_width = l.get_bin_width();
+//    float bin_height = l.get_bin_height();
+//
+//    // Use the geometry's export method to get a grid indicating where the geometry exists.
+//    std::vector<std::vector<bool>> geometry_grid =
+//        geom->export_geometry_grid(num_bins_x, num_bins_y, bin_width, bin_height, x, y);
+//
+//    // Update each bin in the light map that is covered by this object's geometry.
+//    for (size_t j = 0; j < num_bins_y; ++j) {
+//        for (size_t i = 0; i < num_bins_x; ++i) {
+//            if (geometry_grid[j][i]) {
+//                l.add_light_level(i, j, value);
+//            }
+//        }
+//    }
+//}
+
 void StaticLightObject::update_light_map(LightLevelMap& l) {
-    // Retrieve grid parameters from the light map.
-    size_t num_bins_x = l.get_num_bins_x();
-    size_t num_bins_y = l.get_num_bins_y();
-    float bin_width = l.get_bin_width();
-    float bin_height = l.get_bin_height();
+    const size_t nx = l.get_num_bins_x();
+    const size_t ny = l.get_num_bins_y();
+    const float  bw = l.get_bin_width();
+    const float  bh = l.get_bin_height();
 
-    // Use the geometry's export method to get a grid indicating where the geometry exists.
-    std::vector<std::vector<bool>> geometry_grid =
-        geom->export_geometry_grid(num_bins_x, num_bins_y, bin_width, bin_height, x, y);
+    auto geometry_grid = geom->export_geometry_grid(nx, ny, bw, bh, x, y);
 
-    // Update each bin in the light map that is covered by this object's geometry.
-    for (size_t j = 0; j < num_bins_y; ++j) {
-        for (size_t i = 0; i < num_bins_x; ++i) {
-            if (geometry_grid[j][i]) {
-                l.add_light_level(i, j, value);
+    /* ----- optional automatic radius (max distance inside geometry) ------ */
+    float effective_radius = gradient_radius;
+    if (!performing_photo_start && mode == LightMode::GRADIENT && effective_radius <= 0.0f) {
+        for (size_t j = 0; j < ny; ++j) {
+            for (size_t i = 0; i < nx; ++i) {
+                if (!geometry_grid[j][i]) { continue; }
+                const float cx = (i + 0.5f) * bw;
+                const float cy = (j + 0.5f) * bh;
+                const float dist = std::hypot(cx - x, cy - y);
+                effective_radius = std::max(effective_radius, dist);
             }
+        }
+        /* Degenerate case: single-bin objects */
+        if (effective_radius <= 0.0f) { effective_radius = std::max(bw, bh) * 0.5f; }
+    }
+
+    /* ----------------------- write contribution -------------------------- */
+    for (size_t j = 0; j < ny; ++j) {
+        for (size_t i = 0; i < nx; ++i) {
+            if (!geometry_grid[j][i]) { continue; }
+
+            int16_t level = value;   // default: STATIC
+
+            if (!performing_photo_start && mode == LightMode::GRADIENT) {
+                const float cx     = (i + 0.5f) * bw;
+                const float cy     = (j + 0.5f) * bh;
+                const float dist   = std::hypot(cx - x, cy - y);
+                const float ratio  = std::clamp(dist / effective_radius, 0.f, 1.f);
+                level = static_cast<int16_t>(
+                        std::lround(value + (edge_value - value) * ratio));
+            }
+            l.add_light_level(i, j, level);
         }
     }
 }
 
 void StaticLightObject::parse_configuration(Configuration const& config, Simulation* simulation) {
     Object::parse_configuration(config, simulation);
+    mode = config["light_mode"].get(std::string("static")) == "gradient" ? LightMode::GRADIENT : LightMode::STATIC;
     value = config["value"].get(10);
     orig_value = value;
+    edge_value = config["edge_value"].get(0);              // Only used in GRADIENT
+    gradient_radius = config["gradient_radius"].get(-1.f); // Only used in GRADIENT
     photo_start_at = config["photo_start_at"].get(-1.0f);
     photo_start_duration = config["photo_start_duration"].get(1.0f);
     photo_start_value = config["photo_start_value"].get(32767);

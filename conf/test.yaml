@@ -84,12 +84,25 @@ objects:
 
     # An object category containing a small light spot around the middle of the arena
     target_light:
-        type: static_light  # The light is not active (does not move and does not have a controller)
-        geometry: disk      # Shape of the light. Can be 'disk', 'rectangle' or 'global'
-        x: 500              # Center of the light spot, X coordinate, in mm
-        y: 500              # Center of the light spot, Y coordinate, in mm
-        radius: 200         # Radius of the light spot. in mm
-        value: 10000        # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+        type: static_light    # The light is not active (does not move and does not have a controller)
+        geometry: disk        # Shape of the light. Can be 'disk', 'rectangle' or 'global'
+        x: 500                # Center of the light spot, X coordinate, in mm
+        y: 500                # Center of the light spot, Y coordinate, in mm
+        radius: 400           # Radius of the light spot. in mm
+        light_mode: gradient  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+        value: 30000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+        edge_value: 0.0       # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
+
+    # An object category containing a small light spot around the middle of the arena
+    target_light:
+        type: static_light    # The light is not active (does not move and does not have a controller)
+        geometry: rectangle   # Shape of the light. Can be 'disk', 'rectangle' or 'global'
+        x: 1400               # Center of the light spot, X coordinate, in mm
+        y: 200                # Center of the light spot, Y coordinate, in mm
+        body_width: 500       # Width of the rectangle geometry, in mm
+        body_height: 500      # Height of the rectangle geometry, in mm
+        light_mode: static    # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+        value: 10000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
 
 
     # An object category containing passive objects. They can be moved by robots, but don't have sensors/actuators/controller
