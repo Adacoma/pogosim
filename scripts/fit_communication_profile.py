@@ -68,8 +68,8 @@ data = """payload_size,cluster_size,p_send,success_probability,std_deviation
 # Parse the data
 df = pd.read_csv(StringIO(data))
 
-# Add msg_size column (msg_size = 3 + payload_size)
-df['msg_size'] = df['payload_size'] + 3
+# Add msg_size column (msg_size = 3 + payload_size + CRC + starting byte + ending byte)
+df['msg_size'] = df['payload_size'] + 3 + 4 + 1 + 1
 
 # Extract features and target
 X = df[['msg_size', 'cluster_size', 'p_send']].values
@@ -263,9 +263,9 @@ def predict_success_probability(msg_size, cluster_size, p_send):
 # Example usage
 print("\nExample predictions:")
 test_cases = [
-    (6, 2, 0.5),    # Small message (3+3), small cluster, medium p_send
-    (23, 4, 0.75),  # Medium message (3+20), medium cluster, high p_send
-    (103, 18, 0.25) # Large message (3+100), large cluster, medium p_send
+    (12, 2, 0.5),   # Small message (3+3+4+1+1), small cluster, medium p_send
+    (29, 4, 0.75),  # Medium message (3+20+4+1+1), medium cluster, high p_send
+    (109, 18, 0.25) # Large message (3+100+4+1+1), large cluster, medium p_send
 ]
 
 for msg_size, cluster, p_send in test_cases:

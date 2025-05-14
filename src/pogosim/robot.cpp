@@ -510,7 +510,11 @@ void PogobotObject::send_to_neighbors(ir_direction dir, message_t *const message
     std::uniform_real_distribution<float> dis(0.0f, 1.0f);
 
     double const payload_size = static_cast<double>(message->header.payload_length);
-    double const msg_size = payload_size + (message->header._packet_type == ir_t_short ? sizeof(message_short_header_t) : sizeof(message_header_t));
+    double const msg_size = payload_size 
+        + (message->header._packet_type == ir_t_short ? sizeof(message_short_header_t) : sizeof(message_header_t)) // Payload
+        + 1 + 1 // Start and End bytes
+        + 4 // CRC
+        ;
     double const p_send = static_cast<double>(percent_msgs_sent_per_ticks) / 100.0;
     double const cluster_size = static_cast<double>(neighbors[dir].size() + 1);
 

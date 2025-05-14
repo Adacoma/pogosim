@@ -3,9 +3,8 @@
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
-arena_file: arenas/disk.csv
-#arena_file: arenas/arena8.csv
-arena_surface: 5.0e5    # In mm²
+arena_file: arenas/square.csv
+arena_surface: 0.5e6 # 1.0e6    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
@@ -17,16 +16,16 @@ save_video_period: 1.0      # In s, or -1 to disable frame export
 frames_name: "frames/f{:010.4f}.png"
 
 seed: 0
-show_communication_channels: false           # In the GUI, can enabled/disabled using F5
+show_communication_channels: false  # In the GUI, can enabled/disabled using F5
 show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
-show_lateral_LEDs: false                     # In the GUI, can enabled/disabled using F6
-show_light_levels: false                     # In the GUI, can enabled/disabled using F6
+show_lateral_LEDs: true             # In the GUI, can enabled/disabled using F6
+show_light_levels: false            # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 500.0     # In s
+simulation_time: 1000.0     # In s
 time_step: 0.01            # In s
-GUI_speed_up: 0.01         # How much the visualisation in the GUI should be sped up
+GUI_speed_up: 10.0         # How much the visualisation in the GUI should be sped up
 
 # The initial positions of the robot, set as a formation.
 # "initial_formation" can be:
@@ -49,7 +48,16 @@ GUI_speed_up: 0.01         # How much the visualisation in the GUI should be spe
 #               imported_formation_min_coords: [0.0, 0.0]
 #               imported_formation_max_coords: [17.0, 17.0]
 #       Note that the angle (aka "theta") column is optional: if it is not provided, the angle will be sampled from a [-pi, pi] uniform distribution.
-initial_formation: power_lloyd
+initial_formation: imported
+formation_min_space_between_neighbors: 0.0
+formation_max_space_between_neighbors: .inf
+
+formation_filename: "/tmp/hndshk_quality_positions.csv"
+#formation_filename: "frames/data.feather"
+#imported_formation_min_coords: [.nan, .nan]
+#imported_formation_max_coords: [.nan, .nan]
+imported_formation_min_coords: [300.0, 300.0]
+imported_formation_max_coords: [700.0, 700.0]
 
 # Whether or not to ignore occlusions (e.g. other robots, focal robot) when computing communication exchanges and neighbors lists
 communication_ignore_occlusions: false
@@ -57,21 +65,10 @@ communication_ignore_occlusions: false
 
 # List of objects created in the simulation, by category
 objects:
-    # An object category containing a single light spot encompassing the entire simulation
-    global_light:
-        type: static_light  # The light is not active (does not move and does not have a controller)
-        geometry: global    # The light involve the entire simulation
-        value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
-        photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
-                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
-                            # start their user program in a synchronous manner.
-        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
-        photo_start_value: 32767    # Light value during the photo start period (between 0 and 32767). Should be very different from the normal value of the light
-
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 30             # Number of objects (Pogobots) in this category
+        nb: 18             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -83,9 +80,9 @@ objects:
         body_restitution: 0.5
 
         max_linear_speed: 100.0
-        max_angular_speed: 2.0
-        linear_noise_stddev: 0
-        angular_noise_stddev: 0
+        max_angular_speed: 1.0
+        linear_noise_stddev: 0.5
+        angular_noise_stddev: 2.0
 
         # Communication propeties
         communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)
@@ -98,6 +95,17 @@ objects:
             gamma: 2.3234
             delta: 1.1897
 
+#    # An object category containing a single light spot encompassing the entire simulation
+#    global_light:
+#        type: static_light  # The light is not active (does not move and does not have a controller)
+#        geometry: global    # The light involve the entire simulation
+#        value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+#        photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
+#                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
+#                            # start their user program in a synchronous manner.
+#        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
+#        photo_start_value: 32767    # Light value during the photo start period (between 0 and 32767). Should be very different from the normal value of the light
+
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
 parameters:
@@ -106,7 +114,7 @@ parameters:
     run_duration_max: 2000
     tumble_duration_min: 100
     tumble_duration_max: 1100
-    enable_backward_dir: true
+    test_vect: [42., 23., 11., 18.]
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8

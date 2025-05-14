@@ -78,10 +78,10 @@ objects:
             type: static # Fixed msg success rate -- do not depend on the density, or message size
             rate: 0.9
             #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
-            #alpha: 0.000004
-            #beta: 2.8096
-            #gamma: 2.3807
-            #delta: 1.2457
+            #alpha: 0.000001
+            #beta: 3.0708
+            #gamma: 2.3234
+            #delta: 1.1897
 
 
     # An object category describing membranes, a special type of Pogowalls apposed on flexible membranes
@@ -110,10 +110,10 @@ objects:
             type: static # Fixed msg success rate -- do not depend on the density, or message size
             rate: 0.9
             #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
-            #alpha: 0.000004
-            #beta: 2.8096
-            #gamma: 2.3807
-            #delta: 1.2457
+            #alpha: 0.000001
+            #beta: 3.0708
+            #gamma: 2.3234
+            #delta: 1.1897
 
         # Physical properties
         body_linear_damping: 0.3
@@ -153,10 +153,10 @@ objects:
             #type: static # Fixed msg success rate -- do not depend on the density, or message size
             #rate: 0.9
             type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
-            alpha: 0.000004
-            beta: 2.8096
-            gamma: 2.3807
-            delta: 1.2457
+            alpha: 0.000001
+            beta: 3.0708
+            gamma: 2.3234
+            delta: 1.1897
 
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########

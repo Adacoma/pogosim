@@ -77,7 +77,7 @@ public:
      * @param gamma The exponent for p_send (default is 2.3807).
      * @param delta The exponent for cluster_size (default is 1.2457).
      */
-    DynamicMsgSuccessRate(double alpha = 0.000004, double beta = 2.8096, double gamma = 2.3807, double delta = 1.2457);
+    DynamicMsgSuccessRate(double alpha = 0.000001, double beta = 3.0708, double gamma = 2.3234, double delta = 1.1897);
 
     /**
      * @brief Computes the dynamic success rate.

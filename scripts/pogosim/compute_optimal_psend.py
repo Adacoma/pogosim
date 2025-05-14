@@ -76,13 +76,13 @@ def parse_args() -> argparse.Namespace:
                         help="Cluster size (n)")
     parser.add_argument("-m", "--msg_size", type=float, required=True,
                         help="Message size in bytes (m)")
-    parser.add_argument("-a", "--alpha", type=float, default=0.000004,
+    parser.add_argument("-a", "--alpha", type=float, default=0.000001,
                         help="Coefficient α")
-    parser.add_argument("-b", "--beta", type=float, default=2.8096,
+    parser.add_argument("-b", "--beta", type=float, default=3.0708,
                         help="Exponent β")
-    parser.add_argument("-g", "--gamma", type=float, default=2.3807,
+    parser.add_argument("-g", "--gamma", type=float, default=2.3234,
                         help="Exponent γ (must be > 1)")
-    parser.add_argument("-d", "--delta", type=float, default=1.2457,
+    parser.add_argument("-d", "--delta", type=float, default=1.1897,
                         help="Exponent δ")
 
     parser.add_argument("-f", "--frequency", type=float, default=30,
