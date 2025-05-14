@@ -2,6 +2,24 @@
 import sys
 import logging
 
+import pandas as pd
+import pyarrow as pa
+import pyarrow.ipc as ipc
+
+def load_dataframe(filename):
+    # Feather V2 files are Arrow IPC “file” streams under the hood
+    with ipc.open_file(filename) as reader:
+        schema = reader.schema                   # pyarrow.Schema
+        meta   = schema.metadata or {}           # dict-like, keys/values are bytes
+
+        # Decode bytes → str for convenience
+        decoded_meta = {k.decode(): v.decode() for k, v in meta.items()}
+
+    # Load dataframe
+    df = pd.read_feather(filename)
+
+    return df, decoded_meta
+
 # Custom logging formatter (cf https://stackoverflow.com/questions/1343227/can-pythons-logging-format-be-modified-depending-on-the-message-log-level)
 class CustomFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""
