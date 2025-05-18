@@ -3,9 +3,9 @@
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
-#arena_file: arenas/disk.csv
+arena_file: arenas/disk.csv
 #arena_file: arenas/arena8.csv
-arena_file: arenas/star.csv
+#arena_file: arenas/star.csv
 #arena_file: arenas/square.csv
 arena_surface: 1.0e6 # 1.0e6    # In mm²
 
@@ -194,8 +194,8 @@ objects:
 
         max_linear_speed: 100.0
         max_angular_speed: 1.0
-        linear_noise_stddev: 0.5
-        angular_noise_stddev: 2.0
+        linear_noise_stddev: 0 # 0.5
+        angular_noise_stddev: 0 # 2.0
 
         # Communication propeties
         communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)

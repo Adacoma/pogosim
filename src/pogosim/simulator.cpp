@@ -806,8 +806,8 @@ void Simulation::export_data() {
         data_logger->set_value("robot_category", obj->category);
         data_logger->set_value("robot_id", (int32_t) obj->id);
         auto const pos = obj->get_position();
-        data_logger->set_value("x", pos.x);
-        data_logger->set_value("y", pos.y);
+        data_logger->set_value("x", pos.x * VISUALIZATION_SCALE);
+        data_logger->set_value("y", pos.y * VISUALIZATION_SCALE);
         data_logger->set_value("angle", obj->get_angle());
 
         // User-defined values

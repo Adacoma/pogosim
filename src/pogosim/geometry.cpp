@@ -1244,11 +1244,6 @@ import_points_from_file(const arena_polygons_t &scaled_arena_polygons,
             p.x = map_lin(p.x, src_min_x, src_max_x, arena_bbox.min_x, arena_bbox.max_x);
             p.y = map_lin(p.y, src_min_y, src_max_y, arena_bbox.min_y, arena_bbox.max_y);
         }
-    } else {
-        for (auto &p : points) {
-            p.x *= VISUALIZATION_SCALE;
-            p.y *= VISUALIZATION_SCALE;
-        }
     }
 
     if (points.size() < nb_objects || thetas.size() < nb_objects) {
