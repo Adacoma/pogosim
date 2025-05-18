@@ -10,6 +10,7 @@ window_width: 600       # In pixels
 window_height: 600      # In pixels
 
 arena_file:        # Test the results on two arenas
+    default_option: arenas/disk.csv
     batch_options: ["arenas/disk.csv", "arenas/arena8.csv", "arenas/annulus.csv", "arenas/star7.csv"]
 arena_surface: 1.0e6    # In mm²
 
@@ -62,6 +63,7 @@ objects:
     robots:
         type: pogobot       # Category type pertaining to Pogobots
         nb:                 # Number of objects (Pogobots) in this category
+            default_option: 100
             batch_options: [100, 200]          # Test the results on three different swarm sizes
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
