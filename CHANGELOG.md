@@ -1,6 +1,25 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.4] - 2025-05-19
+
+### Added
+ - Support for light gradients (cf phototaxis example) in "static\_light object" 
+ - In configs: "save\_data\_period" can be set to negative values to disable it
+ - Add new Python script to create locomotion-related plots
+ - README: add troubleshooting section
+ - Add config 'example\_imported\_formation.yaml'
+
+### Changed
+ - GUI: camera movement using right click depends on zoom level
+
+### Fixed
+ - Major fix in pogosim main loop: message recv did not call "pogobot\_infrared\_clear\_message\_queue" by default. Messages were never deleted in the queue.
+ - Fix X,Y exports in CSV/feather files: store values in mm instead of pixels
+ - Dynamic message success rate computation: "msg\_size" now takes into account start+end bytes and 2 CRC16
+ - Minor fixes in several Python scripts
+
+
 
 ## [0.10.3] - 2025-05-09
 
@@ -46,6 +65,7 @@ All notable changes to this project will be documented in this file.
  - fix headless mode to support SDL2 versions below 2.0.22
 
 
+
 ## [0.10.1] - 2025-05-01
 
 ### Added
@@ -65,6 +85,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
  - add pyarrow as requirement of pogosim python scripts
  - msg reception now updates "\_receiver\_ir\_index"
+
 
 
 ## [0.10.0] - 2025-04-23
