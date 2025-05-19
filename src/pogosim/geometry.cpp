@@ -1246,6 +1246,10 @@ import_points_from_file(const arena_polygons_t &scaled_arena_polygons,
         }
     }
 
+//    for (auto &p : points) {
+//        glogger->info("DEBUG imported: {}, {}", p.x, p.y);
+//    }
+
     if (points.size() < nb_objects || thetas.size() < nb_objects) {
         throw std::runtime_error("Not enough points in imported data file: " + std::to_string(points.size()) + " but at least " + std::to_string(nb_objects) + " are needed.");
     }

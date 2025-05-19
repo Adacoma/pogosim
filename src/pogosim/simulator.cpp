@@ -196,7 +196,7 @@ void Simulation::create_objects() {
                 throw std::runtime_error("Parameter 'formation_filename' is empty!");
             }
             std::tie(points, thetas) = import_points_from_file(arena_polygons, objects_radii.size(), formation_filename, imported_formation_min_coords, imported_formation_max_coords);
-            glogger->info("DEBUG imported: {}, {}", points.size(), thetas.size());
+            //glogger->info("DEBUG imported: {}, {}", points.size(), thetas.size());
         } else {
             glogger->error("Unknown 'initial_formation' value: '{}'. Assuming 'power_lloyd' formation...", initial_formation);
             points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
