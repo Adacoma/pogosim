@@ -61,6 +61,7 @@ frames/
 pogobot-sdk
 TODO
 tmp/
+results/
 
 # Output data files
 *.feather
