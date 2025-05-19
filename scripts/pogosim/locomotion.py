@@ -213,16 +213,31 @@ def _render_single_run(
     gif_fps: int,
     gif_name: str,
     gifski_bin: str,
+    margin_frac: float = 0.03,          # ← added: % margin around arena
 ) -> List[str]:
+    """
+    Render one run.  Axis limits are fixed from the full run extent,
+    so early frames no longer have "smaller borders".
+    """
     run_df = run_df.sort_values(["time", "robot_id"], ignore_index=True)
 
-    times = run_df["time"].unique()
-    robot_ids = np.sort(run_df["robot_id"].unique())
-    cmap = get_cmap(robot_cmap_name)
+    # ── arena bounds (fixed for every frame) ────────────────────────────
+    x_min, x_max = run_df["x"].min(), run_df["x"].max()
+    y_min, y_max = run_df["y"].min(), run_df["y"].max()
+    # add a small margin so dots aren’t exactly on the edge
+    dx, dy = x_max - x_min, y_max - y_min
+    x_min -= dx * margin_frac
+    x_max += dx * margin_frac
+    y_min -= dy * margin_frac
+    y_max += dy * margin_frac
+
+    times      = run_df["time"].unique()
+    robot_ids  = np.sort(run_df["robot_id"].unique())
+    cmap       = get_cmap(robot_cmap_name)
     colour_map = {rid: cmap(i % cmap.N)[:3] for i, rid in enumerate(robot_ids)}
 
     tail_times: List[float] = []
-    frame_paths: List[str] = []
+    frame_paths: List[str]  = []
 
     run_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -240,6 +255,10 @@ def _render_single_run(
         ax.set_facecolor("white")
         ax.set_xticks([]); ax.set_yticks([])
 
+        # ← NEW: keep arena size constant
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(y_min, y_max)
+
         for rid, group in window_df.groupby("robot_id", sort=False):
             g = group.sort_values("time")
             xs, ys, ts = g["x"].to_numpy(), g["y"].to_numpy(), g["time"].to_numpy()
@@ -248,25 +267,24 @@ def _render_single_run(
                 segs = np.stack(
                     [np.column_stack([xs[:-1], ys[:-1]]),
                      np.column_stack([xs[1:],  ys[1: ]])],
-                    axis=1,
+                    axis=1
                 )
-                seg_ages = (ts[1:] - t_old) / age_den
+                seg_ages   = (ts[1:] - t_old) / age_den
                 seg_alphas = fade_min_alpha + (1 - fade_min_alpha) * seg_ages
-                seg_rgba = [(*colour_map[rid], a) for a in seg_alphas]
+                seg_rgba   = [(*colour_map[rid], a) for a in seg_alphas]
 
-                lc = LineCollection(
+                ax.add_collection(LineCollection(
                     segs,
-                    colors=seg_rgba,
-                    linewidths=line_width,
-                    capstyle="round",
-                    joinstyle="round",
-                )
-                ax.add_collection(lc)
+                    colors     = seg_rgba,
+                    linewidths = line_width,
+                    capstyle   = "round",
+                    joinstyle  = "round",
+                ))
 
             ax.scatter(xs[-1], ys[-1],
-                       s=point_size,
-                       c=[colour_map[rid]],
-                       edgecolors="none")
+                       s = point_size,
+                       c = [colour_map[rid]],
+                       edgecolors = "none")
 
         ax.set_title(f"time = {current_time:.3f}   (tail = {len(tail_times)} steps)")
         fig.tight_layout()
@@ -274,14 +292,13 @@ def _render_single_run(
         fname = run_output_dir / f"trace_{current_time:.6f}.png"
         fig.savefig(fname, dpi=dpi)
         plt.close(fig)
-
         frame_paths.append(str(fname.resolve()))
 
     if make_gif and frame_paths:
         _compile_gif(frame_paths,
                      run_output_dir / gif_name,
-                     fps=gif_fps,
-                     gifski_bin=gifski_bin)
+                     fps = gif_fps,
+                     gifski_bin = gifski_bin)
 
     return frame_paths
 
