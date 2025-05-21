@@ -99,6 +99,8 @@ class Simulation {
     std::unique_ptr<DataLogger> data_logger; ///< DataLogger instance.
 
 public:
+    bool current_robot_enable_data_logging;  ///< Flag to enable data logging on the current robot.
+
     /**
      * @brief Constructs a Simulation object.
      *

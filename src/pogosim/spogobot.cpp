@@ -486,6 +486,13 @@ int pogosim_putchar(int ch) {
     return ch;
 }
 
+void enable_data_export(void) {
+    simulation->current_robot_enable_data_logging = true;
+}
+
+void disable_data_export(void) {
+    simulation->current_robot_enable_data_logging = false;
+}
 
 void data_add_column_int8(char const* name) {
     simulation->get_data_logger()->add_field(name, arrow::int8());

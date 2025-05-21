@@ -361,8 +361,13 @@ void create_data_schema() {
 
 // Function called periodically by the simulator each time data is saved (cf config parameter "save_data_period" in seconds)
 void export_data() {
-    data_set_value_int32("age", mydata->age);
-    data_set_value_int16("rgb_colors_index", mydata->rgb_colors_index);
+    if (mydata->started) { // Only store data after the photostart period
+        enable_data_export(); // Enable data export this time
+        data_set_value_int32("age", mydata->age);
+        data_set_value_int16("rgb_colors_index", mydata->rgb_colors_index);
+    } else { // Disable data export this time
+        disable_data_export();
+    }
 }
 #endif
 

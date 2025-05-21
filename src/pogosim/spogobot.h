@@ -1019,6 +1019,9 @@ void data_add_column_double(char const* name);
 void data_add_column_string(char const* name);
 void data_add_column_bool(char const* name);
 
+void enable_data_export(void);
+void disable_data_export(void);
+
 void data_set_value_int8(char const* name, int8_t value);
 void data_set_value_int16(char const* name, int16_t value);
 void data_set_value_int32(char const* name, int32_t value);

@@ -664,6 +664,7 @@ void Simulation::init_callbacks() {
 
 void Simulation::init_data_logger() {
     enable_data_logging = config["enable_data_logging"].get(true);
+    current_robot_enable_data_logging = enable_data_logging;
     if (!enable_data_logging)
         return;
     std::string data_filename = config["data_filename"].get(std::string("data.feather"));
@@ -802,6 +803,19 @@ void Simulation::export_frames() {
 
 void Simulation::export_data() {
     for (auto obj : phys_objects) {
+        // User-defined values
+        if (auto robot = std::dynamic_pointer_cast<PogobotObject>(obj)) {
+            // For robots
+            data_logger->set_value("pogobot_ticks", (int64_t) robot->pogobot_ticks);
+
+            if (robot->callback_export_data != nullptr) {
+                set_current_robot(*robot.get());
+                robot->callback_export_data();
+            }
+            if (!current_robot_enable_data_logging)
+                continue;
+        }
+
         data_logger->set_value("time", t);
         data_logger->set_value("robot_category", obj->category);
         data_logger->set_value("robot_id", (int32_t) obj->id);
@@ -809,16 +823,6 @@ void Simulation::export_data() {
         data_logger->set_value("x", pos.x * VISUALIZATION_SCALE);
         data_logger->set_value("y", pos.y * VISUALIZATION_SCALE);
         data_logger->set_value("angle", obj->get_angle());
-
-        // User-defined values
-        if (auto robot = std::dynamic_pointer_cast<PogobotObject>(obj)) {
-            // For robots
-            data_logger->set_value("pogobot_ticks", (int64_t) robot->pogobot_ticks);
-            if (robot->callback_export_data != nullptr) {
-                set_current_robot(*robot.get());
-                robot->callback_export_data();
-            }
-        }
 
         data_logger->save_row();
     }
