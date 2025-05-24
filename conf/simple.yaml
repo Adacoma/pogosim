@@ -5,7 +5,7 @@ window_height: 600      # In pixels
 
 #arena_file: arenas/disk.csv
 #arena_file: arenas/arena8.csv
-arena_file: arenas/star_scaled.csv
+arena_file: arenas/star.csv
 arena_surface: 1.0e6    # In mm²
 
 delete_old_files: true
