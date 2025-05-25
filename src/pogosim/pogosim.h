@@ -49,11 +49,19 @@ extern void (*callback_global_setup)(void);
 #endif
 
 // On real robots, declare an extern variable for a single shared instance.
-#define DECLARE_USERDATA(UDT)       \
-    extern UDT myuserdata;         \
-    static inline UDT * restrict get_mydata(void) { return &myuserdata; }  // The accessor returns a restrict-qualified pointer.
+#ifdef __cplusplus
+    // C++ version - can use constexpr and noexcept for additional optimization
+    #define DECLARE_USERDATA(UDT)       \
+        extern UDT myuserdata;         \
+        static inline constexpr UDT * get_mydata(void) noexcept { return &myuserdata; }
+#else
+    // C version - uses restrict keyword for optimization
+    #define DECLARE_USERDATA(UDT)       \
+        extern UDT myuserdata;         \
+        static inline UDT * restrict get_mydata(void) { return &myuserdata; }   // The accessor returns a restrict-qualified pointer.
     // Here we use the keyword "restrict" to ensure that the compiler automatically transform mydata->foo statements into myuserdata.foo after optimization.
     //  This increases performance by removing pointer access operations.
+#endif
 
 /* Now, use mydata as an alias for the inline function result */
 #define mydata (get_mydata())

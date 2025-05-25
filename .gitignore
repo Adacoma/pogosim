@@ -73,6 +73,7 @@ examples/ssr/ssr
 examples/run_and_tumble/run_and_tumble
 examples/phototaxis/phototaxis
 examples/walls/walls
+examples/cpp_helloworld/cpp_helloworld
 
 # Apptainer
 *.sif
