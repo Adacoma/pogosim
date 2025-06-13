@@ -74,6 +74,7 @@ examples/run_and_tumble/run_and_tumble
 examples/phototaxis/phototaxis
 examples/walls/walls
 examples/cpp_helloworld/cpp_helloworld
+examples/neighbor_counter/neighbor_counter
 
 # Apptainer
 *.sif
