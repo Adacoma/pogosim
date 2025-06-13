@@ -262,7 +262,14 @@ void user_step(void) {
     uint8_t r, g, b;
     uint8_t idx = (mydata->total_neighbors > 9) ? 9 : mydata->total_neighbors;
     qualitative_colormap(idx, &r, &g, &b);
-    pogobot_led_setColor(r, g, b);
+    pogobot_led_setColors(r, g, b, 0);
+
+    /* per-direction colours on LEDs 1-4 */
+    for(uint8_t d = 0; d < IR_RX_COUNT; ++d) {
+        uint8_t idx = (mydata->dir_counts[d] > 9U) ? 9U : mydata->dir_counts[d];
+        qualitative_colormap(idx, &r, &g, &b);
+        pogobot_led_setColors(r, g, b, d + 1);  /* LED id = face + 1 */
+    }
 }
 
 /* -------------------------------------------------------------------------- */
