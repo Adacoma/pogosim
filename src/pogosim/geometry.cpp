@@ -99,8 +99,7 @@ std::vector<std::vector<b2Vec2>> read_poly_from_csv(const std::string& filename,
         std::vector<b2Vec2> norm_poly;
         for (const auto& point : poly) {
             float norm_x = (point.x - min_x) / (max_x - min_x);
-            // Y inversion
-            float norm_y = 1.0f - (point.y - min_y) / (max_y - min_y);
+            float norm_y = (point.y - min_y) / (max_y - min_y);
             norm_poly.push_back({norm_x, norm_y});
         }
         normalized_polygons.push_back(norm_poly);
