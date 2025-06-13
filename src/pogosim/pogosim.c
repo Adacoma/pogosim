@@ -1,7 +1,6 @@
 
 #include <math.h>
 #include "pogosim.h"
-#include "colormaps.h"
 
 #ifdef SIMULATOR
 void (*callback_create_data_schema)(void) = NULL;

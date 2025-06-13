@@ -9,6 +9,8 @@
 #include "spogobot.h"
 #endif
 
+#include "colormaps.h"
+
 
 //// Useful macros ////
 #if defined(__GNUC__) || defined(__clang__)
