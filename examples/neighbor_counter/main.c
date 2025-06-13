@@ -25,9 +25,8 @@
 #include <string.h>
 #include <stdbool.h>
 
-/* -------------------------------------------------------------------------- */
-/* External symbols                                                           */
-/* -------------------------------------------------------------------------- */
+// "Global" variables set by the YAML configuration file (in simulation) by the function global_setup, or with a fixed values (in experiments). These values should be seen as constants shared by all robots.
+
 /** Age threshold (ms) after which a neighbour entry is considered obsolete.  */
 uint32_t max_age = 1200;
 
@@ -79,6 +78,10 @@ typedef struct {
     uint8_t  direction;          /**< IR face index (0‥3).              */
 } neighbor_t;
 
+
+// Normal "Global" variables should be inserted within the USERDATA struct.
+// /!\  In simulation, don't declare non-const global variables outside this struct, elsewise they will be shared among all agents (and this is not realistic).
+
 /**
  * @struct USERDATA
  * @brief All mutable state for this robot.
@@ -93,9 +96,14 @@ typedef struct {
     uint32_t last_heartbeat_ms;          /**< Timestamp of last broadcast.*/
 } USERDATA;
 
-/* Make @p mydata globally available. */
+// Call this macro in the same file (.h or .c) as the declaration of USERDATA
 DECLARE_USERDATA(USERDATA);
+
+// Don't forget to call this macro in the main .c file of your project (only once!)
 REGISTER_USERDATA(USERDATA);
+// Now, members of the USERDATA struct can be accessed through mydata->MEMBER. E.g. mydata->data_foo
+//  On real robots, the compiler will automatically optimize the code to access member variables as if they were true globals.
+
 
 /* -------------------------------------------------------------------------- */
 /* Utility functions                                                          */
@@ -215,7 +223,15 @@ static void print_colormap_table(void) {
 /* -------------------------------------------------------------------------- */
 /* Control logic                                                              */
 /* -------------------------------------------------------------------------- */
-/** Initialise user state and configure the framework. */
+
+/**
+ * @brief Initialization function for the robot.
+ *
+ * This function is executed once at startup (cf 'pogobot_start' call in main()).
+ * It seeds the random number generator, initializes timers and system parameters,
+ * sets up the main loop frequency, and configures the initial state for the
+ * run-and-tumble behavior.
+ */
 void user_init(void) {
     memset(mydata, 0, sizeof(*mydata));
 
@@ -251,7 +267,15 @@ void tumbling_motion(void) {
 }
 
 
-/** Main loop executed at @c main_loop_hz. */
+/**
+ * @brief Main control loop for executing behavior.
+ *
+ * This function is called continuously at the frequency defined in user_init().
+ * It checks if the current phase duration has elapsed and, if so, transitions to
+ * the next phase. Depending on the current phase, it sets the robot's motors to
+ * either move straight (run phase) or rotate (tumble phase). It also provides periodic
+ * debugging output.
+ */
 void user_step(void) {
     purge_old_neighbors();
     recalc_dir_counts();
@@ -273,11 +297,13 @@ void user_step(void) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Simulator hooks (optional)                                                 */
+/* Simulator hooks                                                            */
 /* -------------------------------------------------------------------------- */
 #ifdef SIMULATOR
 
-// Function called once to initialize global values (e.g. configuration-specified constants)
+/**
+ * @brief Function called once to initialize global values (e.g. configuration-specified constants)
+ */
 void global_setup() {
     init_from_configuration(max_age);
     init_from_configuration(moving_robots);
@@ -302,9 +328,14 @@ static void export_data(void) {
 }
 #endif /* SIMULATOR */
 
-/* -------------------------------------------------------------------------- */
-/* Entry point                                                                */
-/* -------------------------------------------------------------------------- */
+/**
+ * @brief Program entry point.
+ *
+ * This function initializes the robot system and starts the main execution loop by
+ * passing the user initialization and control functions to the platform's startup routine.
+ *
+ * @return int Returns 0 upon successful completion.
+ */
 int main(void) {
     pogobot_init();     // Initialization routine for the robots
     // Specify the user_init and user_step functions
