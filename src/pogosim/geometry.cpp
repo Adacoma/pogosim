@@ -56,87 +56,87 @@ std::vector<std::vector<b2Vec2>> read_poly_from_csv(const std::string& filename,
         throw std::runtime_error("Unable to open arena file");
     }
 
-    std::vector<b2Vec2> currentPolygon;
+    std::vector<b2Vec2> current_polygon;
     std::string line;
     while (std::getline(file, line)) {
         if (line.empty()) {
-            if (!currentPolygon.empty()) {
-                polygons.push_back(currentPolygon);
-                currentPolygon.clear();
+            if (!current_polygon.empty()) {
+                polygons.push_back(current_polygon);
+                current_polygon.clear();
             }
             continue;
         }
         std::istringstream ss(line);
-        std::string xStr, yStr;
-        if (std::getline(ss, xStr, ',') && std::getline(ss, yStr)) {
-            float x = std::stof(xStr);
-            float y = std::stof(yStr);
-            currentPolygon.push_back({x, y});
+        std::string x_str, y_str;
+        if (std::getline(ss, x_str, ',') && std::getline(ss, y_str)) {
+            float x = std::stof(x_str);
+            float y = std::stof(y_str);
+            current_polygon.push_back({x, y});
         }
     }
     file.close();
-    if (!currentPolygon.empty()) {
-        polygons.push_back(currentPolygon);
+    if (!current_polygon.empty()) {
+        polygons.push_back(current_polygon);
     }
 
     // Compute the overall bounding box.
-    float minX = std::numeric_limits<float>::max();
-    float maxX = std::numeric_limits<float>::lowest();
-    float minY = std::numeric_limits<float>::max();
-    float maxY = std::numeric_limits<float>::lowest();
+    float min_x = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::lowest();
+    float min_y = std::numeric_limits<float>::max();
+    float max_y = std::numeric_limits<float>::lowest();
     for (const auto& poly : polygons) {
         for (const auto& point : poly) {
-            minX = std::min(minX, point.x);
-            maxX = std::max(maxX, point.x);
-            minY = std::min(minY, point.y);
-            maxY = std::max(maxY, point.y);
+            min_x = std::min(min_x, point.x);
+            max_x = std::max(max_x, point.x);
+            min_y = std::min(min_y, point.y);
+            max_y = std::max(max_y, point.y);
         }
     }
 
-    // Normalize all polygons into a [0,1] range.
+    // Normalize all polygons into a [0,1] range and flip Y.
     std::vector<std::vector<b2Vec2>> normalized_polygons;
     for (const auto& poly : polygons) {
-        std::vector<b2Vec2> normPoly;
+        std::vector<b2Vec2> norm_poly;
         for (const auto& point : poly) {
-            float normX = (point.x - minX) / (maxX - minX);
-            float normY = (point.y - minY) / (maxY - minY);
-            normPoly.push_back({normX, normY});
+            float norm_x = (point.x - min_x) / (max_x - min_x);
+            // Y inversion
+            float norm_y = 1.0f - (point.y - min_y) / (max_y - min_y);
+            norm_poly.push_back({norm_x, norm_y});
         }
-        normalized_polygons.push_back(normPoly);
+        normalized_polygons.push_back(norm_poly);
     }
 
     if (normalized_polygons.empty()) {
         throw std::runtime_error("No polygons loaded from file.");
     }
 
-    // Compute effective area in normalized space:
-    // effective_area = (area of main polygon) - (sum of areas of holes)
-    float mainArea = compute_polygon_area(normalized_polygons[0]);
-    float holesArea = 0.0f;
-    for (size_t i = 1; i < normalized_polygons.size(); i++) {
-        holesArea += compute_polygon_area(normalized_polygons[i]);
+    // Compute effective area in normalized space.
+    float main_area = compute_polygon_area(normalized_polygons[0]);
+    float holes_area = 0.0f;
+    for (size_t i = 1; i < normalized_polygons.size(); ++i) {
+        holes_area += compute_polygon_area(normalized_polygons[i]);
     }
-    float effectiveArea = mainArea - holesArea;
-    if (effectiveArea <= 0) {
+    float effective_area = main_area - holes_area;
+    if (effective_area <= 0) {
         throw std::runtime_error("Effective area of polygons is non-positive.");
     }
 
-    // Determine the scale factor s so that:
-    // (normalized effective area) * s^2 = total_surface
-    float scale = std::sqrt(total_surface / effectiveArea);
+    // Determine the scale factor s.
+    float scale = std::sqrt(total_surface / effective_area);
 
     // Apply uniform scaling to all normalized polygons.
     std::vector<std::vector<b2Vec2>> scaled_polygons;
     for (const auto& poly : normalized_polygons) {
-        std::vector<b2Vec2> scaledPoly;
+        std::vector<b2Vec2> scaled_poly;
         for (const auto& point : poly) {
-            scaledPoly.push_back({point.x * scale, point.y * scale});
+            scaled_poly.push_back({point.x * scale, point.y * scale});
         }
-        scaled_polygons.push_back(scaledPoly);
+        scaled_polygons.push_back(scaled_poly);
     }
 
     return scaled_polygons;
 }
+
 
 
 b2Vec2 generate_random_point_within_polygon(const std::vector<b2Vec2>& polygon) {
