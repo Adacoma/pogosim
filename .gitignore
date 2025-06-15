@@ -62,6 +62,7 @@ pogobot-sdk
 TODO
 tmp/
 results/
+*.old
 
 # Output data files
 *.feather
@@ -75,6 +76,7 @@ examples/phototaxis/phototaxis
 examples/walls/walls
 examples/cpp_helloworld/cpp_helloworld
 examples/neighbor_counter/neighbor_counter
+examples/run_tumble_wait/run_tumble_wait
 
 # Apptainer
 *.sif
