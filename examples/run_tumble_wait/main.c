@@ -27,9 +27,12 @@
 // ρ  ≡  μ  / n_max     (mean fill fraction in [0…1])
 float rho_star          = 0.30f;        // 0 … 1  : wall/lattice ⇢ gas
 // χ  ≡  σ²/μ – 1       (index of dispersion)
-float chi_star          = 3.00f;        // >0   : lattice,  0 : Poisson, <0 : cluster
+float chi_star          = 0.00f;        // >0   : lattice,  0 : Poisson, <0 : cluster
 // ε  ≡  1 – K_act      (fraction of recent time _not_ moving)
 float eps_star          = 0.00f;        // 0…1  : ergodic ⇢ frozen
+
+// Movement
+bool enable_backward_dir = true;
 
 // Gains
 float k_rho             = 0.10f;        // s⁻¹  – density  loop gain (p_wait)
@@ -51,6 +54,7 @@ float n_max             = 15.0f;        // The largest number of robots that cou
 
 // Timing constants
 uint32_t t_wait_ms      = 4000U;        // ms  - length of a WAIT pause
+uint32_t max_age_ms     = 1500U;        // ms  - max age of an heartbeat message
 uint8_t heartbeat_hz    = 10U;
 #define heartbeat_period_ms     (1000U / heartbeat_hz)
 uint8_t main_loop_freq_hz    = 60U;
@@ -124,7 +128,7 @@ typedef struct {
     uint32_t   last_step_ms;
     uint32_t   last_tumble_decision_ms;
 
-    /* ─ Misc (motor dir persisted in EEPROM) ─ */
+    /* ─ Motor dir persisted in EEPROM ─ */
     uint8_t    motor_dir_left;
     uint8_t    motor_dir_right;
 } USERDATA;
@@ -192,6 +196,7 @@ static void recalc_dir_counts(void) {
 /* -------------------------------------------------------------------------- */
 static uint32_t sample_tumble_duration(void) { /* uniform 200–800 ms */
     return 200U + (uint32_t)(rand() % 600U);
+    //return 100U + (uint32_t)(rand() % 300U);
 }
 
 /* mean run duration = 1/γ  (capped 0.5–20 s) */
@@ -207,7 +212,7 @@ static uint32_t sample_run_duration(void) {
 
 /* helper: change forward/backward motor polarity randomly                */
 static void set_robot_direction(bool backward) {
-    if (backward) {
+    if (enable_backward_dir && backward) {
         pogobot_motor_dir_set(motorL, (mydata->motor_dir_left  == 0 ? 1 : 0));
         pogobot_motor_dir_set(motorR, (mydata->motor_dir_right == 0 ? 1 : 0));
     } else {
@@ -370,12 +375,12 @@ void user_step(void) {
     const float alpha_act  = dt_s / tau_act;
 
     /* ─–––– neighbour statistics ─–––– */
-    purge_old_neighbors(now, 1200U);          /* 1.2 s age cutoff */
+    purge_old_neighbors(now, max_age_ms);
     recalc_dir_counts();
 
     /* ─–––– MOTION STATE MACHINE ─–––– */
     if (mydata->state == STATE_WAIT) {
-        /* decrement WAIT timer                                             */
+        /* decrement WAIT timer */
         if (mydata->wait_timer_ms > elapsed_ms) {
             mydata->wait_timer_ms -= elapsed_ms;
         } else {
@@ -392,15 +397,14 @@ void user_step(void) {
                        t_wait_ms / 1000.0f);
         }
 
-        /* motors OFF while waiting                                         */
+        /* motors OFF while waiting */
         pogobot_motor_set(motorL, motorStop);
         pogobot_motor_set(motorR, motorStop);
-    }
-    else {                                     /* RUN / TUMBLE */
+    } else {                                     /* RUN / TUMBLE */
         run_and_tumble_step();
     }
 
-    /*  moved?  (RUN counts as 1, WAIT & TUMBLE count as 0)                 */
+    /*  moved?  (RUN counts as 1, WAIT & TUMBLE count as 0) */
     float moved = (mydata->state == STATE_RUN) ? 1.0f : 0.0f;
 
     /* ─–––– UPDATE METRICS (μ, σ², K_act) ─–––– */
@@ -409,7 +413,7 @@ void user_step(void) {
     mydata->m2_ewma += alpha_stats * (D*D   - mydata->m2_ewma);
     mydata->k_act   += alpha_act   * (moved - mydata->k_act);
 
-    /* compute derived scalars                                              */
+    /* compute derived scalars */
     float sigma2 = mydata->m2_ewma - mydata->mu_ewma * mydata->mu_ewma;
     if (sigma2 < 0.0f) { sigma2 = 0.0f; }                       /* numeric */
 
@@ -422,7 +426,8 @@ void user_step(void) {
     mydata->eps_curr = 1.0f - mydata->k_act;                    /* ε */
 
     /* ─–––– VARIANCE LOOP  (γ) ─–––– */
-    float err_chi  = chi_star - mydata->chi_curr;     /* >0 ⇒ need less var */
+    //float err_chi  = chi_star - mydata->chi_curr;     /* >0 ⇒ need less var */
+    float err_chi  = mydata->chi_curr - chi_star;     /* <0 ⇒ need less var */
     mydata->gamma_i += k_chi * err_chi;
     mydata->gamma_i  = clip(gamma_min, mydata->gamma_i, gamma_max);
 
@@ -450,9 +455,9 @@ void user_step(void) {
         pogobot_motor_set(motorR, motorStop);
 
         DBG_PRINTF("[R%u] RUN → WAIT    (ρ=%.2f χ=%.2f ε=%.2f, p=%.2f)\n",
-                   pogobot_helper_getid(),
-                   mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
-                   mydata->p_wait);
+                pogobot_helper_getid(),
+                mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
+                mydata->p_wait);
     }
 
     /* ------------------------------------------------------------------ */
@@ -471,10 +476,13 @@ void user_step(void) {
     colour_for_state(mydata->state, &r, &g, &b);
     pogobot_led_setColors(r, g, b, 1);
 
-//    DBG_PRINTF("[R%u] ρ=%.2f χ=%.2f ε=%.2f  p_wait=%.2f  γ=%.2f\n",
-//               pogobot_helper_getid(),
-//               mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
-//               mydata->p_wait,   mydata->gamma_i);
+    if (pogobot_helper_getid() == 0) {     // Only print messages for robot 0
+        DBG_PRINTF("[R%u] ρ=%.2f χ=%.2f ε=%.2f   err_chi=%.2f   p_wait=%.2f  γ=%.5f\n",
+                   pogobot_helper_getid(),
+                   mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
+                   err_chi,
+                   mydata->p_wait,   mydata->gamma_i);
+    }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -490,6 +498,7 @@ void global_setup() {
     init_from_configuration(rho_star);
     init_from_configuration(chi_star);
     init_from_configuration(eps_star);
+    init_from_configuration(enable_backward_dir);
     init_from_configuration(k_rho);
     init_from_configuration(k_chi);
     init_from_configuration(k_eps);
@@ -503,6 +512,8 @@ void global_setup() {
         printf("ERROR: 'n_max' must be less or equal to MAX_NEIGHBORS.\n");
         assert(n_max > MAX_NEIGHBORS);
     }
+    init_from_configuration(t_wait_ms);
+    init_from_configuration(max_age_ms);
     init_from_configuration(heartbeat_hz);
     init_from_configuration(main_loop_freq_hz);
     init_from_configuration(bootstrap_time_ms);
@@ -514,7 +525,7 @@ static void create_data_schema(void) {
     data_add_column_double("rho");
     data_add_column_double("chi");
     data_add_column_double("eps");
-    data_add_column_double("lambda");
+    data_add_column_double("gamma");
     data_add_column_double("p_wait");
     data_add_column_int8 ("state");
 }
@@ -525,7 +536,7 @@ static void export_data(void) {
     data_set_value_double("rho",            mydata->rho_curr);
     data_set_value_double("chi",            mydata->chi_curr);
     data_set_value_double("eps",            mydata->eps_curr);
-    data_set_value_double("lambda",         mydata->gamma_i);
+    data_set_value_double("gamma",         mydata->gamma_i);
     data_set_value_double("p_wait",         mydata->p_wait);
     data_set_value_int8 ("state",          (int8_t)mydata->state);
 }
