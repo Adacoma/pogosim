@@ -233,6 +233,9 @@ static void print_colormap_table(void) {
  * run-and-tumble behavior.
  */
 void user_init(void) {
+    srand(pogobot_helper_getRandSeed()); // initialize the random number generator
+    pogobot_infrared_set_power(2); // set the power level used to send all the next messages
+
     memset(mydata, 0, sizeof(*mydata));
 
     /* Radio power, scheduler and callbacks. */
