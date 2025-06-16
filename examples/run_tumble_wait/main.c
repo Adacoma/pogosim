@@ -63,6 +63,9 @@ uint32_t bootstrap_time_ms = 4000U;
 
 #define DBG_PRINTF(...)  printf(__VA_ARGS__)
 
+#define TURN_LEFT  1
+#define TURN_RIGHT 0
+
 /* -------------------------------------------------------------------------- */
 /* ROBOT STATES                                                               */
 /* -------------------------------------------------------------------------- */
@@ -221,6 +224,36 @@ static void set_robot_direction(bool backward) {
     }
 }
 
+uint8_t choose_tumble_direction(void) {
+    // For clustering (χ > 0): turn toward sparse areas
+    // For dispersal (χ < 0): turn toward dense areas
+    
+    float left_density = mydata->dir_counts[ir_left];
+    float right_density = mydata->dir_counts[ir_right];
+
+    float chi_error = chi_star - mydata->chi_curr;
+    
+    // Add some randomness to prevent deterministic patterns
+    float random_bias = (rand_unitf() - 0.5f) * 0.2f;  // ±10% random component
+    
+    if (chi_error > 0.1f) {  
+        // Need MORE clustering (higher χ)
+        // Turn toward SPARSER areas to allow cluster formation
+        float bias = (left_density - right_density) + random_bias;
+        return (bias < 0) ? TURN_LEFT : TURN_RIGHT;
+        
+    } else if (chi_error < -0.1f) {  
+        // Need LESS clustering (lower χ) 
+        // Turn toward DENSER areas to break up clusters
+        float bias = (right_density - left_density) + random_bias;
+        return (bias < 0) ? TURN_LEFT : TURN_RIGHT;
+        
+    } else {
+        // Near target - use random tumbling
+        return (rand() & 1U) ? TURN_LEFT : TURN_RIGHT;
+    }
+}
+
 /* predicates */
 static bool tumble_due(uint32_t now) {
     return (now - mydata->last_tumble_decision_ms) >= mydata->run_timer_ms;
@@ -246,7 +279,13 @@ static void run_and_tumble_step(void) {
             set_robot_direction(false);                 /* ensure forward */
 
             /* random left/right turn stored in MSB */
-            if (rand() & 1U) { mydata->tumble_duration_ms |= 0x80000000U; }
+            //if (rand() & 1U) { mydata->tumble_duration_ms |= 0x80000000U; }
+
+            // Density-based tumbling
+            uint8_t turn_direction = choose_tumble_direction();  // based on neighbor density
+            if (turn_direction == TURN_LEFT) { 
+                mydata->tumble_duration_ms |= 0x80000000U; 
+            }
 
             DBG_PRINTF("[R%u] RUN → TUMBLE  (dur=%ums)\n",
                        pogobot_helper_getid(),
@@ -255,6 +294,57 @@ static void run_and_tumble_step(void) {
     }
     else if (mydata->state == STATE_TUMBLE) {
         /* pivot */
+        if (mydata->tumble_duration_ms & 0x80000000U) { /* left */
+            pogobot_motor_set(motorL, motorStop);
+            pogobot_motor_set(motorR, motorFull);
+        } else {                                       /* right */
+            pogobot_motor_set(motorL, motorFull);
+            pogobot_motor_set(motorR, motorStop);
+        }
+
+        if (tumble_done(now)) {
+            mydata->state                  = STATE_RUN;
+            mydata->last_tumble_decision_ms= now;
+            mydata->run_timer_ms           = sample_run_duration();
+            set_robot_direction(rand() & 1U);
+
+            DBG_PRINTF("[R%u] TUMBLE → RUN   (γ=%.3f, run=%ums)\n",
+                       pogobot_helper_getid(),
+                       mydata->gamma_i,
+                       mydata->run_timer_ms);
+        }
+    }
+}
+
+static void run_and_tumble_step_with_bias(void) {
+    uint32_t now = current_time_milliseconds();
+
+    if (mydata->state == STATE_RUN) {
+        /* full speed ahead */
+        pogobot_motor_set(motorL, motorFull);
+        pogobot_motor_set(motorR, motorFull);
+
+        if (tumble_due(now)) {
+            mydata->state               = STATE_TUMBLE;
+            mydata->tumble_timer_ms     = now;
+            mydata->tumble_duration_ms  = sample_tumble_duration();
+            set_robot_direction(false);                 /* ensure forward */
+
+            /* MODIFIED: Use biased direction selection instead of random */
+            uint8_t turn_direction = choose_tumble_direction();
+            if (turn_direction == TURN_LEFT) { 
+                mydata->tumble_duration_ms |= 0x80000000U; 
+            }
+
+            DBG_PRINTF("[R%u] RUN → TUMBLE  (dur=%ums, dir=%s, χ_err=%.2f)\n",
+                       pogobot_helper_getid(),
+                       mydata->tumble_duration_ms & 0x7FFFFFFFU,
+                       (turn_direction == TURN_LEFT) ? "LEFT" : "RIGHT",
+                       chi_star - mydata->chi_curr);
+        }
+    }
+    else if (mydata->state == STATE_TUMBLE) {
+        /* pivot (unchanged) */
         if (mydata->tumble_duration_ms & 0x80000000U) { /* left */
             pogobot_motor_set(motorL, motorStop);
             pogobot_motor_set(motorR, motorFull);
@@ -401,7 +491,8 @@ void user_step(void) {
         pogobot_motor_set(motorL, motorStop);
         pogobot_motor_set(motorR, motorStop);
     } else {                                     /* RUN / TUMBLE */
-        run_and_tumble_step();
+        //run_and_tumble_step();
+        run_and_tumble_step_with_bias();
     }
 
     /*  moved?  (RUN counts as 1, WAIT & TUMBLE count as 0) */
@@ -477,11 +568,13 @@ void user_step(void) {
     pogobot_led_setColors(r, g, b, 1);
 
     if (pogobot_helper_getid() == 0) {     // Only print messages for robot 0
-        DBG_PRINTF("[R%u] ρ=%.2f χ=%.2f ε=%.2f   err_chi=%.2f   p_wait=%.2f  γ=%.5f\n",
+        DBG_PRINTF("[R%u] ρ=%.2f χ=%.2f ε=%.2f   err_chi=%.2f   p_wait=%.2f  γ=%.5f  mu_ewma=%.5f m2_ewma=%.5f  tot_neighbors=%u\n",
                    pogobot_helper_getid(),
                    mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
                    err_chi,
-                   mydata->p_wait,   mydata->gamma_i);
+                   mydata->p_wait,   mydata->gamma_i,
+                   mydata->mu_ewma, mydata->m2_ewma,
+                   mydata->total_neighbors);
     }
 }
 
