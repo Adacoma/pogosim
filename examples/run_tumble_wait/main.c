@@ -22,12 +22,20 @@
 #include <math.h>
 #include <assert.h>
 
+#define PBI_BASED_CONTROL
+
 // "Global" variables set by the YAML configuration file (in simulation) by the function global_setup, or with a fixed values (in experiments). These values should be seen as constants shared by all robots.
 
+#ifdef PBI_BASED_CONTROL
+// pbi = (µ / σ²) / (µ² / n_max)
+float pbi_star          = 0.0f;         // Spatial structure control. From clustered (<0), Poisson/random (0), Binomial (1) to sub-binomial/lattice (>1)
+#else
 // ρ  ≡  μ  / n_max     (mean fill fraction in [0…1])
 float rho_star          = 0.30f;        // 0 … 1  : wall/lattice ⇢ gas
 // χ  ≡  σ²/μ – 1       (index of dispersion)
 float chi_star          = 0.00f;        // >0   : lattice,  0 : Poisson, <0 : cluster
+#endif
+
 // ε  ≡  1 – K_act      (fraction of recent time _not_ moving)
 float eps_star          = 0.00f;        // 0…1  : ergodic ⇢ frozen
 
@@ -35,8 +43,12 @@ float eps_star          = 0.00f;        // 0…1  : ergodic ⇢ frozen
 bool enable_backward_dir = true;
 
 // Gains
+#ifdef PBI_BASED_CONTROL
+float k_pbi             = 0.02;        // s⁻¹  – variance loop gain (γ) - PBI
+#else
 float k_rho             = 0.10f;        // s⁻¹  – density  loop gain (p_wait)
 float k_chi             = 0.02f;        // s⁻¹  – variance loop gain (γ)
+#endif
 float k_eps             = 0.10f;        // s⁻¹  – ergodicity loop gain (p_wait)
 
 // EWMA windows
@@ -119,6 +131,9 @@ typedef struct {
     float      mu_ewma;      /* ⟨D⟩ */
     float      m2_ewma;      /* ⟨D²⟩ */
     float      k_act;        /* mobility (1=moving) */
+#ifdef PBI_BASED_CONTROL
+    float      pbi_curr;
+#endif
     float      rho_curr;
     float      chi_curr;
     float      eps_curr;
@@ -166,6 +181,26 @@ static void colour_for_state(robot_state_t st, uint8_t *r,
     case STATE_WAIT:   *r = 255; *g = 0;   *b = 0;   break; /* red     */
     }
 }
+
+#ifdef PBI_BASED_CONTROL
+float calculate_pbi(void) {
+    float mu = mydata->mu_ewma;
+    float var = mydata->m2_ewma - mu * mu;
+    if (var < 0.0f) var = 0.0f;
+    
+    float denom = (mu * mu) / n_max;
+////    if (denom < 1e-6f) return 0.0f;  // avoid division by zero
+////    
+////    return (mu - var) / denom;
+//    if (denom < 0.1f) return 0.0f;  // Increased threshold
+//    
+//    // Add stability margin
+//    return clip(-2.0f, (mu - var) / denom, 2.0f);
+
+    // XXX
+    return var / mu;
+}
+#endif
 
 /* -------------------------------------------------------------------------- */
 /* NEIGHBOR BOOK-KEEPING                                                      */
@@ -224,18 +259,43 @@ static void set_robot_direction(bool backward) {
     }
 }
 
+
+/**
+ * Choose tumble direction based on chi, or on spatial PBI control
+ */
 uint8_t choose_tumble_direction(void) {
     // For clustering (χ > 0): turn toward sparse areas
     // For dispersal (χ < 0): turn toward dense areas
     
     float left_density = mydata->dir_counts[ir_left];
     float right_density = mydata->dir_counts[ir_right];
-
-    float chi_error = chi_star - mydata->chi_curr;
     
     // Add some randomness to prevent deterministic patterns
     float random_bias = (rand_unitf() - 0.5f) * 0.2f;  // ±10% random component
-    
+
+#ifdef PBI_BASED_CONTROL
+    float pbi_curr = calculate_pbi();
+    float pbi_error = pbi_star - pbi_curr;  // Assuming pbi_star is defined globally
+
+    if (pbi_error > 0.1f) {  
+        // Need HIGHER PBI (more regular/uniform spacing)
+        // Turn AWAY FROM denser areas to promote uniformity
+        float bias = (right_density - left_density) + random_bias;
+        return (bias < 0) ? TURN_LEFT : TURN_RIGHT;
+        
+    } else if (pbi_error < -0.1f) {  
+        // Need LOWER PBI (more clustering/heterogeneity)
+        // Turn TOWARD denser areas to promote clustering
+        float bias = (left_density - right_density) + random_bias;
+        return (bias < 0) ? TURN_LEFT : TURN_RIGHT;
+        
+    } else {
+        // Near target - use random tumbling
+        return (rand() & 1U) ? TURN_LEFT : TURN_RIGHT;
+    }
+#else
+    float chi_error = chi_star - mydata->chi_curr;
+
     if (chi_error > 0.1f) {  
         // Need MORE clustering (higher χ)
         // Turn toward SPARSER areas to allow cluster formation
@@ -252,7 +312,9 @@ uint8_t choose_tumble_direction(void) {
         // Near target - use random tumbling
         return (rand() & 1U) ? TURN_LEFT : TURN_RIGHT;
     }
+#endif
 }
+
 
 /* predicates */
 static bool tumble_due(uint32_t now) {
@@ -294,57 +356,6 @@ static void run_and_tumble_step(void) {
     }
     else if (mydata->state == STATE_TUMBLE) {
         /* pivot */
-        if (mydata->tumble_duration_ms & 0x80000000U) { /* left */
-            pogobot_motor_set(motorL, motorStop);
-            pogobot_motor_set(motorR, motorFull);
-        } else {                                       /* right */
-            pogobot_motor_set(motorL, motorFull);
-            pogobot_motor_set(motorR, motorStop);
-        }
-
-        if (tumble_done(now)) {
-            mydata->state                  = STATE_RUN;
-            mydata->last_tumble_decision_ms= now;
-            mydata->run_timer_ms           = sample_run_duration();
-            set_robot_direction(rand() & 1U);
-
-            DBG_PRINTF("[R%u] TUMBLE → RUN   (γ=%.3f, run=%ums)\n",
-                       pogobot_helper_getid(),
-                       mydata->gamma_i,
-                       mydata->run_timer_ms);
-        }
-    }
-}
-
-static void run_and_tumble_step_with_bias(void) {
-    uint32_t now = current_time_milliseconds();
-
-    if (mydata->state == STATE_RUN) {
-        /* full speed ahead */
-        pogobot_motor_set(motorL, motorFull);
-        pogobot_motor_set(motorR, motorFull);
-
-        if (tumble_due(now)) {
-            mydata->state               = STATE_TUMBLE;
-            mydata->tumble_timer_ms     = now;
-            mydata->tumble_duration_ms  = sample_tumble_duration();
-            set_robot_direction(false);                 /* ensure forward */
-
-            /* MODIFIED: Use biased direction selection instead of random */
-            uint8_t turn_direction = choose_tumble_direction();
-            if (turn_direction == TURN_LEFT) { 
-                mydata->tumble_duration_ms |= 0x80000000U; 
-            }
-
-            DBG_PRINTF("[R%u] RUN → TUMBLE  (dur=%ums, dir=%s, χ_err=%.2f)\n",
-                       pogobot_helper_getid(),
-                       mydata->tumble_duration_ms & 0x7FFFFFFFU,
-                       (turn_direction == TURN_LEFT) ? "LEFT" : "RIGHT",
-                       chi_star - mydata->chi_curr);
-        }
-    }
-    else if (mydata->state == STATE_TUMBLE) {
-        /* pivot (unchanged) */
         if (mydata->tumble_duration_ms & 0x80000000U) { /* left */
             pogobot_motor_set(motorL, motorStop);
             pogobot_motor_set(motorR, motorFull);
@@ -438,6 +449,9 @@ void user_init(void) {
     mydata->mu_ewma   = 0.0f;
     mydata->m2_ewma   = 0.0f;
     mydata->k_act     = 1.0f;      /* moving */
+#ifdef PBI_BASED_CONTROL
+    mydata->pbi_curr  = 0.0f;
+#endif
     mydata->rho_curr  = 0.0f;
     mydata->chi_curr  = 0.0f;
     mydata->eps_curr  = 0.0f;
@@ -491,8 +505,7 @@ void user_step(void) {
         pogobot_motor_set(motorL, motorStop);
         pogobot_motor_set(motorR, motorStop);
     } else {                                     /* RUN / TUMBLE */
-        //run_and_tumble_step();
-        run_and_tumble_step_with_bias();
+        run_and_tumble_step();
     }
 
     /*  moved?  (RUN counts as 1, WAIT & TUMBLE count as 0) */
@@ -516,6 +529,20 @@ void user_step(void) {
     }
     mydata->eps_curr = 1.0f - mydata->k_act;                    /* ε */
 
+#ifdef PBI_BASED_CONTROL
+    /* ─–––– VARIANCE LOOP  (γ) ─–––– */
+    mydata->pbi_curr = calculate_pbi();
+    float err_pbi = pbi_star - mydata->pbi_curr;
+    mydata->gamma_i += k_pbi * err_pbi;
+    mydata->gamma_i  = clip(gamma_min, mydata->gamma_i, gamma_max);
+
+    /* ─–––– DENSITY & ERGODICITY LOOP  (p_wait) ─–––– */
+    float err_eps  = eps_star - mydata->eps_curr;     /* >0 ⇒ too frozen */
+    mydata->p_wait += k_eps * err_eps;
+    mydata->p_wait  = clip(0.0f, mydata->p_wait, 1.0f);
+    //mydata->p_wait  = clip(0.0f, mydata->p_wait, 0.9f);
+
+#else
     /* ─–––– VARIANCE LOOP  (γ) ─–––– */
     //float err_chi  = chi_star - mydata->chi_curr;     /* >0 ⇒ need less var */
     float err_chi  = mydata->chi_curr - chi_star;     /* <0 ⇒ need less var */
@@ -525,10 +552,10 @@ void user_step(void) {
     /* ─–––– DENSITY & ERGODICITY LOOP  (p_wait) ─–––– */
     float err_rho  = mydata->rho_curr - rho_star;     /* >0 ⇒ too dense */
     float err_eps  = eps_star - mydata->eps_curr;     /* >0 ⇒ too frozen */
-
     mydata->p_wait += k_rho * err_rho + k_eps * err_eps;
     mydata->p_wait  = clip(0.0f, mydata->p_wait, 1.0f);
     //mydata->p_wait  = clip(0.0f, mydata->p_wait, 0.9f);
+#endif
 
     /* Disable the WAIT state at the beginning of the simulation, to ensure the robots disperse */
     if (now < bootstrap_time_ms) {          // first K s after power-on
@@ -545,10 +572,18 @@ void user_step(void) {
         pogobot_motor_set(motorL, motorStop);
         pogobot_motor_set(motorR, motorStop);
 
+#ifdef PBI_BASED_CONTROL
+        DBG_PRINTF("[R%u] RUN → WAIT    (pbi=%.2f ρ=%.2f χ=%.2f ε=%.2f, p=%.2f)\n",
+                pogobot_helper_getid(),
+                mydata->pbi_curr,
+                mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
+                mydata->p_wait);
+#else
         DBG_PRINTF("[R%u] RUN → WAIT    (ρ=%.2f χ=%.2f ε=%.2f, p=%.2f)\n",
                 pogobot_helper_getid(),
                 mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
                 mydata->p_wait);
+#endif
     }
 
     /* ------------------------------------------------------------------ */
@@ -568,6 +603,15 @@ void user_step(void) {
     pogobot_led_setColors(r, g, b, 1);
 
     if (pogobot_helper_getid() == 0) {     // Only print messages for robot 0
+#ifdef PBI_BASED_CONTROL
+        DBG_PRINTF("[R%u] pbi=%.2f   ρ=%.2f χ=%.2f ε=%.2f  p_wait=%.2f  γ=%.5f  mu_ewma=%.5f m2_ewma=%.5f  tot_neighbors=%u\n",
+                   pogobot_helper_getid(),
+                   mydata->pbi_curr,
+                   mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
+                   mydata->p_wait,   mydata->gamma_i,
+                   mydata->mu_ewma, mydata->m2_ewma,
+                   mydata->total_neighbors);
+#else
         DBG_PRINTF("[R%u] ρ=%.2f χ=%.2f ε=%.2f   err_chi=%.2f   p_wait=%.2f  γ=%.5f  mu_ewma=%.5f m2_ewma=%.5f  tot_neighbors=%u\n",
                    pogobot_helper_getid(),
                    mydata->rho_curr, mydata->chi_curr, mydata->eps_curr,
@@ -575,6 +619,7 @@ void user_step(void) {
                    mydata->p_wait,   mydata->gamma_i,
                    mydata->mu_ewma, mydata->m2_ewma,
                    mydata->total_neighbors);
+#endif
     }
 }
 
@@ -588,12 +633,17 @@ void user_step(void) {
  * @brief Function called once to initialize global values (e.g. configuration-specified constants)
  */
 void global_setup() {
+#ifdef PBI_BASED_CONTROL
+    init_from_configuration(pbi_star);
+    init_from_configuration(k_pbi);
+#else
     init_from_configuration(rho_star);
     init_from_configuration(chi_star);
-    init_from_configuration(eps_star);
-    init_from_configuration(enable_backward_dir);
     init_from_configuration(k_rho);
     init_from_configuration(k_chi);
+#endif
+    init_from_configuration(eps_star);
+    init_from_configuration(enable_backward_dir);
     init_from_configuration(k_eps);
     init_from_configuration(tau_stats);
     init_from_configuration(tau_act);
@@ -615,6 +665,9 @@ void global_setup() {
 // Function called once by the simulator to specify user-defined data fields to add to the exported data files
 static void create_data_schema(void) {
     data_add_column_int8 ("total_neighbors");
+#ifdef PBI_BASED_CONTROL
+    data_add_column_double("pbi");
+#endif
     data_add_column_double("rho");
     data_add_column_double("chi");
     data_add_column_double("eps");
@@ -626,6 +679,9 @@ static void create_data_schema(void) {
 // Function called periodically by the simulator each time data is saved (cf config parameter "save_data_period" in seconds)
 static void export_data(void) {
     data_set_value_int8 ("total_neighbors", mydata->total_neighbors);
+#ifdef PBI_BASED_CONTROL
+    data_set_value_double("pbi",            mydata->pbi_curr);
+#endif
     data_set_value_double("rho",            mydata->rho_curr);
     data_set_value_double("chi",            mydata->chi_curr);
     data_set_value_double("eps",            mydata->eps_curr);
