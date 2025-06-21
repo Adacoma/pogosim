@@ -95,6 +95,10 @@ int main(int argc, char** argv) {
         glogger->info("Verbose mode enabled.");
         glogger->set_level(spdlog::level::debug);
         robotlogger->set_level(spdlog::level::debug);
+        auto glogger_console_sink = glogger->sinks().front();
+        glogger_console_sink->set_level(spdlog::level::debug);
+        auto robotlogger_console_sink = robotlogger->sinks().front();
+        robotlogger_console_sink->set_level(spdlog::level::debug);
     }
 
     if (do_not_show_robot_msg) {
