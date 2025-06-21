@@ -302,6 +302,8 @@ int16_t pogobot_battery_voltage_read( void ) {
  */
 void pogobot_motor_power_set( motor_id motor, uint16_t value ) {
     glogger->debug("{} Motor {} set to speed {}", log_current_robot(), static_cast<uint8_t>(motor), value);
+    if (value > motorFull)
+        value = motorFull;
     current_robot->set_motor(motor, value);
 }
 
