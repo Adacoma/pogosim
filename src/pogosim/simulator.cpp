@@ -191,6 +191,16 @@ void Simulation::create_objects() {
         } else if (initial_formation == "power_lloyd") {
             points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "chessboard") {
+            //points = generate_chessboard_points(arena_polygons, objects_radii.size(), max_comm_radius, {formation_offset.first, formation_offset.second}, formation_rotation);
+            //points = generate_chessboard_points(arena_polygons, objects_radii.size(), 0.1);
+            points = generate_chessboard_points(arena_polygons, objects_radii.size(), formation_min_space_between_neighbors, formation_cluster_at_center);
+            std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "aligned_chessboard") {
+            //points = generate_chessboard_points(arena_polygons, objects_radii.size(), max_comm_radius, {formation_offset.first, formation_offset.second}, formation_rotation);
+            //points = generate_chessboard_points(arena_polygons, objects_radii.size(), 0.1);
+            points = generate_chessboard_points(arena_polygons, objects_radii.size(), formation_min_space_between_neighbors, formation_cluster_at_center);
+            std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "imported") {
             if (formation_filename == "") {
                 throw std::runtime_error("Parameter 'formation_filename' is empty!");
@@ -398,6 +408,9 @@ void Simulation::init_config() {
     formation_filename = config["formation_filename"].get(std::string(""));
     imported_formation_min_coords = config["imported_formation_min_coords"].get<decltype(imported_formation_min_coords)>({NAN, NAN});
     imported_formation_max_coords = config["imported_formation_max_coords"].get<decltype(imported_formation_min_coords)>({NAN, NAN});
+//    formation_offset = config["formation_offset"].get<decltype(formation_offset)>({NAN, NAN});
+//    formation_rotation = config["formation_rotation"].get(0.0f);
+    formation_cluster_at_center = config["formation_cluster_at_center"].get(false);
 
     enable_gui = config["GUI"].get(true);
     GUI_speed_up = config["GUI_speed_up"].get(1.0f);

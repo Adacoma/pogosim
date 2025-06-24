@@ -213,6 +213,41 @@ std::vector<b2Vec2> generate_random_points_power_lloyd(
         std::uint32_t      max_restarts       = 3);
 
 
+
+/**
+ * @brief Generate a square-grid ("checkerboard") layout with **exactly
+ *        @p n_points** nodes inside a (possibly holed) polygonal arena.
+ *
+ * The grid is axis-aligned with spacing approximately @p pitch. The function
+ * will try multiple strategies to achieve exactly the requested number of points:
+ *   1. Try exact grid with the given pitch
+ *   2. Try grids with slightly adjusted pitch values
+ *   3. Use grid points as base and add/remove points strategically
+ *   4. For small numbers, use optimized placement
+ *
+ * @param[in] polygons      0 = outer boundary (≥ 3 vertices), 1…N = holes
+ * @param[in] n_points      Exact number of nodes requested (≥ 1)
+ * @param[in] pitch         Target grid spacing in metres (> 0)
+ * @param[in] cluster_center If true, creates compact formation centered in arena
+ *                          without holes. If false, uses distributed placement.
+ *
+ * @return std::vector<b2Vec2>  Exactly @p n_points valid nodes
+ *
+ * @throws std::runtime_error
+ *         • if @p pitch ≤ 0 or @p n_points == 0  
+ *         • if the outer polygon is missing / degenerate  
+ *         • if it is impossible to place @p n_points nodes in the arena
+ *
+ * @note Requires `is_point_within_polygon(poly,x,y)` treating boundary points
+ *       as inside.  Uses Box2D's `b2Vec2` for coordinates.
+ */
+std::vector<b2Vec2> generate_chessboard_points(
+        const std::vector<std::vector<b2Vec2>> &polygons,
+        std::size_t                             n_points,
+        float                                   pitch,
+        bool                                    cluster_center);
+
+
 /**
  * @brief Computes the width and height of a polygon.
  *

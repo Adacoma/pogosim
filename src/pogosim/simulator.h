@@ -81,6 +81,9 @@ class Simulation {
     std::string formation_filename;                                         ///< Name of the csv/feather file containing the initial positions of the robots.
     std::pair<float, float> imported_formation_min_coords;                  ///< Min coordinates of the csv/feather imported file.
     std::pair<float, float> imported_formation_max_coords;                  ///< Max coordinates of the csv/feather imported file.
+//    std::pair<float, float> formation_offset;                               ///< Apply an offset to the formation -- used for the chessboard-style formations.
+//    float formation_rotation;                                               ///< Apply a rotation to the formation -- used for the chessboard-style formations.
+    bool formation_cluster_at_center;                                       ///< Whether the formation starts by assigning coordinates close to the center  -- used for the chessboard-style formations.
 
     double last_frame_shown_t = -1.0;     ///< Time when the last frame was rendered.
     double last_frame_saved_t = -1.0;     ///< Time when the last frame was saved.

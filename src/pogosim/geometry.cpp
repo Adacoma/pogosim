@@ -701,6 +701,339 @@ std::vector<b2Vec2> generate_random_points_power_lloyd(
 }
 
 
+/**
+ * @brief Generate a square-grid ("checkerboard") layout with **exactly
+ *        @p n_points** nodes inside a (possibly holed) polygonal arena.
+ *
+ * The grid is axis-aligned with spacing approximately @p pitch. The function
+ * will try multiple strategies to achieve exactly the requested number of points:
+ *   1. Try exact grid with the given pitch
+ *   2. Try grids with slightly adjusted pitch values
+ *   3. Use grid points as base and add/remove points strategically
+ *   4. For small numbers, use optimized placement
+ *
+ * @param[in] polygons      0 = outer boundary (≥ 3 vertices), 1…N = holes
+ * @param[in] n_points      Exact number of nodes requested (≥ 1)
+ * @param[in] pitch         Target grid spacing in metres (> 0)
+ * @param[in] cluster_center If true, creates compact formation centered in arena
+ *                          without holes. If false, uses distributed placement.
+ *
+ * @return std::vector<b2Vec2>  Exactly @p n_points valid nodes
+ *
+ * @throws std::runtime_error
+ *         • if @p pitch ≤ 0 or @p n_points == 0  
+ *         • if the outer polygon is missing / degenerate  
+ *         • if it is impossible to place @p n_points nodes in the arena
+ *
+ * @note Requires `is_point_within_polygon(poly,x,y)` treating boundary points
+ *       as inside.  Uses Box2D's `b2Vec2` for coordinates.
+ */
+std::vector<b2Vec2> generate_chessboard_points(
+        const std::vector<std::vector<b2Vec2>> &polygons,
+        std::size_t                             n_points,
+        float                                   pitch,
+        bool                                    cluster_center) {
+
+    // ── basic guards ─────────────────────────────────────────────────────
+    if (pitch <= 0.0f)  { 
+        throw std::runtime_error("pitch must be > 0, got: " + std::to_string(pitch)); 
+    }
+    if (n_points == 0U) { 
+        throw std::runtime_error("n_points must be > 0, got: " + std::to_string(n_points)); 
+    }
+    if (polygons.empty()) {
+        throw std::runtime_error("polygons vector is empty");
+    }
+    if (polygons.front().size() < 3) {
+        throw std::runtime_error("outer polygon has insufficient vertices: " + std::to_string(polygons.front().size()));
+    }
+    const auto &outer = polygons.front();
+
+    // ── outer AABB ───────────────────────────────────────────────────────
+    float min_x = std::numeric_limits<float>::max();
+    float min_y = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::lowest();
+    float max_y = std::numeric_limits<float>::lowest();
+    for (const auto &v : outer) {
+        min_x = std::min(min_x, v.x);  min_y = std::min(min_y, v.y);
+        max_x = std::max(max_x, v.x);  max_y = std::max(max_y, v.y);
+    }
+    if (min_x >= max_x || min_y >= max_y) {
+        throw std::runtime_error("Degenerate outer polygon");
+    }
+
+    // ── helper: check if point is valid (inside outer, outside holes) ──
+    const auto is_valid_point = [&](float x, float y) -> bool {
+        if (!is_point_within_polygon(outer, x, y)) { 
+            return false; 
+        }
+        for (std::size_t h = 1; h < polygons.size(); ++h) {
+            if (is_point_within_polygon(polygons[h], x, y)) { 
+                return false; 
+            }
+        }
+        return true;
+    };
+
+    // ── helper: collect grid nodes for a given pitch and origin ──────────
+    const auto collect_grid_nodes = [&](float grid_pitch, float x_origin, float y_origin) -> std::vector<b2Vec2> {
+        std::vector<b2Vec2> nodes;
+        const float margin = grid_pitch * 0.01f;
+        
+        for (float x = x_origin; x <= max_x + margin; x += grid_pitch) {
+            for (float y = y_origin; y <= max_y + margin; y += grid_pitch) {
+                if (is_valid_point(x, y)) {
+                    nodes.push_back({x, y});
+                }
+            }
+        }
+        return nodes;
+    };
+
+    // ── CLUSTER CENTER MODE: Compact formation around center ─────────────
+    if (cluster_center) {
+        // Find polygon centroid
+        double A = 0.0, Cx = 0.0, Cy = 0.0;
+        for (std::size_t i = 0, j = outer.size() - 1; i < outer.size(); j = i++) {
+            double cross = outer[j].x * outer[i].y - outer[i].x * outer[j].y;
+            A  += cross;
+            Cx += (outer[j].x + outer[i].x) * cross;
+            Cy += (outer[j].y + outer[i].y) * cross;
+        }
+        A *= 0.5;
+        
+        float center_x, center_y;
+        if (std::fabs(A) > 1e-12) {
+            center_x = static_cast<float>(Cx / (6.0 * A));
+            center_y = static_cast<float>(Cy / (6.0 * A));
+        } else {
+            // Fallback to AABB center
+            center_x = (min_x + max_x) * 0.5f;
+            center_y = (min_y + max_y) * 0.5f;
+        }
+        
+        // If centroid is not valid, find closest valid point
+        if (!is_valid_point(center_x, center_y)) {
+            float best_dist = std::numeric_limits<float>::max();
+            float best_x = center_x, best_y = center_y;
+            
+            const float search_step = std::min(pitch * 0.1f, (max_x - min_x) * 0.05f);
+            for (float x = min_x; x <= max_x; x += search_step) {
+                for (float y = min_y; y <= max_y; y += search_step) {
+                    if (is_valid_point(x, y)) {
+                        float dist = (x - center_x) * (x - center_x) + (y - center_y) * (y - center_y);
+                        if (dist < best_dist) {
+                            best_dist = dist;
+                            best_x = x;
+                            best_y = y;
+                        }
+                    }
+                }
+            }
+            center_x = best_x;
+            center_y = best_y;
+        }
+        
+        // Generate compact grid around center with EXACT pitch
+        std::vector<b2Vec2> cluster_points;
+        
+        if (n_points == 1) {
+            cluster_points.push_back({center_x, center_y});
+            return cluster_points;
+        }
+        
+        // Calculate how many points we can fit with the given pitch
+        // Start from center and expand in a grid pattern
+        cluster_points.push_back({center_x, center_y}); // Always place center point
+        
+        // Generate positions in expanding square pattern
+        for (int radius = 1; cluster_points.size() < n_points; ++radius) {
+            bool found_any_this_radius = false;
+            
+            // Generate square ring at this radius
+            for (int i = -radius; i <= radius; ++i) {
+                for (int j = -radius; j <= radius; ++j) {
+                    // Skip if not on the perimeter of current radius
+                    if (std::abs(i) != radius && std::abs(j) != radius) continue;
+                    
+                    float x = center_x + i * pitch;
+                    float y = center_y + j * pitch;
+                    
+                    if (is_valid_point(x, y)) {
+                        cluster_points.push_back({x, y});
+                        found_any_this_radius = true;
+                        if (cluster_points.size() >= n_points) break;
+                    }
+                }
+                if (cluster_points.size() >= n_points) break;
+            }
+            
+            // If we didn't find any valid points at this radius, the pitch is too large
+            if (!found_any_this_radius) {
+                break;
+            }
+        }
+        
+        if (cluster_points.size() < n_points) {
+            throw std::runtime_error("Cannot create clustered formation with " + 
+                                   std::to_string(n_points) + " points using pitch " + 
+                                   std::to_string(pitch) + ". Pitch is too large for arena size. " +
+                                   "Maximum possible with this pitch: " + std::to_string(cluster_points.size()));
+        }
+        
+        // If we have exactly the right number, return
+        if (cluster_points.size() == n_points) {
+            return cluster_points;
+        }
+        
+        // If we have too many, keep the ones closest to center
+        std::partial_sort(cluster_points.begin(), 
+                        cluster_points.begin() + n_points,
+                        cluster_points.end(),
+                        [center_x, center_y](const b2Vec2& a, const b2Vec2& b) {
+                            float dist_a = (a.x - center_x) * (a.x - center_x) + (a.y - center_y) * (a.y - center_y);
+                            float dist_b = (b.x - center_x) * (b.x - center_x) + (b.y - center_y) * (b.y - center_y);
+                            return dist_a < dist_b;
+                        });
+        cluster_points.resize(n_points);
+        return cluster_points;
+    }
+
+    // ── helper: try to get exactly n_points with a specific pitch ────────
+    const auto try_exact_grid = [&](float test_pitch) -> std::optional<std::vector<b2Vec2>> {
+        const float margin = test_pitch * 0.1f;
+        const float search_start_x = min_x - margin;
+        const float search_start_y = min_y - margin;
+        
+        // Try different grid origins
+        const float step = test_pitch * 0.05f;
+        for (float dx = 0.0f; dx < test_pitch; dx += step) {
+            for (float dy = 0.0f; dy < test_pitch; dy += step) {
+                auto nodes = collect_grid_nodes(test_pitch, search_start_x + dx, search_start_y + dy);
+                if (nodes.size() == n_points) {
+                    return nodes;
+                }
+            }
+        }
+        return std::nullopt;
+    };
+
+    // ── DISTRIBUTED MODE: Original behavior for full arena coverage ─────
+    // The following strategies distribute points throughout the available arena space
+    
+    // ── Strategy 1: Try exact grid with given pitch ──────────────────────
+    if (auto result = try_exact_grid(pitch)) {
+        return *result;
+    }
+
+    // ── Strategy 2: Try very minor pitch adjustments (±5%) ───────────────
+    // Only try small adjustments to respect user's pitch preference
+    const std::vector<float> minor_adjustments = {0.95f, 1.05f, 0.98f, 1.02f, 0.92f, 1.08f};
+    
+    for (float multiplier : minor_adjustments) {
+        if (auto result = try_exact_grid(pitch * multiplier)) {
+            return *result;
+        }
+    }
+
+    // ── Strategy 3: Check what the exact pitch actually produces ─────────
+    auto grid_points = collect_grid_nodes(pitch, min_x, min_y);
+    
+    // If exact pitch produces some points, work with those
+    if (!grid_points.empty()) {
+        if (grid_points.size() == n_points) {
+            return grid_points;
+        } else if (grid_points.size() > n_points) {
+            // We have more points than needed - select evenly distributed subset
+            std::vector<b2Vec2> selected;
+            if (n_points == 1) {
+                // For single point, take the middle one
+                selected.push_back(grid_points[grid_points.size() / 2]);
+            } else {
+                const float step_size = static_cast<float>(grid_points.size() - 1) / static_cast<float>(n_points - 1);
+                for (std::size_t i = 0; i < n_points; ++i) {
+                    std::size_t index = static_cast<std::size_t>(i * step_size);
+                    if (index < grid_points.size()) {
+                        selected.push_back(grid_points[index]);
+                    }
+                }
+            }
+            if (selected.size() == n_points) {
+                return selected;
+            }
+        } else {
+            // We have fewer points than needed with this pitch
+            throw std::runtime_error("Pitch " + std::to_string(pitch) + 
+                                   " only produces " + std::to_string(grid_points.size()) + 
+                                   " valid points, but " + std::to_string(n_points) + 
+                                   " requested. Try smaller pitch to get more points.");
+        }
+    }
+
+    // ── Strategy 4: Limited pitch reduction for small numbers ─────────────
+    // Only for very small requests and only try modest reductions
+    if (n_points <= 5) {
+        for (float reduction : {0.8f, 0.7f, 0.6f}) {
+            float test_pitch = pitch * reduction;
+            auto test_points = collect_grid_nodes(test_pitch, min_x, min_y);
+            
+            if (test_points.size() >= n_points) {
+                // Select subset if needed
+                if (test_points.size() == n_points) {
+                    return test_points;
+                } else {
+                    std::vector<b2Vec2> selected;
+                    const float step_size = static_cast<float>(test_points.size() - 1) / static_cast<float>(n_points - 1);
+                    for (std::size_t i = 0; i < n_points; ++i) {
+                        std::size_t index = static_cast<std::size_t>(i * step_size);
+                        if (index < test_points.size()) {
+                            selected.push_back(test_points[index]);
+                        }
+                    }
+                    if (selected.size() == n_points) {
+                        return selected;
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Final diagnosis and failure ───────────────────────────────────────
+    // Count all valid points in polygon to provide helpful error message
+    std::size_t total_valid_points = 0;
+    const float x_range = max_x - min_x;
+    const float y_range = max_y - min_y;
+    const float diagnostic_step = std::min(pitch * 0.1f, std::min(x_range, y_range) * 0.05f);
+    
+    for (float x = min_x; x <= max_x; x += diagnostic_step) {
+        for (float y = min_y; y <= max_y; y += diagnostic_step) {
+            if (is_valid_point(x, y)) {
+                total_valid_points++;
+                if (total_valid_points > n_points * 3) break; // Don't count forever
+            }
+        }
+        if (total_valid_points > n_points * 3) break;
+    }
+    
+    std::string error_msg = "Cannot place " + std::to_string(n_points) + 
+                           " points with pitch " + std::to_string(pitch) + ". ";
+    
+    if (total_valid_points == 0) {
+        error_msg += "Arena has no valid interior points.";
+    } else if (total_valid_points < n_points) {
+        error_msg += "Arena only has space for approximately " + std::to_string(total_valid_points) + 
+                    " points. Try fewer points or smaller pitch.";
+    } else {
+        error_msg += "Pitch is too large for requested grid density. " +
+                    std::string("Grid with pitch ") + std::to_string(pitch) + " produces " + 
+                    std::to_string(grid_points.size()) + " points. " +
+                    "Try smaller pitch to get " + std::to_string(n_points) + " points.";
+    }
+    
+    throw std::runtime_error(error_msg);
+}
+
+
 std::pair<float, float> compute_polygon_dimensions(const std::vector<b2Vec2>& polygon) {
     float minX = std::numeric_limits<float>::max();
     float maxX = std::numeric_limits<float>::lowest();
