@@ -297,6 +297,11 @@ void user_step(void) {
         qualitative_colormap(idx, &r, &g, &b);
         pogobot_led_setColors(r, g, b, d + 1);  /* LED id = face + 1 */
     }
+
+    if (pogobot_ticks % 1000 == 0) {     // Only print messages for robot 0
+        printf("Number of neighbors (all=%u, front=%u, right=%u, back=%u, left=%u)\n", 
+                mydata->total_neighbors, mydata->dir_counts[0], mydata->dir_counts[1], mydata->dir_counts[2], mydata->dir_counts[3]);
+    }
 }
 
 /* -------------------------------------------------------------------------- */
