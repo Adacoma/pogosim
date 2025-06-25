@@ -137,8 +137,8 @@ void Simulation::create_objects() {
                         radius = formation_min_space_between_neighbors;
                     objects_radii.push_back(radius);
                 } else {
-                    objects_to_move.push_back(obj_vec.back());
-                    objects_radii.push_back(NAN);
+                    //objects_to_move.push_back(obj_vec.back());
+                    //objects_radii.push_back(NAN);
                 }
             } else {
                 obj_vec.emplace_back(object_factory(this, current_id, x, y, worldId, obj_config, light_map.get(), userdatasize, name));
