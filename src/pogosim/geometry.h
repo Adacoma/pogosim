@@ -245,8 +245,7 @@ std::vector<b2Vec2> generate_chessboard_points(
         const std::vector<std::vector<b2Vec2>> &polygons,
         std::size_t                             n_points,
         float                                   pitch,
-        bool                                    cluster_center);
-
+        bool                                    cluster_center = false);
 
 /**
  * @brief Computes the width and height of a polygon.
