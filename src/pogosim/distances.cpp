@@ -64,7 +64,7 @@ collect_candidates(std::size_t         i,
                    bool  clip_fov) {
     constexpr float k_led_half_fov = M_PI / 2;
     const GridCell c0 = get_grid_cell(xs[i], ys[i], cell_size);
-    const float    comm_sq = comm_rad[i] * comm_rad[i];
+    const float    comm_sq = (comm_rad[i] + body_rad[i]) * (comm_rad[i] + body_rad[i]);
 
     std::vector<Candidate> out;
     out.reserve(16);
@@ -82,6 +82,7 @@ collect_candidates(std::size_t         i,
             if (clip_fov && !angles::in_fov(bearing, led_dir[i], k_led_half_fov))
                 continue;                                               /* self-block */
             float d2 = dx*dx + dy*dy;
+            glogger->debug("d2={} comm_sq={} OK:{}", d2, comm_sq, (d2 <= comm_sq));
             if (d2 > comm_sq) continue;
 
             float d   = std::sqrt(d2);
@@ -128,6 +129,7 @@ void find_neighbors(ir_direction dir,
                     std::vector<std::shared_ptr<PogobotObject>>& robots,
                     float max_distance,
                     bool enable_occlusion) {
+    //glogger->debug("find_neighbors: dir={}  max_distance={}  enable_occlusion={}", (size_t)dir, max_distance, enable_occlusion);
     /* --- SoA caches ----------------------------------------------------- */
     const std::size_t N = robots.size();
     std::vector<float> led_dir(N);          /* NEW */
@@ -139,8 +141,8 @@ void find_neighbors(ir_direction dir,
         b2Vec2 ct = robots[i]->get_position();
         xs[i]=em.x; ys[i]=em.y;
         cx[i]=ct.x; cy[i]=ct.y;
-        body_rad[i] = robots[i]->radius;
-        comm_rad[i] = robots[i]->communication_radius;
+        body_rad[i] = robots[i]->radius / VISUALIZATION_SCALE;
+        comm_rad[i] = robots[i]->communication_radius / VISUALIZATION_SCALE;
         led_dir[i]  = robots[i]->get_IR_emitter_angle(dir);   /* radians */
     }
 
