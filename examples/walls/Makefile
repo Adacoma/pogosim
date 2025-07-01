@@ -26,7 +26,7 @@ ROBOT_CATEGORY?=robots
 BUILD_DIR?=./build
 POGO_SDK?=../../pogobot-sdk
 POGOSIM_INCLUDE_DIR?=../../src/
-POGOSIM_SRC_DIR?=../../src/pogosim/
+POGOSIM_SRC_DIR?=$(POGOSIM_INCLUDE_DIR)/pogosim/
 
 POGO_SDK_TOOLS=$(POGO_SDK)/tools
 POGO_SDK_INCS=$(POGO_SDK)/includes
