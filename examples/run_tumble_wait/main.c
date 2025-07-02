@@ -188,7 +188,7 @@ float calculate_pbi(void) {
     float var = mydata->m2_ewma - mu * mu;
     if (var < 0.0f) var = 0.0f;
     
-    float denom = (mu * mu) / n_max;
+//    float denom = (mu * mu) / n_max;
 ////    if (denom < 1e-6f) return 0.0f;  // avoid division by zero
 ////    
 ////    return (mu - var) / denom;
