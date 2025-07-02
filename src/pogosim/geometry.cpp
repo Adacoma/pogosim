@@ -754,7 +754,7 @@ std::vector<b2Vec2> generate_chessboard_points(
 
     // ────────────── CLUSTER-CENTER (compact) mode ──────────────────
     if (cluster_center) {
-        /* ---- 1. compute (signed-area) centroid of the outer polygon ---- */
+        // 1. compute signed‐area centroid of the outer polygon
         double A = 0.0, Cx = 0.0, Cy = 0.0;
         for (std::size_t i = 0, j = outer.size() - 1; i < outer.size(); j = i++) {
             double cross = outer[j].x * outer[i].y - outer[i].x * outer[j].y;
@@ -763,84 +763,92 @@ std::vector<b2Vec2> generate_chessboard_points(
             Cy += (outer[j].y + outer[i].y) * cross;
         }
         A *= 0.5;
-
         float center_x, center_y;
         if (std::fabs(A) > 1e-12) {
             center_x = static_cast<float>(Cx / (6.0 * A));
             center_y = static_cast<float>(Cy / (6.0 * A));
-        } else {                      // fallback to mid-AABB
-            center_x = (min_x + max_x) * 0.5f;
-            center_y = (min_y + max_y) * 0.5f;
+        } else {
+            center_x = 0.5f * (min_x + max_x);
+            center_y = 0.5f * (min_y + max_y);
         }
 
-        /* ---- 2. ensure the centre itself is valid ---------------------- */
+        // 2. ensure the centre itself is valid
         if (!is_valid_point(center_x, center_y)) {
-            // find closest valid position on a coarse grid
             float best_x = center_x, best_y = center_y;
             float best_d2 = std::numeric_limits<float>::max();
-            const float step = std::min(pitch * 0.1f,
-                                        std::min(max_x - min_x, max_y - min_y) * 0.05f);
+            float step = std::min(pitch * 0.1f,
+                                  std::min(max_x - min_x, max_y - min_y) * 0.05f);
             for (float x = min_x; x <= max_x; x += step) {
                 for (float y = min_y; y <= max_y; y += step) {
-                    if (is_valid_point(x, y)) {
-                        float d2 = (x - center_x) * (x - center_x)
-                                 + (y - center_y) * (y - center_y);
-                        if (d2 < best_d2) { best_d2 = d2; best_x = x; best_y = y; }
+                    if (!is_valid_point(x, y)) continue;
+                    float d2 = (x - center_x)*(x - center_x)
+                             + (y - center_y)*(y - center_y);
+                    if (d2 < best_d2) {
+                        best_d2 = d2;
+                        best_x = x;
+                        best_y = y;
                     }
                 }
             }
-            center_x = best_x;   center_y = best_y;
+            center_x = best_x;
+            center_y = best_y;
         }
 
-        /* ---- 3. build expanding square rings until we have ≥ n_points -- */
+        // 3. build expanding square rings until we have exactly n_points
         std::vector<b2Vec2> points{{center_x, center_y}};
-        if (n_points == 1) { return points; }
-
+        if (n_points == 1) {
+            return points;
+        }
         for (int radius = 1; points.size() < n_points; ++radius) {
             std::vector<b2Vec2> ring;
-
-            for (int dx = -radius; dx <=  radius; ++dx) {
-                for (int dy = -radius; dy <=  radius; ++dy) {
-                    if (std::abs(dx) != radius && std::abs(dy) != radius) { continue; }
-
-                    const float x = center_x + static_cast<float>(dx) * pitch;
-                    const float y = center_y + static_cast<float>(dy) * pitch;
-                    if (is_valid_point(x, y)) { ring.push_back({x, y}); }
+            for (int dx = -radius; dx <= radius; ++dx) {
+                for (int dy = -radius; dy <= radius; ++dy) {
+                    if (std::abs(dx) != radius && std::abs(dy) != radius) continue;
+                    float x = center_x + dx * pitch;
+                    float y = center_y + dy * pitch;
+                    if (is_valid_point(x, y)) {
+                        ring.push_back({x, y});
+                    }
                 }
             }
-            if (ring.empty()) { break; }         // pitch too large for arena
-
+            // if we can’t grow any further, give up with an exception
+            if (ring.empty()) {
+                throw std::runtime_error("cannot place requested points: pitch too large for arena");
+            }
             std::sort(ring.begin(), ring.end(),
-                      [cx = center_x, cy = center_y](const b2Vec2 &a,
-                                                      const b2Vec2 &b) {
+                      [cx = center_x, cy = center_y](auto &a, auto &b){
                 float da = (a.x - cx)*(a.x - cx) + (a.y - cy)*(a.y - cy);
                 float db = (b.x - cx)*(b.x - cx) + (b.y - cy)*(b.y - cy);
                 return da < db;
             });
-
             points.insert(points.end(), ring.begin(), ring.end());
         }
 
-        /* ---- 4. trim surplus nodes, never removing the centre ---------- */
-        if (points.size() > n_points) {
-            const b2Vec2 centre = points.front();
-            std::vector<b2Vec2> others(points.begin() + 1, points.end());
+        // 4. now we must have ≥ n_points – if somehow we still didn’t, that’s an error
+        if (points.size() < n_points) {
+            throw std::runtime_error("cannot place requested points with cluster_center");
+        }
 
+        // 5. trim any surplus (never dropping the centre)
+        if (points.size() > n_points) {
+            b2Vec2 centre = points.front();
+            std::vector<b2Vec2> others(points.begin() + 1, points.end());
             std::sort(others.begin(), others.end(),
-                      [centre](const b2Vec2 &a, const b2Vec2 &b) {
+                      [centre](auto &a, auto &b){
                 float da = (a.x - centre.x)*(a.x - centre.x)
                          + (a.y - centre.y)*(a.y - centre.y);
                 float db = (b.x - centre.x)*(b.x - centre.x)
                          + (b.y - centre.y)*(b.y - centre.y);
                 return da < db;
             });
-
             others.resize(n_points - 1);
             others.insert(others.begin(), centre);
             return others;
         }
-        return points;
+
+        return points; // exactly n_points
     }
+
 
     // ──────────── DISTRIBUTED (original) mode below ────────────────────
     const auto try_exact_grid = [&](float test_pitch)
