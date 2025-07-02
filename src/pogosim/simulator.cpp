@@ -647,10 +647,17 @@ void Simulation::handle_SDL_events() {
 
 
 void Simulation::compute_neighbors() {
+    // Compute max robot radius
+    float max_robot_radius = 0.0f;
+    for (auto& robot : robots) {
+        max_robot_radius = std::max(max_robot_radius, robot->radius);
+    }
+
     // Find robots that are neighbors
     for (int i = 0; i < IR_RX_COUNT; i++ ) {
-        find_neighbors((ir_direction)i, robots, max_comm_radius / VISUALIZATION_SCALE, !comm_ignore_occlusions);
-        //find_neighbors((ir_direction)i, robots, max_comm_radius / VISUALIZATION_SCALE);
+        // /!\ Cells size = (max_comm_radius + max_robot_radius). It's necessary to also take into account max_robot_radius because
+        //   the communication is performed from IR emitter to neighbor center, whereas the cells work on robot center, not IR emitter/receiver position.
+        find_neighbors((ir_direction)i, robots, (max_comm_radius + max_robot_radius) / VISUALIZATION_SCALE, !comm_ignore_occlusions);
         find_neighbors_to_pogowalls(wall_objects, (ir_direction)i, robots);
     }
 

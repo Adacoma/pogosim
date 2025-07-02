@@ -63,8 +63,8 @@ collect_candidates(std::size_t         i,
                    float cell_size,
                    bool  clip_fov) {
     constexpr float k_led_half_fov = M_PI / 2;
+    //constexpr float k_led_half_fov = 2* M_PI / 3;
     const GridCell c0 = get_grid_cell(xs[i], ys[i], cell_size);
-    const float    comm_sq = (comm_rad[i] + body_rad[i]) * (comm_rad[i] + body_rad[i]);
 
     std::vector<Candidate> out;
     out.reserve(16);
@@ -75,6 +75,7 @@ collect_candidates(std::size_t         i,
 
         for (std::size_t j : it->second) {
             if (j == i) continue;
+            float    comm_sq = (comm_rad[i] + body_rad[j]) * (comm_rad[i] + body_rad[j]);
 
             float dx = cx[j] - xs[i];
             float dy = cy[j] - ys[i];
@@ -132,7 +133,7 @@ void find_neighbors(ir_direction dir,
     //glogger->debug("find_neighbors: dir={}  max_distance={}  enable_occlusion={}", (size_t)dir, max_distance, enable_occlusion);
     /* --- SoA caches ----------------------------------------------------- */
     const std::size_t N = robots.size();
-    std::vector<float> led_dir(N);          /* NEW */
+    std::vector<float> led_dir(N);
     std::vector<float> xs(N), ys(N), cx(N), cy(N),
                        body_rad(N), comm_rad(N);
 

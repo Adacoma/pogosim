@@ -195,7 +195,7 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
         };
 
         // Apply a 45° clockwise rotation to the lateral LEDs (skip index 0)
-        const float angle = M_PI / 4;  // 45 degrees in radians
+        const float angle = M_PI / 4;  // -45 degrees in radians
         const float cos45 = cos(angle);
         const float sin45 = sin(angle);
         for (size_t i = 1; i < ledOffsets.size(); ++i) {
@@ -308,6 +308,7 @@ void PogobotObject::render_communication_channels(SDL_Renderer* renderer, [[mayb
         for (PogobotObject* nbr : neighbors[ch]) {
             neighbour_mask[nbr] |= 1u << ch;
         }
+        glogger->debug("objectId:{}  ch:{}  nb_neighbors:{}", id, ch, neighbors[ch].size() );
     }
 
     /* 2.  Pre-compute our own positions (world + screen) ------------------ */
@@ -458,6 +459,7 @@ b2Vec2 PogobotObject::get_IR_emitter_position(ir_direction dir) const {
     pos.y += sinAngle * offset.x / VISUALIZATION_SCALE + cosAngle * offset.y / VISUALIZATION_SCALE;
     return pos;
 }
+
 
 float PogobotObject::get_IR_emitter_angle(ir_direction dir) const {
     /* body orientation as (cos θ, sin θ) -------------------------------- */
