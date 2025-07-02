@@ -76,6 +76,7 @@ class Simulation {
     std::string initial_formation;                                          ///< Type of initial formation of the objects.
     float formation_min_space_between_neighbors;                            ///< Min space between neighbors when creating the initial formation.
     float formation_max_space_between_neighbors;                            ///< Max space between neighbors when creating the initial formation.
+    float chessboard_distance_between_neighbors;                            ///< In the chessboard formations, the euclidean distance between two connected points of the grid.
     uint32_t formation_attempts_per_point;                                  ///< When creating random formation, number of attempt to place a point.
     uint32_t formation_max_restarts;                                        ///< When creating random formation, how many times the entire formation creation process can be restarted.
     std::string formation_filename;                                         ///< Name of the csv/feather file containing the initial positions of the robots.

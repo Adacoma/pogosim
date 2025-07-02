@@ -194,12 +194,12 @@ void Simulation::create_objects() {
         } else if (initial_formation == "chessboard") {
             //points = generate_chessboard_points(arena_polygons, objects_radii.size(), max_comm_radius, {formation_offset.first, formation_offset.second}, formation_rotation);
             //points = generate_chessboard_points(arena_polygons, objects_radii.size(), 0.1);
-            points = generate_chessboard_points(arena_polygons, objects_radii.size(), formation_min_space_between_neighbors, formation_cluster_at_center);
+            points = generate_chessboard_points(arena_polygons, objects_radii.size(), chessboard_distance_between_neighbors, formation_cluster_at_center);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "aligned_chessboard") {
             //points = generate_chessboard_points(arena_polygons, objects_radii.size(), max_comm_radius, {formation_offset.first, formation_offset.second}, formation_rotation);
             //points = generate_chessboard_points(arena_polygons, objects_radii.size(), 0.1);
-            points = generate_chessboard_points(arena_polygons, objects_radii.size(), formation_min_space_between_neighbors, formation_cluster_at_center);
+            points = generate_chessboard_points(arena_polygons, objects_radii.size(), chessboard_distance_between_neighbors, formation_cluster_at_center);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "imported") {
             if (formation_filename == "") {
@@ -403,6 +403,7 @@ void Simulation::init_config() {
     initial_formation = config["initial_formation"].get(std::string("power_lloyd"));
     formation_min_space_between_neighbors = config["formation_min_space_between_neighbors"].get(0.0f);
     formation_max_space_between_neighbors = config["formation_max_space_between_neighbors"].get(INFINITY);
+    chessboard_distance_between_neighbors = config["chessboard_distance_between_neighbors"].get(100.0f);
     formation_attempts_per_point = config["formation_attempts_per_point"].get(100U);
     formation_max_restarts = config["formation_max_restarts"].get(100U);
     formation_filename = config["formation_filename"].get(std::string(""));
@@ -410,7 +411,7 @@ void Simulation::init_config() {
     imported_formation_max_coords = config["imported_formation_max_coords"].get<decltype(imported_formation_min_coords)>({NAN, NAN});
 //    formation_offset = config["formation_offset"].get<decltype(formation_offset)>({NAN, NAN});
 //    formation_rotation = config["formation_rotation"].get(0.0f);
-    formation_cluster_at_center = config["formation_cluster_at_center"].get(false);
+    formation_cluster_at_center = config["formation_cluster_at_center"].get(true);
 
     enable_gui = config["GUI"].get(true);
     GUI_speed_up = config["GUI_speed_up"].get(1.0f);

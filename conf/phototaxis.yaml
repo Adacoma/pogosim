@@ -49,6 +49,11 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 #               imported_formation_min_coords: [0.0, 0.0]
 #               imported_formation_max_coords: [17.0, 17.0]
 #       Note that the angle (aka "theta") column is optional: if it is not provided, the angle will be sampled from a [-pi, pi] uniform distribution.
+#   - chessboard: robots are placed on a regular grid, with random direction.
+#       The distance between each grid point (robot center) specified by the 'chessboard_distance_between_neighbors' parameter.
+#       As such, if the distance is enough, the robots will only have max 4 neighbors corresponding to the 4 directions top, left, bottom, right.
+#       The "formation_cluster_at_center" parameter (default=true) specifies whether (true) all robots should put as close as possible to the center of the grid (i.e. center of the arena); or (false) if they should just be placed randomly in the grid.
+#   - aligned_chessboard: similar to formation "chessboard", but all robots have a pi/2 direction.
 initial_formation: random
 
 # Whether or not to ignore occlusions (e.g. other robots, focal robot) when computing communication exchanges and neighbors lists

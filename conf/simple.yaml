@@ -3,9 +3,10 @@
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
-#arena_file: arenas/disk.csv
+#arena_file: arenas/square.csv
+arena_file: arenas/disk.csv
 #arena_file: arenas/arena8.csv
-arena_file: arenas/star.csv
+#arena_file: arenas/star.csv
 arena_surface: 1.0e6    # In mm²
 
 delete_old_files: true
@@ -20,12 +21,12 @@ frames_name: "frames/f{:010.4f}.png"
 seed: 0
 show_communication_channels: false  # In the GUI, can enabled/disabled using F5
 show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
-show_lateral_LEDs: true             # In the GUI, can enabled/disabled using F6
+show_lateral_LEDs: false             # In the GUI, can enabled/disabled using F6
 show_light_levels: false            # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 500.0     # In s
+simulation_time: 5000.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 10.0         # How much the visualisation in the GUI should be sped up
 
@@ -50,7 +51,17 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 #               imported_formation_min_coords: [0.0, 0.0]
 #               imported_formation_max_coords: [17.0, 17.0]
 #       Note that the angle (aka "theta") column is optional: if it is not provided, the angle will be sampled from a [-pi, pi] uniform distribution.
+#   - chessboard: robots are placed on a regular grid, with random direction.
+#       The distance between each grid point (robot center) specified by the 'chessboard_distance_between_neighbors' parameter.
+#       As such, if the distance is enough, the robots will only have max 4 neighbors corresponding to the 4 directions top, left, bottom, right.
+#       The "formation_cluster_at_center" parameter (default=true) specifies whether (true) all robots should put as close as possible to the center of the grid (i.e. center of the arena); or (false) if they should just be placed randomly in the grid.
+#   - aligned_chessboard: similar to formation "chessboard", but all robots have a pi/2 direction.
 initial_formation: power_lloyd
+
+# In the chessboard formations, the euclidean distance between two connected points of the grid.
+chessboard_distance_between_neighbors: 110
+# The "formation_cluster_at_center" parameter (default=true) specifies whether (true) all robots should put as close as possible to the center of the grid (i.e. center of the arena); or (false) if they should just be placed randomly in the grid.
+formation_cluster_at_center: true
 
 # Whether or not to ignore occlusions (e.g. other robots, focal robot) when computing communication exchanges and neighbors lists
 communication_ignore_occlusions: false
@@ -72,7 +83,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 200             # Number of objects (Pogobots) in this category
+        nb: 100             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -108,6 +119,7 @@ parameters:
     tumble_duration_min: 100
     tumble_duration_max: 1100
     enable_backward_dir: true
+    max_age: 3000
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
