@@ -1,6 +1,27 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.5] - 2025-07-02
+
+### Added
+ - Add support for conditional data export activation: in the callback "callback\_export\_data", a data row is only exported if activated
+ - Experimental support for C++20 Pogobot user programs (without RTTI, and heapless)
+ - Add example 'neighbor\_counter', that counts the number of neighbors of the robots, allowing for a given duration for message exchanges
+ - Add example 'run\_tumble\_wait', a more complex version of the run&tumble algorithm than the previous "run\_and\_tumble" example
+ - Add chessboard and aligned\_chessboard initial formation: robots are placed in a grid with constant distance between two points
+
+### Changed
+ - Colormaps are now included directly when importing pogobase.h, no need to include another .h file
+
+### Fixed
+ - Arena 'arrow2': update pdf and svg to match the csv
+ - No longer possible to set motor levels (through the 'pogobot\_motor\_power\_set' function) above motorFull
+ - Untangible objects are no longer assembled in the default formation
+ - Fix neighbors computation: radius was not used correctly
+ - Fix bug in examples Makefile that prevented make bin to compile/link correctly
+ - Fix bug in neighbors computation: hashcells size were too small: max\_comm\_radius -> (max\_comm\_radius + max\_robot\_radius)
+
+
 ## [0.10.4] - 2025-05-19
 
 ### Added
