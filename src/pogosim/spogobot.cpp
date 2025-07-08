@@ -534,7 +534,7 @@ void data_set_value_double(char const* name, double value) {
     simulation->get_data_logger()->set_value(name, value);
 }
 void data_set_value_string(char const* name, char const* value) {
-    simulation->get_data_logger()->set_value(name, value);
+    simulation->get_data_logger()->set_value(name, std::string(value));
 }
 void data_set_value_bool(char const* name, bool value) {
     simulation->get_data_logger()->set_value(name, value);
