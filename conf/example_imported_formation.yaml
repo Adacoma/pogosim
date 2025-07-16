@@ -33,6 +33,8 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 # "initial_formation" can be:
 #   - "random": all robots are placed randomly in the arena, with random direction,
 #   - "aligned_random": all robots are placed randomly in the arena, all with with pi/2 direction.
+#   - "random_near_walls": all robots are placed randomly, as close as possible to the walls to the arena, with random direction.
+#   - "aligned_random_near_walls": all robots are placed randomly, as close as possible to the walls to the arena, all with with pi/2 direction.
 #   - "disk": robots are placed uniformly in a disk shape at the center of the arena.
 #   - "lloyd": robots are placed randomly with an approximately equi-spaced distribution
 #       by running a few iterations of Lloyd’s relaxation (a.k.a. “K-means” on a dense uniform sample).

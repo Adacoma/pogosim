@@ -403,6 +403,171 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
 }
 
 
+
+std::vector<b2Vec2> generate_random_points_layered(
+        const std::vector<std::vector<b2Vec2>> &polygons,
+        const std::vector<float> &reserve_radii,
+        std::uint32_t attempts_per_point,
+        std::uint32_t max_restarts) {
+    // ─── parameters ────────────────────────────────────────────────────
+    constexpr float wall_clearance_factor = 1.50f;   // ← requested 1.50×
+    constexpr float eps = 1e-4f;                     // tiny extra spacing
+
+    // ─── sanity checks ────────────────────────────────────────────────
+    if (polygons.empty()) throw std::runtime_error("Need at least one polygon.");
+    for (auto const &poly : polygons)
+        if (poly.size() < 3) throw std::runtime_error("Polygon needs ≥3 vertices.");
+
+    const std::size_t n_points = reserve_radii.size();
+    if (!n_points) return {};
+
+    const std::size_t required_pts = static_cast<std::size_t>(std::count_if(
+        reserve_radii.begin(), reserve_radii.end(),
+        [](float r){ return !std::isnan(r); }));
+
+    // ─── build boundary segment roulette wheel ────────────────────────
+    struct seg_t { b2Vec2 a, b; float cumulative; };
+    std::vector<seg_t> segs; segs.reserve(polygons.size() * 4);
+    float total_len = 0.f;
+    auto add_poly = [&](const std::vector<b2Vec2> &poly){
+        for (std::size_t i = 0, n = poly.size(); i < n; ++i){
+            const b2Vec2 a = poly[i], b = poly[(i+1)%n];
+            total_len += euclidean_distance(a,b);
+            segs.push_back({a,b,total_len});
+        }
+    };
+    add_poly(polygons[0]);                           // outer wall
+    for (std::size_t h=1; h<polygons.size(); ++h) add_poly(polygons[h]);
+
+    // ─── RNG ───────────────────────────────────────────────────────────
+    static std::mt19937 gen{std::random_device{}()};
+    std::uniform_real_distribution<float> pick_len(0.f, total_len);
+    std::uniform_real_distribution<float> pick_t(0.f, 1.f);
+    std::uniform_real_distribution<float> pick_ang(0.f, 2.f*static_cast<float>(M_PI));
+
+    // ─── helpers ───────────────────────────────────────────────────────
+    auto inward_normal = [&](const seg_t &s)->b2Vec2{
+        b2Vec2 n{-(s.b-s.a).y,(s.b-s.a).x};
+        float len = std::hypot(n.x,n.y); n.x/=len; n.y/=len;
+        b2Vec2 probe = s.a + eps*n;
+        bool inside = is_point_within_polygon(polygons[0],probe.x,probe.y);
+        for (std::size_t h=1; inside && h<polygons.size(); ++h)
+            if (is_point_within_polygon(polygons[h],probe.x,probe.y)) inside=false;
+        if (!inside){ n.x=-n.x; n.y=-n.y; }
+        return n;
+    };
+
+    auto dist_pt_seg = [](const b2Vec2&p,const b2Vec2&a,const b2Vec2&b){
+        b2Vec2 ab=b-a, ap=p-a;
+        float ab2=ab.x*ab.x+ab.y*ab.y;
+        if (ab2==0.f) return std::hypot(ap.x,ap.y);
+        float t=((ap.x*ab.x)+(ap.y*ab.y))/ab2;
+        t=std::clamp(t,0.f,1.f);
+        b2Vec2 q{a.x+t*ab.x, a.y+t*ab.y};
+        return std::hypot(p.x-q.x,p.y-q.y);
+    };
+    auto min_dist_edges = [&](const b2Vec2&p){
+        float d=std::numeric_limits<float>::infinity();
+        for (auto const &poly:polygons)
+            for (std::size_t i=0,n=poly.size(); i<n; ++i)
+                d = std::min(d, dist_pt_seg(p, poly[i], poly[(i+1)%n]));
+        return d;
+    };
+
+    // sort indices by descending radius so big robots claim walls first
+    std::vector<std::size_t> sorted_idx;
+    for (std::size_t i=0;i<n_points;++i) if (!std::isnan(reserve_radii[i])) sorted_idx.push_back(i);
+    std::ranges::sort(sorted_idx, [&](auto a,auto b){ return reserve_radii[a]>reserve_radii[b]; });
+
+    // ─── restart loop ──────────────────────────────────────────────────
+    for (std::uint32_t restart=0; restart<max_restarts; ++restart){
+        struct placed_t{ b2Vec2 p; float r; };
+        std::vector<placed_t> placed; placed.reserve(required_pts);
+        std::vector<b2Vec2> result(n_points,{NAN,NAN});
+
+        // ---------- STAGE 0 : wall pass --------------------------------
+        std::vector<std::size_t> deferred;
+        for (std::size_t idx : sorted_idx){
+            float r_i = reserve_radii[idx];
+            float clearance = r_i * wall_clearance_factor;
+
+            bool ok=false;
+            for (std::uint32_t a=0; a<attempts_per_point && !ok; ++a){
+                float s = pick_len(gen);
+                auto it = std::lower_bound(segs.begin(),segs.end(),s,
+                     [](const seg_t&sg,float v){ return sg.cumulative<v; });
+                const seg_t &seg=*it;
+                float t=pick_t(gen);
+                b2Vec2 wall_pt{seg.a.x+t*(seg.b.x-seg.a.x),
+                               seg.a.y+t*(seg.b.y-seg.a.y)};
+                b2Vec2 cand = wall_pt + (clearance+eps)*inward_normal(seg);
+
+                // domain & clearance to every wall
+                if (!is_point_within_polygon(polygons[0],cand.x,cand.y)) continue;
+                bool inside=true;
+                for (std::size_t h=1; inside && h<polygons.size(); ++h)
+                    if (is_point_within_polygon(polygons[h],cand.x,cand.y)) inside=false;
+                if (!inside) continue;
+                if (min_dist_edges(cand) < clearance) continue;
+
+                // overlap with placed points
+                for (auto const &pl:placed)
+                    if (euclidean_distance(pl.p,cand) < pl.r + r_i) { inside=false; break; }
+                if (!inside) continue;
+
+                // accept
+                placed.push_back({cand,r_i});
+                result[idx]=cand;
+                ok=true;
+            }
+            if (!ok) deferred.push_back(idx);
+        }
+
+        // ---------- STAGE 1+ : inner layers ----------------------------
+        if (placed.empty()) goto failed_this_restart;
+
+        while (!deferred.empty()){
+            std::uniform_int_distribution<std::size_t> pick_neigh(0,placed.size()-1);
+            std::vector<std::size_t> next;
+            for (std::size_t idx: deferred){
+                float r_i=reserve_radii[idx];
+                float clearance = r_i * wall_clearance_factor;
+                bool ok=false;
+                for (std::uint32_t a=0; a<attempts_per_point && !ok; ++a){
+                    const placed_t &seed = placed[pick_neigh(gen)];
+                    float θ=pick_ang(gen);
+                    b2Vec2 dir{std::cos(θ),std::sin(θ)};
+                    b2Vec2 cand = seed.p + (r_i+seed.r+eps)*dir;
+
+                    if (!is_point_within_polygon(polygons[0],cand.x,cand.y)) continue;
+                    bool inside=true;
+                    for (std::size_t h=1; inside && h<polygons.size(); ++h)
+                        if (is_point_within_polygon(polygons[h],cand.x,cand.y)) inside=false;
+                    if (!inside) continue;
+                    if (min_dist_edges(cand) < clearance) continue;
+
+                    for (auto const &pl:placed)
+                        if (euclidean_distance(pl.p,cand) < pl.r + r_i) { inside=false; break; }
+                    if (!inside) continue;
+
+                    placed.push_back({cand,r_i});
+                    result[idx]=cand;
+                    ok=true;
+                }
+                if (!ok) next.push_back(idx);
+            }
+            if (next.size()==deferred.size()) goto failed_this_restart; // no progress
+            deferred.swap(next);
+        }
+
+        if (placed.size()==required_pts) return result;
+failed_this_restart: ;
+    }
+
+    throw std::runtime_error("Could not place every point 1.5×r away from walls.");
+}
+
+
 inline float sqr(float v) { return v * v; }
 
 float euclidean_distance_sq(const b2Vec2 &a, const b2Vec2 &b) {

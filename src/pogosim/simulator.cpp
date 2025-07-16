@@ -116,7 +116,6 @@ void Simulation::create_objects() {
         // Find number of objects of this category
         size_t nb = obj_config["nb"].get(1);
 
-        // XXX
         // Identify the userspace for this category
         size_t userdatasize = UserdataSize; // XXX
 
@@ -135,7 +134,7 @@ void Simulation::create_objects() {
                     float radius = obj_vec.back()->get_geometry()->compute_bounding_disk().radius;
                     if (radius < formation_min_space_between_neighbors)
                         radius = formation_min_space_between_neighbors;
-                    objects_radii.push_back(radius);
+                    objects_radii.push_back(radius * 1.01f);
                 } else {
                     //objects_to_move.push_back(obj_vec.back());
                     //objects_radii.push_back(NAN);
@@ -181,6 +180,12 @@ void Simulation::create_objects() {
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "aligned_random") {
             points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            std::ranges::generate(thetas, [&] { return M_PI/2.f; });
+        } else if (initial_formation == "random_near_walls") {
+            points = generate_random_points_layered(arena_polygons, objects_radii, formation_attempts_per_point, formation_max_restarts);
+            std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "aligned_random_near_walls") {
+            points = generate_random_points_layered(arena_polygons, objects_radii, formation_attempts_per_point, formation_max_restarts);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "disk") {
             points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);

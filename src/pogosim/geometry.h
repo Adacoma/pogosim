@@ -213,6 +213,23 @@ std::vector<b2Vec2> generate_random_points_power_lloyd(
         std::uint32_t      max_restarts       = 3);
 
 
+/**
+ * Priority-wall layered sampler.
+ *
+ * Stage 0  : fill the boundary (outer wall or hole walls) greedily;
+ * Stage 1+ : build concentric layers around the already-accepted points.
+ *
+ * A point i always keeps `reserve_radii[i]` clearance from walls *and*
+ * from every other point.  NaN radii → return {NaN,NaN}.
+ *
+ * Throws std::runtime_error after `max_restarts` failed global attempts.
+ */
+std::vector<b2Vec2> generate_random_points_layered(
+        const std::vector<std::vector<b2Vec2>> &polygons,
+        const std::vector<float> &reserve_radii,
+        std::uint32_t attempts_per_point = 1'000U,
+        std::uint32_t max_restarts       = 25U);
+
 
 /**
  * @brief Generate a square-grid ("checkerboard") layout with **exactly
