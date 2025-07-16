@@ -135,8 +135,9 @@ void PogobotObject::parse_configuration(Configuration const& config, Simulation*
 
 void PogobotObject::create_robot_body([[maybe_unused]] b2WorldId world_id) {
     // Assign an initial velocity.
-    b2Vec2 velocity = { 1.0f, 1.0f };
+    b2Vec2 velocity = { 0.0f, 0.0f };
     b2Body_SetLinearVelocity(body_id, velocity);
+    b2Body_SetAngularVelocity(body_id, 0.0f);
 
     // Extract radius from geometry
     radius = geom->compute_bounding_disk().radius;

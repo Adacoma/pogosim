@@ -762,8 +762,8 @@ void PhysicalObject::create_body(b2WorldId world_id) {
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = b2_dynamicBody;
     bodyDef.position = { x / VISUALIZATION_SCALE, y / VISUALIZATION_SCALE };
-    bodyDef.linearDamping = 1000.0f; // XXX ?
-    bodyDef.angularDamping = 1000.0f; // XXX ?
+    bodyDef.linearDamping = linear_damping;
+    bodyDef.angularDamping = angular_damping;
     bodyDef.isBullet = false;
     body_id = b2CreateBody(world_id, &bodyDef);
 
@@ -778,8 +778,10 @@ void PhysicalObject::create_body(b2WorldId world_id) {
     geom->create_box2d_shape(body_id, shapeDef);
 
     // Assign an initial velocity.
-    b2Vec2 velocity = { 1.0f, 1.0f };
+    b2Vec2 velocity = { 0.0f, 0.0f };
     b2Body_SetLinearVelocity(body_id, velocity);
+    b2Body_SetAngularVelocity(body_id, 0.0f);
+    //b2Body_SetAwake(body_id, false);
 }
 
 void PhysicalObject::move(float _x, float _y, float _theta) {
