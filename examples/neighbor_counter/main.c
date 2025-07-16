@@ -317,6 +317,39 @@ void global_setup() {
     init_from_configuration(moving_robots);
 }
 
+/**
+ * @brief Return a comma-separated string containing the list of neighbors IDs
+ */
+char *get_neighbors_ids_string(void) {
+    static char buf[MAX_NEIGHBORS * 6] = {0};    // 5 chars/id + comma + '\0'
+    size_t pos = 0;
+
+    /* Reset buffer (useful if called repeatedly in the same loop) */
+    buf[0] = '\0';
+
+    /* Iterate over the neighbours currently stored in mydata */
+    for (uint8_t i = 0; i < mydata->nb_neighbors; ++i) {      // Neighbor slots live in mydata->neighbors[MAX_NEIGHBORS]
+        /* Print the ID that is stored in the neighbour entry */
+        int n = snprintf(&buf[pos], sizeof(buf) - pos, "%u",
+                         mydata->neighbors[i].id);
+
+        if (n < 0 || (size_t)n >= sizeof(buf) - pos) {
+            /* Buffer ran out – truncate safely */
+            buf[sizeof(buf) - 1] = '\0';
+            break;
+        }
+        pos += (size_t)n;
+
+        /* Add the comma separator except after the very last ID */
+        if (i < mydata->nb_neighbors - 1 && pos < sizeof(buf) - 1) {
+            buf[pos++] = ',';
+            buf[pos]   = '\0';
+        }
+    }
+
+    return buf;   /* Caller must treat the returned pointer as read-only. */
+}
+
 /** Register custom data columns for CSV export. */
 static void create_data_schema(void) {
     data_add_column_int8("dir0_neighbors");
@@ -324,6 +357,7 @@ static void create_data_schema(void) {
     data_add_column_int8("dir2_neighbors");
     data_add_column_int8("dir3_neighbors");
     data_add_column_int8("total_neighbors");
+    data_add_column_string("neighbors_list");
 }
 
 /** Periodically push current telemetry to the simulator. */
@@ -333,6 +367,7 @@ static void export_data(void) {
     data_set_value_int8("dir2_neighbors", mydata->dir_counts[2]);
     data_set_value_int8("dir3_neighbors", mydata->dir_counts[3]);
     data_set_value_int8("total_neighbors", mydata->total_neighbors);
+    data_set_value_string("neighbors_list", get_neighbors_ids_string());
 }
 #endif /* SIMULATOR */
 
