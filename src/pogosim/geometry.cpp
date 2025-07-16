@@ -228,6 +228,36 @@ std::vector<b2Vec2> offset_polygon(const std::vector<b2Vec2>& polygon, float off
 }
 
 
+// ───── distance from point P to segment AB ────────────────────────────
+static float distance_point_to_segment(const b2Vec2 &p,
+                                       const b2Vec2 &a,
+                                       const b2Vec2 &b) {
+    const b2Vec2 ab = b - a, ap = p - a;
+    const float   ab2 = ab.x * ab.x + ab.y * ab.y;
+    if (ab2 == 0.f) {                           // degenerate segment
+        return std::hypot(ap.x, ap.y);
+    }
+    float t = (ap.x * ab.x + ap.y * ab.y) / ab2;
+    t = std::clamp(t, 0.f, 1.f);
+    const b2Vec2 q = a + t * ab;
+    return std::hypot(p.x - q.x, p.y - q.y);
+}
+
+// ───── minimum distance from P to *any* polygon edge ──────────────────
+static float min_distance_to_polygons_edges(
+        const b2Vec2 &p,
+        const std::vector<std::vector<b2Vec2>> &polys) {
+    float d_min = std::numeric_limits<float>::infinity();
+    for (const auto &poly : polys) {
+        for (std::size_t i = 0, n = poly.size(); i < n; ++i) {
+            d_min = std::min(d_min,
+                distance_point_to_segment(p, poly[i], poly[(i + 1) % n]));
+        }
+    }
+    return d_min;
+}
+
+
 /**
  * Generate random points inside a (possibly holed) polygonal domain while
  * respecting a per‑point exclusion radius and a global connectivity limit.
@@ -283,7 +313,7 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
     float bb_margin = 0.0f;
     for (const auto &radius : reserve_radii) {
         if (!std::isnan(radius)) {
-            bb_margin = std::max(bb_margin, radius);
+            bb_margin = std::max(bb_margin, radius * 1.5f);
         }
     }
 
@@ -357,6 +387,11 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
             bool ok = true;
             for (std::size_t i = 1; i < polygons.size() && ok; ++i) {
                 if (is_point_within_polygon(polygons[i], x, y)) { ok = false; }
+            }
+            // At least 1.5 × r_i away from every wall/vertex
+            if (ok) {
+                const float d_wall = min_distance_to_polygons_edges({x, y}, polygons);
+                if (d_wall < 1.5f * r_curr) { ok = false; }
             }
 
             // 3️⃣ exclusion radius + connectivity checks
