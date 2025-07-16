@@ -5,6 +5,8 @@
 #include <cstdarg>
 #include <sstream>
 #include <string>
+#include <cstring>
+#include <cstdlib>
 #include <cstdint>
 #include "SDL2_gfxPrimitives.h"
 
@@ -577,6 +579,47 @@ void init_int8_from_configuration(int8_t* var, char const* name, int8_t const de
 
 void init_uint8_from_configuration(uint8_t* var, char const* name, uint8_t const default_value) {
     *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+}
+
+
+/**
+ *  Initialise a fixed-size C string from the configuration.
+ *
+ *  @param var   Destination buffer supplied by the caller.
+ *  @param name  Parameter name (same token the macro turns into a string).
+ *  @param size  Capacity of @p var in bytes (including the final '\0').
+ *
+ *  The current contents of @p var are treated as the default value,
+ *  so callers can write      char run_law[128] = "levy";
+ *  and get an automatic fallback when the key is absent or invalid.
+ *
+ *  The result is always NUL-terminated, even when the configured
+ *  value is longer than the buffer.
+ */
+void init_string_from_configuration(char *var,
+                                    char const *name,
+                                    std::size_t size) {
+    if (size == 0) {               /* degenerate buffer – nothing to do   */
+        return;
+    }
+
+    // Capture the buffer’s current contents as the default.
+    std::string default_value{var};
+
+    // Get configuration entry
+    auto const &cfg_node =
+        simulation->get_config()[parameters_config_key][name];
+
+    std::string value;
+    if (cfg_node.exists()) {
+        value = cfg_node.get<std::string>();
+        /* Copy into the caller’s buffer and guarantee NUL-termination. */
+        std::strncpy(var, value.c_str(), size);
+        var[size - 1] = '\0';
+    } else {
+        // Fall back to default
+        value = default_value;
+    }
 }
 
 void init_float_array_from_configuration(float* var, char const* name, size_t const size) {

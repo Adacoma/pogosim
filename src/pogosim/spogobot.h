@@ -1041,6 +1041,7 @@ void init_int8_from_configuration(int8_t* var, char const* name, int8_t const de
 void init_uint8_from_configuration(uint8_t* var, char const* name, uint8_t const default_value);
 void init_float_array_from_configuration(float* var, char const* name, size_t const size);
 void init_double_array_from_configuration(double* var, char const* name, size_t const size);
+void init_string_from_configuration(char *var, char const *name, size_t const size);
 
 #ifdef __cplusplus
 }
@@ -1064,7 +1065,8 @@ void init_double_array_from_configuration(double* var, char const* name, size_t 
 #define init_array_from_configuration(a)                                   \
     _Generic (&(a),                                                        \
         float  (*)[] : init_float_array_from_configuration,                \
-        double (*)[] : init_double_array_from_configuration                \
+        double (*)[] : init_double_array_from_configuration,               \
+        char   (*)[] : init_string_from_configuration                      \
     )((a), #a, sizeof(a) / sizeof((a)[0]))
 #endif
 
