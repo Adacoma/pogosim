@@ -1,11 +1,3 @@
-//#include <iostream>
-//#include <cstdlib>
-//
-//#include <yaml-cpp/yaml.h>
-//#include <unordered_map>
-//#include <iostream>
-//#include <string>
-//#include <stdexcept>
 
 #include "configuration.h"
 
@@ -29,7 +21,7 @@ Configuration Configuration::operator[](const std::string& key) const {
 }
 
 bool Configuration::exists() const {
-    return static_cast<bool>(node_);
+    return node_ && !node_.IsNull();
 }
 
 std::string Configuration::summary() const {
