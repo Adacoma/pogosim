@@ -742,7 +742,7 @@ void PhysicalObject::launch_user_step(float t) {
     b2Vec2 a_world = (now_v - _prev_v) * (1.0f / _estimated_dt);
     _prev_v = now_v;
     // Specific force (proper accel) → subtract gravity
-    b2Vec2 gravity(0.0f, 0.0f); // Same as Box2D world. TODO update
+    b2Vec2 gravity = {0.0f, 0.0f};   // Same as Box2D world. TODO update
     b2Vec2 f_world = a_world - gravity;
     // Rotate into body frame
     _lin_acc = b2Body_GetLocalVector(body_id, f_world);
