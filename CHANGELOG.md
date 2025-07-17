@@ -1,6 +1,26 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.6] - 2025-07-17
+
+### Added
+ - add example 'coverage\_neighbors\_novelty' (including python scripts), a complex run-and-tumble example with 2 objectives: isolation prevention (proxy for coverage) and neighbors novelty
+ - add 'random\_near\_walls' and 'aligned\_random\_near\_walls' formations
+ - neighbor\_counter example: export the list of neighbors
+ - allow initialization of char* parameters from configuration files
+ - implement ICM-20689 IMU statistics and pogolib API (gyroscope, accelerometer, temperature sensor)
+ - add temperature information in all config files
+ - add example 'IMU' that showcases how to retrieve IMU information (gyroscope, accelerometer, temperature sensor)
+
+### Changed
+ - objects and robots: disable initial velocity
+
+### Fixed
+ - fix bug in 'random' initial formation where points could be situated directly on the walls
+ - fix "data\_set\_value\_string" to correctly take a char const* as input
+ - configuration: fix 'exists' method, that returned true even if a configuration entry did not exist
+
+
 ## [0.10.5] - 2025-07-02
 
 ### Added

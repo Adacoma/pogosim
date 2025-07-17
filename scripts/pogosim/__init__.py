@@ -1,5 +1,5 @@
 __author__ = "Leo Cazenille"
-__version__ = "0.10.5"
+__version__ = "0.10.6"
 
 # MODELINE	"{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
