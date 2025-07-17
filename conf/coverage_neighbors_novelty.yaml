@@ -1,10 +1,18 @@
 ---
 
+# Format of the generated dataframes, one for each configuration
+result_filename_format: "result.feather"
+
+# List of new columns to add in the generated dataframes
+result_new_columns: ["arena_file"]
+
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
 #arena_file: arenas/square.csv
-arena_file: arenas/disk.csv
+arena_file:
+    default_option: arenas/disk.csv
+    batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
 #arena_file: arenas/arena8.csv
 #arena_file: arenas/star.csv
 arena_surface: 1.0e6    # In mm²
@@ -26,7 +34,7 @@ show_light_levels: false            # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 5000.0     # In s
+simulation_time: 500.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 10.0         # How much the visualisation in the GUI should be sped up
 
@@ -115,7 +123,7 @@ objects:
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
 parameters:
-    max_speed_frac:    1.0          # Domain: [0, 1]. All linear speeds of the robots are scaled to this value.
+    max_speed_frac:    1.0          # Domain: [0, 1]. All linear speeds of the robots are scaled to this value. objects.robots.max_linear_speed corresponds to the speed of robots at motorFull in simulation. Conversely max_speed_frac applies a factor to motorFull, and will work both in simulation and experiments (where motorFull is fixed).
     enable_backward_dir: true       # Enable going backward to avoid being stuck to walls
     p_backward: 0.20                # Domain: [0, 1]. Probability of going backward rather going foward
 
@@ -133,7 +141,7 @@ parameters:
     encounter_graph_scale: 4.0      # [s] scale of iso_cnt (isolation) and nov_cnt (novelty) counters. Domain: [0, inf]
     # Surprise Parameters
     w_iso: -0.5                     # Weighting factor of the isolation objective in the surprise computation. If 0, the isolation objective is not considered, Negative values correspond to negative weights. Domain: [-1, 1].
-    w_nov: 0.5                      # Weighting factor of the novelty objective in the surprise computation. If 0, the novelty objective is not considered, Negative values correspond to negative weights. Domain: [-1, 1].
+    w_nov: 0.7                      # Weighting factor of the novelty objective in the surprise computation. If 0, the novelty objective is not considered, Negative values correspond to negative weights. Domain: [-1, 1].
     use_adaptive_surprise_min: true # If false, surprise_min=surprise_min_0; if true, adapt surprise_min value on each robot automatically
     surprise_min_0: 1.5             # Threshold for escape hop. Domain: [0, inf]
     d_surprise_up: 1.50             # Bump after an escape. Domain: [0, inf]
