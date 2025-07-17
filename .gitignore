@@ -78,6 +78,7 @@ examples/cpp_helloworld/cpp_helloworld
 examples/neighbor_counter/neighbor_counter
 examples/run_tumble_wait/run_tumble_wait
 examples/coverage_neighbors_novelty/coverage_neighbors_novelty
+examples/IMU/IMU
 
 # Apptainer
 *.sif
