@@ -76,6 +76,9 @@ formation_cluster_at_center: true
 # Whether or not to ignore occlusions (e.g. other robots, focal robot) when computing communication exchanges and neighbors lists
 communication_ignore_occlusions: false
 
+# Temperature of the arena and of all objects inside (in Celcius degrees)
+arena_temperature: 25.0
+
 
 # List of objects created in the simulation, by category
 objects:
