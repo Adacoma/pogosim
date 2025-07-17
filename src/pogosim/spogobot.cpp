@@ -283,8 +283,14 @@ void pogobot_imu_read( float *acc, float *gyro ) {
 }
 
 float pogobot_imu_readTemp( void ) {
-    glogger->warn("Function 'pogobot_imu_readTemp' is not implemented yet!");
-    return 0.0f;
+    // Retrieve temperature from configuration
+    float temp = simulation->get_config()["arena_temperature"].get(42.0f);
+    // According to the ICM-20689 data-sheet, the silicon is only characterised between -40 °C and +85 °C; outside that range the raw register may still increase or decrease, but the measurement is no longer guaranteed.
+    if (temp < -40.0f)
+        temp = -40.0f;
+    if (temp > 85.0f)
+        temp = 85.0f;
+    return temp;
 }
 
 
