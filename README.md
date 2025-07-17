@@ -102,6 +102,7 @@ To launch examples code you can use the following commands:
 ./examples/phototaxis/phototaxis -c conf/phototaxis.yaml          # An example showcasing phototaxis, with a fixed light spot in the middle of the arena
 ./examples/walls/walls -c conf/walls_and_membranes.yaml           # An multi-controller example where robots can identify the presence of fixed walls (through Pogowalls) or mobile walls (through membranes).
 ./examples/ssr/ssr -c conf/ssr.yaml         # More complex example. "Simple" implementation of the SSR algorithm from https://arxiv.org/abs/2403.17147  You can test it for a disk and annulus arena (see conf/ssr.yaml to change the arena).
+./examples/coverage_neighbors_novelty/coverage_neighbors_novelty -c conf/coverage_neighbors_novelty.yaml   # More complex run-and-tumble example, with two objectives: neighbor novelty, and isolation avoidance (as a proxy to global coverage)
 ```
 
 
