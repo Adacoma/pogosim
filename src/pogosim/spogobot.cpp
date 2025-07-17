@@ -279,7 +279,23 @@ int16_t pogobot_photosensors_read( uint8_t sensor_number ) {
  */
 
 void pogobot_imu_read( float *acc, float *gyro ) {
-    glogger->warn("Function 'pogobot_imu_read' is not implemented yet!");
+    // Retrieve the robot angular velocity
+    float ang_vel = -current_robot->get_angular_velocity();
+    // Clamp it to -34.9...+34.9 to mimic the ±2000 ° s⁻¹ of the ICM-20689
+    if (ang_vel < -34.9f)
+        ang_vel = -34.9f;
+    if (ang_vel > 34.9f)
+        ang_vel = 34.9f;
+    // Compute gyroscope
+    gyro[0] = 0.0f;     // Roll rate → 0 in 2-D
+    gyro[1] = 0.0f;     // Pitch rate → 0 in 2-D
+    gyro[2] = ang_vel;  // Yaw about +Z, sign-flipped
+
+    // Compute accelerometer
+    b2Vec2 lin_acc = current_robot->get_linear_acceleration();
+    acc[0] = lin_acc.y; // “X”  ← +Y
+    acc[1] = lin_acc.x; // “Y”  ← +X
+    acc[2] = 0;         // “Z”  ← −g. Assume no gravity, and that the robot never tilts.
 }
 
 float pogobot_imu_readTemp( void ) {
@@ -292,7 +308,6 @@ float pogobot_imu_readTemp( void ) {
         temp = 85.0f;
     return temp;
 }
-
 
 
 /**

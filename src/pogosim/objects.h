@@ -820,6 +820,12 @@ public:
            std::string const& _category = "objects");
 
     /**
+     * @brief Launches the user-defined step function.
+     *          For PhysicalObject, it is also used to compute acceleration statistics.
+     */
+    virtual void launch_user_step(float t) override;
+
+    /**
      * @brief Retrieves the object's current position.
      *
      * Returns the position of the object's physical body as a Box2D vector.
@@ -836,6 +842,20 @@ public:
      * @return float The orientation angle.
      */
     float get_angle() const;
+
+    /**
+     * @brief Retrieves the object's current angular velocity
+     *
+     * @return float The angular velocity
+     */
+    float get_angular_velocity() const;
+
+    /**
+     * @brief Retrieves the object's current angular velocity
+     *
+     * @return float The angular velocity
+     */
+    b2Vec2 get_linear_acceleration() const;
 
     /**
      * @brief Renders the object on the given SDL renderer.
@@ -901,6 +921,12 @@ protected:
     float friction;
     float restitution;
     b2BodyId body_id;      ///< Box2D body identifier.
+
+    // Useful to compute acceleration
+    float _estimated_dt = 0.0f;
+    float _last_time = 0.0f;
+    b2Vec2 _prev_v = {NAN, NAN};
+    b2Vec2 _lin_acc = {NAN, NAN};
 };
 
 

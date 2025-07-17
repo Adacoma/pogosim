@@ -145,6 +145,7 @@ void PogobotObject::create_robot_body([[maybe_unused]] b2WorldId world_id) {
 
 
 void PogobotObject::launch_user_step([[maybe_unused]] float t) {
+    PhysicalObject::launch_user_step(t);
     update_time();
     enable_stop_watches();
     //user_step();

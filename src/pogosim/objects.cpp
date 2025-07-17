@@ -731,6 +731,24 @@ PhysicalObject::PhysicalObject(Simulation* simulation, uint16_t _id, float _x, f
     create_body(world_id);
 }
 
+void PhysicalObject::launch_user_step(float t) {
+    Object::launch_user_step(t);
+
+    // Compute acceleration statistics
+    _estimated_dt = t - _last_time;
+    _last_time = t;
+    // Translational acceleration in world frame
+    b2Vec2 now_v = b2Body_GetLinearVelocity(body_id);
+    b2Vec2 a_world = (now_v - _prev_v) * (1.0f / _estimated_dt);
+    _prev_v = now_v;
+    // Specific force (proper accel) → subtract gravity
+    b2Vec2 gravity(0.0f, 0.0f); // Same as Box2D world. TODO update
+    b2Vec2 f_world = a_world - gravity;
+    // Rotate into body frame
+    _lin_acc = b2Body_GetLocalVector(body_id, f_world);
+
+}
+
 b2Vec2 PhysicalObject::get_position() const {
     if (b2Body_IsValid(body_id)) {
         return b2Body_GetPosition(body_id);
@@ -746,6 +764,18 @@ float PhysicalObject::get_angle() const {
     } else {
         return NAN;
     }
+}
+
+float PhysicalObject::get_angular_velocity() const {
+    if (b2Body_IsValid(body_id)) {
+        return b2Body_GetAngularVelocity(body_id);
+    } else {
+        return NAN;
+    }
+}
+
+b2Vec2 PhysicalObject::get_linear_acceleration() const {
+    return _lin_acc;
 }
 
 void PhysicalObject::parse_configuration(Configuration const& config, Simulation* simulation) {
