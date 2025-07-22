@@ -29,6 +29,13 @@ static float natural_freq_mean = 1.0f;      /* [rad s⁻¹]  – average ω₀
 static float natural_freq_std  = 0.1f;      /* [rad s⁻¹]  – per‑robot Gaussian jitter                   */
 static float coupling_k        = 1.0f;      /* [rad s⁻¹]  – coupling gain                               */
 
+// θ - locomotion weak-coupling
+static bool enable_locomotion_coupling = true;     // Whether to couple the oscillator theta with the run-and-tumble locomotion.
+                                                   //  If false, disable this coupling: locomotion if fully independent from the oscillator.
+                                                   //  If True, create a weak coupling between the two (cf gains below).
+static float osc_to_move_gain = 0.25f;   /* θ → run/tumble timing (dimensionless)      */
+static float move_to_osc_gain = 0.25f;   /* run/tumble → θ  (rad s⁻¹)                  */
+
 typedef enum {
     LED_MODE_SIGN,           // Red / blue, sign of phase
     LED_MODE_RAINBOW_PHASE,  // Rainbow θ (phase)
@@ -252,6 +259,13 @@ static void update_phase(float dt) {
     }
     float coupling_term = (n > 0) ? (coupling_k / (float)n) * coupling_sum : 0.0f;
     mydata->theta += (mydata->natural_freq + coupling_term) * dt;
+
+    if (enable_locomotion_coupling) {
+        /* locomotion → oscillator: RUN = +1, TUMBLE = −1 (square-wave drive) */
+        float loco_signal = (mydata->fsm == STATE_RUN) ? 1.0f : -1.0f;
+        mydata->theta += move_to_osc_gain * loco_signal * dt;
+    }
+
     wrap_phase(&mydata->theta);
 
     // Compute the period
@@ -337,7 +351,15 @@ static void user_step(void) {
             motors_forward(max_speed_frac);
             if (mydata->timer_ms == 0) {
                 mydata->tumble_left = (rand() & 1U);
-                mydata->timer_ms = draw_tumble_time_ms();
+                if (enable_locomotion_coupling) {
+                    /* θ → locomotion: spend a bit longer tumbling around θ ≈ +π/2,
+                       shorter around θ ≈ −π/2 (weak sine modulation, clamped) */
+                    float factor = 1.0f + osc_to_move_gain * sinf(mydata->theta);
+                    factor = clampf(factor, 0.5f, 1.5f);
+                    mydata->timer_ms = (uint32_t)lroundf(draw_tumble_time_ms() * factor);
+                } else {
+                    mydata->timer_ms = draw_tumble_time_ms();
+                }
                 mydata->fsm = STATE_TUMBLE;
             }
             break;
@@ -347,7 +369,15 @@ static void user_step(void) {
             tumble_pivot(mydata->tumble_left);
             if (mydata->timer_ms == 0) {
                 choose_new_heading();
-                mydata->timer_ms = draw_run_time_ms();
+                if (enable_locomotion_coupling) {
+                    /* θ → locomotion: run longer when sin θ is negative,
+                       shorter when positive (opposite sign to tumble) */
+                    float factor = 1.0f - osc_to_move_gain * sinf(mydata->theta);
+                    factor = clampf(factor, 0.5f, 1.5f);
+                    mydata->timer_ms = (uint32_t)lroundf(draw_run_time_ms() * factor);
+                } else {
+                    mydata->timer_ms = draw_run_time_ms();
+                }
                 mydata->fsm = STATE_RUN;
             }
             break;
@@ -389,6 +419,10 @@ static void global_setup(void) {
         printf("ERROR: unknown led_mode parameter value: '%s', use either 'sign', 'phase' or 'period'.\n", led_mode);
         exit(1);
     }
+
+    init_from_configuration(enable_locomotion_coupling);
+    init_from_configuration(osc_to_move_gain);
+    init_from_configuration(move_to_osc_gain);
 }
 
 static void create_data_schema(void) {
