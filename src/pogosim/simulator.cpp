@@ -105,8 +105,8 @@ void Simulation::create_objects() {
     std::vector<float> objects_radii;
 
     // Create light map
-    size_t num_bin_x = 100.0f;
-    size_t num_bin_y = 100.0f;
+    size_t num_bin_x = 150.0f;
+    size_t num_bin_y = 150.0f;
     float bin_width = arena_width / num_bin_x;
     float bin_height = arena_height / num_bin_y;
     light_map.reset(new LightLevelMap(num_bin_x, num_bin_y, bin_width, bin_height));
