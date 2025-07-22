@@ -495,6 +495,38 @@ float PogobotObject::get_IR_emitter_angle(ir_direction dir) const {
     return std::atan2(vy, vx);          /* bearing in radians              */
 }
 
+
+b2Vec2 PogobotObject::get_photosensor_position(uint8_t sensor_number) const {
+    /* Guard against bad indices ----------------------------------------- */
+    if (sensor_number >= 3) {
+        return {NAN, NAN};
+    }
+
+    /* Each sensor sits on the rim (radius)                                *
+     *  – sensor 0 : straight BACK  (π/2 rad in robot frame)               *
+     *  – sensor 1 : +120 ° from sensor 0                                   *
+     *  – sensor 2 : +240 ° from sensor 0                                   */
+    constexpr float two_pi_over_three = 2.0f * M_PI / 3.0f;
+    float const local_ang = M_PI / 2.0f + sensor_number * two_pi_over_three;
+
+    /* Local offset, in millimetres -------------------------------------- */
+    float const local_x =  radius * std::cos(local_ang);
+    float const local_y =  radius * std::sin(local_ang);
+
+    /* Rotate into world frame ------------------------------------------- */
+    b2Rot  const rot = b2Body_GetRotation(body_id);
+    float  const world_x = rot.c * local_x - rot.s * local_y;
+    float  const world_y = rot.s * local_x + rot.c * local_y;
+
+    /* Translate + convert to Box2D units -------------------------------- */
+    b2Vec2 pos = b2Body_GetPosition(body_id);
+    pos.x += world_x / VISUALIZATION_SCALE;
+    pos.y += world_y / VISUALIZATION_SCALE;
+
+    return pos;
+}
+
+
 void PogobotObject::send_to_neighbors(ir_direction dir, short_message_t *const message) {
     // Reconstruct a long message from the short message
     message_t m;

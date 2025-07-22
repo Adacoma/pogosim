@@ -317,6 +317,13 @@ public:
      */
     virtual float get_IR_emitter_angle(ir_direction dir) const;
 
+    /**
+     * @brief Returns the position of a photosensor.
+     * @param sensor_number the id (0-2) of the sensor.
+     * @return the position of photosensor 'sensor_number'.
+     */
+    virtual b2Vec2 get_photosensor_position(uint8_t sensor_number) const;
+
     // LED control
     std::vector<color_t> leds = std::vector<color_t>(5, {0, 0, 0}); ///< LED colors for the robot.
 
