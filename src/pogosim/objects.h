@@ -775,6 +775,58 @@ protected:
     bool    performing_photo_start = false; ///< internal state flag
 };
 
+/**
+ * @class RotatingRayOfLightObject
+ * @brief Single ray of light that sweeps around its centre,
+ *  and that becomes visible only after an optional photo-start delay.
+ *
+ * The object overwrites each covered light-map bin with either
+ * `value` (inside the ray) or `0` (outside the ray) via
+ * LightLevelMap::set_light_level().
+ *
+ * @param angular_speed  Sweep speed in rad · s⁻¹ (default = 3).
+ * @param ray_half_width Half the angular aperture of the ray in
+ *                       radians (default ≈ 5.7 ° = 0.1 rad).
+ */
+class RotatingRayOfLightObject : public Object {
+public:
+    RotatingRayOfLightObject(float x, float y, ObjectGeometry& geom,
+                             LightLevelMap* light_map, int16_t value,
+                             float ray_half_width  = 0.1f,
+                             float angular_speed   = 3.0f,
+                             float photo_start_at  = -1.0f,
+                             float photo_start_dur = 1.0f,
+                             std::string const& category = "objects");
+
+    RotatingRayOfLightObject(Simulation* simulation, float x, float y,
+                             LightLevelMap* light_map,
+                             Configuration const& config,
+                             std::string const& category = "objects");
+
+    void render(SDL_Renderer*, b2WorldId) const override {}
+    void update_light_map(LightLevelMap& l);
+    void launch_user_step(float t) override;
+
+protected:
+    void parse_configuration(Configuration const& config,
+                             Simulation* simulation) override;
+
+private:
+    static float normalise_angle(float a);
+
+    /* --- parameters --------------------------------------------------- */
+    LightLevelMap* light_map = nullptr;
+    int16_t value            = 0;
+    float ray_half_width     = 0.1f;   ///< radians
+    float angular_speed      = 3.0f;   ///< rad·s⁻¹
+    float photo_start_at     = -1.0f;  ///< s, <0 ⇒ disabled
+    float photo_start_dur    = 1.0f;   ///< s
+
+    /* --- evolving state ----------------------------------------------- */
+    float current_angle   = 0.0f;  ///< radians
+    bool  ray_is_active   = true;  ///< false until photo-start is over
+};
+
 
 /**
  * @brief A physical object, i.e. with physics properties (e.g. collisions) modelled by Box2D

@@ -3,8 +3,8 @@
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
-arena_file: arenas/disk.csv
-#arena_file: arenas/arena8.csv
+#arena_file: arenas/disk.csv
+arena_file: arenas/arena8.csv
 #arena_file: arenas/star.csv
 #arena_file: arenas/square.csv
 arena_surface: 1.0e6 # 1.0e6    # In mm²
@@ -22,7 +22,7 @@ seed: 0
 show_communication_channels: false  # In the GUI, can enabled/disabled using F5
 show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
 show_lateral_LEDs: true             # In the GUI, can enabled/disabled using F6
-show_light_levels: false            # In the GUI, can enabled/disabled using F6
+show_light_levels: true            # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
@@ -92,27 +92,39 @@ objects:
         photo_start_value: 32767    # Light value during the photo start period (between 0 and 32767). Should be very different from the normal value of the light
 
 
-    # An object category containing a small light spot around the middle of the arena
-    target_light:
-        type: static_light    # The light is not active (does not move and does not have a controller)
-        geometry: disk        # Shape of the light. Can be 'disk', 'rectangle' or 'global'
-        x: 500                # Center of the light spot, X coordinate, in mm
-        y: 500                # Center of the light spot, Y coordinate, in mm
-        radius: 400           # Radius of the light spot. in mm
-        light_mode: gradient  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
-        value: 30000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
-        edge_value: 0.0       # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
+    # TODO
+    ray:
+        type: rotating_ray_of_light
+        geometry: arena    # The light involve the entire simulation
+        value: 32767          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+        photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
+                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
+                            # start their user program in a synchronous manner.
+        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
+        ray_half_width: 0.018
+        angular_speed: 3.0 # TODO
 
-    # An object category containing a small light spot around the middle of the arena
-    target_light:
-        type: static_light    # The light is not active (does not move and does not have a controller)
-        geometry: rectangle   # Shape of the light. Can be 'disk', 'rectangle' or 'global'
-        x: 1400               # Center of the light spot, X coordinate, in mm
-        y: 200                # Center of the light spot, Y coordinate, in mm
-        body_width: 500       # Width of the rectangle geometry, in mm
-        body_height: 500      # Height of the rectangle geometry, in mm
-        light_mode: static    # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
-        value: 20000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+#    # An object category containing a small light spot around the middle of the arena
+#    target_light:
+#        type: static_light    # The light is not active (does not move and does not have a controller)
+#        geometry: disk        # Shape of the light. Can be 'disk', 'rectangle' or 'global'
+#        x: 500                # Center of the light spot, X coordinate, in mm
+#        y: 500                # Center of the light spot, Y coordinate, in mm
+#        radius: 400           # Radius of the light spot. in mm
+#        light_mode: gradient  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+#        value: 30000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+#        edge_value: 0.0       # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
+#
+#    # An object category containing a small light spot around the middle of the arena
+#    target_light:
+#        type: static_light    # The light is not active (does not move and does not have a controller)
+#        geometry: rectangle   # Shape of the light. Can be 'disk', 'rectangle' or 'global'
+#        x: 1400               # Center of the light spot, X coordinate, in mm
+#        y: 200                # Center of the light spot, Y coordinate, in mm
+#        body_width: 500       # Width of the rectangle geometry, in mm
+#        body_height: 500      # Height of the rectangle geometry, in mm
+#        light_mode: static    # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+#        value: 20000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
 
 
     # An object category containing passive objects. They can be moved by robots, but don't have sensors/actuators/controller
@@ -149,49 +161,49 @@ objects:
             #delta: 1.1897
 
 
-    # An object category describing membranes, a special type of Pogowalls apposed on flexible membranes
-    membranes:
-        type: membrane        # Category type for membranes
-        nb: 1                 # Number of membranes to create
-        geometry: disk        # Initial geometry of the membranes -- they are flexible, so the shape will change during the simulation. Can be "disk" or "rectangle"
-        colormap: qualitative # Colormap used to assign a random color to the object. Can be "rainbow" or "qualitative"
-
-        x: 500      # X coordinate of the center of the create membrane, in mm
-        y: 500      # Y coordinate of the center of the create membrane, in mm
-
-        radius: 200             # In mm, if geometry is a disk
-        #body_width: 100        # In mm, if geometry is a rectangle
-        #body_height: 100       # In mm, if geometry is a rectangle
-
-        # Membrane dots and joints
-        num_dots: 40            # Number of dots of the membrane, i.e. of disk-shaped elements.
-                                # Only the dots are used to handle collisions in membranes, so the number should be enough
-                                # (elsewise robots can pass through the membrane)
-        dot_radius: 20          # Radius of the dots, in mm
-        cross_span: 1           # Connect every i‑th neighbour to stiffen the sheet (if > 1)
-
-        communication_radius: 50.0  # The communication ratius of the membrane, in mm
-        msg_success_rate:
-            type: static # Fixed msg success rate -- do not depend on the density, or message size
-            rate: 0.9
-            #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
-            #alpha: 0.000001
-            #beta: 3.0708
-            #gamma: 2.3234
-            #delta: 1.1897
-
-        # Physical properties
-        body_linear_damping: 0.3
-        body_angular_damping: 0.3
-        body_density: 10.0
-        body_friction: 0.3
-        body_restitution: 0.5
+#    # An object category describing membranes, a special type of Pogowalls apposed on flexible membranes
+#    membranes:
+#        type: membrane        # Category type for membranes
+#        nb: 1                 # Number of membranes to create
+#        geometry: disk        # Initial geometry of the membranes -- they are flexible, so the shape will change during the simulation. Can be "disk" or "rectangle"
+#        colormap: qualitative # Colormap used to assign a random color to the object. Can be "rainbow" or "qualitative"
+#
+#        x: 500      # X coordinate of the center of the create membrane, in mm
+#        y: 500      # Y coordinate of the center of the create membrane, in mm
+#
+#        radius: 200             # In mm, if geometry is a disk
+#        #body_width: 100        # In mm, if geometry is a rectangle
+#        #body_height: 100       # In mm, if geometry is a rectangle
+#
+#        # Membrane dots and joints
+#        num_dots: 40            # Number of dots of the membrane, i.e. of disk-shaped elements.
+#                                # Only the dots are used to handle collisions in membranes, so the number should be enough
+#                                # (elsewise robots can pass through the membrane)
+#        dot_radius: 20          # Radius of the dots, in mm
+#        cross_span: 1           # Connect every i‑th neighbour to stiffen the sheet (if > 1)
+#
+#        communication_radius: 50.0  # The communication ratius of the membrane, in mm
+#        msg_success_rate:
+#            type: static # Fixed msg success rate -- do not depend on the density, or message size
+#            rate: 0.9
+#            #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
+#            #alpha: 0.000001
+#            #beta: 3.0708
+#            #gamma: 2.3234
+#            #delta: 1.1897
+#
+#        # Physical properties
+#        body_linear_damping: 0.3
+#        body_angular_damping: 0.3
+#        body_density: 10.0
+#        body_friction: 0.3
+#        body_restitution: 0.5
 
 
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 100             # Number of objects (Pogobots) in this category
+        nb: 50             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 

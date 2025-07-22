@@ -706,6 +706,98 @@ void StaticLightObject::launch_user_step(float t) {
 }
 
 
+/************* RotatingRayOfLightObject *************/ // {{{1
+
+RotatingRayOfLightObject::RotatingRayOfLightObject(float x, float y,
+        ObjectGeometry& geom, LightLevelMap* lmap, int16_t _value,
+        float _ray_half_width, float _angular_speed,
+        float _photo_start_at, float _photo_start_dur,
+        std::string const& category)
+    : Object(x, y, geom, category),
+      light_map(lmap),
+      value(_value),
+      ray_half_width(_ray_half_width),
+      angular_speed(_angular_speed),
+      photo_start_at(_photo_start_at),
+      photo_start_dur(_photo_start_dur),
+      ray_is_active(_photo_start_at < 0.f) {
+    light_map->register_callback([this](LightLevelMap& m){ this->update_light_map(m); });
+}
+
+RotatingRayOfLightObject::RotatingRayOfLightObject(Simulation* simulation,
+        float x, float y, LightLevelMap* lmap,
+        Configuration const& config, std::string const& category)
+    : Object(simulation, x, y, config, category),
+      light_map(lmap) {
+    parse_configuration(config, simulation);
+    ray_is_active = (photo_start_at < 0.f);
+    light_map->register_callback([this](LightLevelMap& m){ this->update_light_map(m); });
+}
+
+void RotatingRayOfLightObject::parse_configuration(Configuration const& config,
+                                                   Simulation* simulation) {
+    Object::parse_configuration(config, simulation);
+    value            = config["value"].get(10);
+    ray_half_width   = config["ray_half_width"].get(0.1f);
+    angular_speed    = config["angular_speed"].get(3.0f);
+    photo_start_at   = config["photo_start_at"].get(-1.0f);
+    photo_start_dur  = config["photo_start_duration"].get(1.0f);
+}
+
+float RotatingRayOfLightObject::normalise_angle(float a) {
+    while (a <= -M_PI) a += 2.f * M_PI;
+    while (a >   M_PI) a -= 2.f * M_PI;
+    return a;
+}
+
+void RotatingRayOfLightObject::update_light_map(LightLevelMap& l) {
+    const size_t nx = l.get_num_bins_x();
+    const size_t ny = l.get_num_bins_y();
+    const float  bw = l.get_bin_width();
+    const float  bh = l.get_bin_height();
+
+    auto bdisk = geom->compute_bounding_disk();
+    auto geom_grid = geom->export_geometry_grid(nx, ny, bw, bh, x, y);
+
+    for (size_t j = 0; j < ny; ++j) {
+        for (size_t i = 0; i < nx; ++i) {
+            if (!geom_grid[j][i]) continue;
+
+            int16_t level = 0;
+
+            if (ray_is_active) {
+                const float cx   = (i + 0.5f) * bw - bdisk.center_x;
+                const float cy   = (j + 0.5f) * bh - bdisk.center_y;
+                const float ang  = std::atan2(cy - y, cx - x);
+                const float diff = std::fabs(normalise_angle(ang - current_angle));
+                level = (diff <= ray_half_width) ? value : 0;
+            }
+            l.set_light_level(i, j, level);
+        }
+    }
+}
+
+void RotatingRayOfLightObject::launch_user_step(float t) {
+    Object::launch_user_step(t);
+
+    /* ---- manage photo-start window ---------------------------------- */
+    bool new_state = ray_is_active;
+    if (photo_start_at >= 0.f) {
+        new_state = (t >= photo_start_at + photo_start_dur);
+    }
+    if (new_state != ray_is_active) {
+        ray_is_active = new_state;
+        light_map->update();           // refresh the light field
+    }
+
+    /* ---- update angle only when active ------------------------------ */
+    if (ray_is_active) {
+        current_angle = normalise_angle(std::fmod(angular_speed * t, 2.f * M_PI));
+        light_map->update();
+    }
+}
+
+
 /************* PhysicalObject *************/ // {{{1
 
 PhysicalObject::PhysicalObject(uint16_t _id, float _x, float _y,
@@ -908,6 +1000,9 @@ Object* object_factory(Simulation* simulation, uint16_t id, float x, float y, b2
 
     if (type == "static_light") {
         res = new StaticLightObject(simulation, x, y, light_map, config, category);
+
+    } else if (type == "rotating_ray_of_light") {
+        res = new RotatingRayOfLightObject(simulation, x, y, light_map, config, category);
 
     } else if (type == "passive_object") {
         res = new PassiveObject(simulation, id, x, y, world_id, config, category);
