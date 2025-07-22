@@ -96,14 +96,15 @@ Example codes are compiled every time you launch the "./build.sh" script, alongs
 
 To launch examples code you can use the following commands:
 ```shell
-./examples/helloworld/helloworld -c conf/simple.yaml              # Hello world, just robots rotating left then right. The first robot prints "HELLO WORLD !" messages
-./examples/run_and_tumble/run_and_tumble -c conf/simple.yaml      # A very simple implementation of the run-and-tumble algorithm for locomotion
-./examples/hanabi/hanabi -c conf/simple.yaml                      # A simple code to showcase the diffusion of information in a swarm. Immobile robots by default (uncomment "MOVING_ROBOTS" to make then move)
-./examples/phototaxis/phototaxis -c conf/phototaxis.yaml          # An example showcasing phototaxis, with a fixed light spot in the middle of the arena
-./examples/walls/walls -c conf/walls_and_membranes.yaml           # An multi-controller example where robots can identify the presence of fixed walls (through Pogowalls) or mobile walls (through membranes).
-./examples/ssr/ssr -c conf/ssr.yaml         # More complex example. "Simple" implementation of the SSR algorithm from https://arxiv.org/abs/2403.17147  You can test it for a disk and annulus arena (see conf/ssr.yaml to change the arena).
+./examples/helloworld/helloworld -c conf/simple.yaml                    # Hello world, just robots rotating left then right. The first robot prints "HELLO WORLD !" messages
+./examples/run_and_tumble/run_and_tumble -c conf/simple.yaml            # A very simple implementation of the run-and-tumble algorithm for locomotion
+./examples/hanabi/hanabi -c conf/simple.yaml                            # A simple code to showcase the diffusion of information in a swarm. Immobile robots by default (uncomment "MOVING_ROBOTS" to make then move)
+./examples/phototaxis/phototaxis -c conf/phototaxis.yaml                # An example showcasing phototaxis, with a fixed light spot in the middle of the arena
+./examples/walls/walls -c conf/walls_and_membranes.yaml                 # An multi-controller example where robots can identify the presence of fixed walls (through Pogowalls) or mobile walls (through membranes).
+./examples/ssr/ssr -c conf/ssr.yaml                                     # More complex example. "Simple" implementation of the SSR algorithm from https://arxiv.org/abs/2403.17147  You can test it for a disk and annulus arena (see conf/ssr.yaml to change the arena).
 ./examples/coverage_neighbors_novelty/coverage_neighbors_novelty -c conf/coverage_neighbors_novelty.yaml   # More complex run-and-tumble example, with two objectives: neighbor novelty, and isolation avoidance (as a proxy to global coverage)
-./examples/IMU/IMU -c conf/simple.yaml                            # A run-and-tumble example showing how to retrieve IMU information (gyroscope, accelerometer, temperature sensor)
+./examples/IMU/IMU -c conf/simple.yaml                                  # A run-and-tumble example showing how to retrieve IMU information (gyroscope, accelerometer, temperature sensor)
+./examples/moving_oscillators/moving_oscillators -c conf/simple.yaml    # Showcases a Kuramoto-style moving oscillators swarm achieving synchronization. The robots move according to a run-and-tumble algorithm.
 ```
 
 

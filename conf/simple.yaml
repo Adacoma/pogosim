@@ -126,7 +126,7 @@ parameters:
     tumble_duration_max: 1100
     enable_backward_dir: true
     max_age: 3000
-    led_mode: period
+    led_mode: sign
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
