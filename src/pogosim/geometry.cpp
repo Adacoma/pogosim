@@ -313,7 +313,7 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
     float bb_margin = 0.0f;
     for (const auto &radius : reserve_radii) {
         if (!std::isnan(radius)) {
-            bb_margin = std::max(bb_margin, radius * 1.5f);
+            bb_margin = std::max(bb_margin, radius * 1.1f);
         }
     }
 
@@ -388,10 +388,10 @@ std::vector<b2Vec2> generate_random_points_within_polygon_safe(
             for (std::size_t i = 1; i < polygons.size() && ok; ++i) {
                 if (is_point_within_polygon(polygons[i], x, y)) { ok = false; }
             }
-            // At least 1.5 × r_i away from every wall/vertex
+            // At least 1.1 × r_i away from every wall/vertex
             if (ok) {
                 const float d_wall = min_distance_to_polygons_edges({x, y}, polygons);
-                if (d_wall < 1.5f * r_curr) { ok = false; }
+                if (d_wall < 1.1f * r_curr) { ok = false; }
             }
 
             // 3️⃣ exclusion radius + connectivity checks
