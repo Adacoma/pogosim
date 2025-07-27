@@ -712,6 +712,7 @@ RotatingRayOfLightObject::RotatingRayOfLightObject(float x, float y,
         ObjectGeometry& geom, LightLevelMap* lmap, int16_t _value,
         float _ray_half_width, float _angular_speed,
         float _photo_start_at, float _photo_start_dur,
+        float _white_frame_dur, int16_t _white_frame_val,
         std::string const& category)
     : Object(x, y, geom, category),
       light_map(lmap),
@@ -720,8 +721,15 @@ RotatingRayOfLightObject::RotatingRayOfLightObject(float x, float y,
       angular_speed(_angular_speed),
       photo_start_at(_photo_start_at),
       photo_start_dur(_photo_start_dur),
-      ray_is_active(_photo_start_at < 0.f) {
+      white_frame_dur(_white_frame_dur),
+      white_frame_val(_white_frame_val),
+      ray_is_active(_photo_start_at < 0.f),
+      white_frame_active(_white_frame_dur > 0.f) {
     light_map->register_callback([this](LightLevelMap& m){ this->update_light_map(m); });
+    if (ray_is_active) {
+        previous_angle = 0.f;          // Makes wrap test work later
+        start_white_frame(0.f);        // First flash at t = 0 s
+    }
 }
 
 RotatingRayOfLightObject::RotatingRayOfLightObject(Simulation* simulation,
@@ -731,7 +739,12 @@ RotatingRayOfLightObject::RotatingRayOfLightObject(Simulation* simulation,
       light_map(lmap) {
     parse_configuration(config, simulation);
     ray_is_active = (photo_start_at < 0.f);
+    white_frame_active = (white_frame_dur > 0.f);
     light_map->register_callback([this](LightLevelMap& m){ this->update_light_map(m); });
+    if (ray_is_active) {
+        previous_angle = 0.f;          // Makes wrap test work later
+        start_white_frame(0.f);        // First flash at t = 0 s
+    }
 }
 
 void RotatingRayOfLightObject::parse_configuration(Configuration const& config,
@@ -742,6 +755,8 @@ void RotatingRayOfLightObject::parse_configuration(Configuration const& config,
     angular_speed    = config["angular_speed"].get(3.0f);
     photo_start_at   = config["photo_start_at"].get(-1.0f);
     photo_start_dur  = config["photo_start_duration"].get(1.0f);
+    white_frame_dur  = config["white_frame_duration"].get(0.03f);
+    white_frame_val  = config["white_frame_value"].get(32767);
 }
 
 float RotatingRayOfLightObject::normalise_angle(float a) {
@@ -750,14 +765,21 @@ float RotatingRayOfLightObject::normalise_angle(float a) {
     return a;
 }
 
+void RotatingRayOfLightObject::start_white_frame(float now_s) {
+    if (white_frame_dur <= 0.f) return;
+    white_frame_active   = true;
+    white_frame_end_time = now_s + white_frame_dur;
+    light_map->update();
+}
+
 void RotatingRayOfLightObject::update_light_map(LightLevelMap& l) {
     const size_t nx = l.get_num_bins_x();
     const size_t ny = l.get_num_bins_y();
     const float  bw = l.get_bin_width();
     const float  bh = l.get_bin_height();
 
-    auto bdisk = geom->compute_bounding_disk();
-    auto geom_grid = geom->export_geometry_grid(nx, ny, bw, bh, x, y);
+    auto bdisk      = geom->compute_bounding_disk();
+    auto geom_grid  = geom->export_geometry_grid(nx, ny, bw, bh, x, y);
 
     for (size_t j = 0; j < ny; ++j) {
         for (size_t i = 0; i < nx; ++i) {
@@ -765,14 +787,18 @@ void RotatingRayOfLightObject::update_light_map(LightLevelMap& l) {
 
             int16_t level = 0;
 
-            if (ray_is_active) {
+            if (white_frame_active) {
+                level = white_frame_val;                 // flood-fill
+            } else if (ray_is_active) {
                 const float cx   = (i + 0.5f) * bw - bdisk.center_x;
                 const float cy   = (j + 0.5f) * bh - bdisk.center_y;
                 const float ang  = std::atan2(cy - y, cx - x);
                 const float diff = std::fabs(normalise_angle(ang - current_angle));
                 level = (diff <= ray_half_width) ? value : 0;
             }
-            l.set_light_level(i, j, level);
+
+            if (level > 0)
+                l.set_light_level(i, j, level);
         }
     }
 }
@@ -780,19 +806,41 @@ void RotatingRayOfLightObject::update_light_map(LightLevelMap& l) {
 void RotatingRayOfLightObject::launch_user_step(float t) {
     Object::launch_user_step(t);
 
-    /* ---- manage photo-start window ---------------------------------- */
+    // Manage photo-start window
     bool new_state = ray_is_active;
     if (photo_start_at >= 0.f) {
         new_state = (t >= photo_start_at + photo_start_dur);
     }
     if (new_state != ray_is_active) {
         ray_is_active = new_state;
-        light_map->update();           // refresh the light field
+        if (ray_is_active) {           // Just became active → flash
+            previous_angle = 0.f;
+            start_white_frame(t);
+        } else {
+            white_frame_active = false;
+            light_map->update();
+        }
     }
 
-    /* ---- update angle only when active ------------------------------ */
-    if (ray_is_active) {
-        current_angle = normalise_angle(std::fmod(angular_speed * t, 2.f * M_PI));
+    // Update angle only when active
+    float new_angle = std::fmod(angular_speed * t, 2.f * M_PI);
+    if (ray_is_active && white_frame_dur > 0.f) {
+        bool wrapped = (new_angle < previous_angle);     // 2π → 0 crossing
+        if (wrapped) {
+            white_frame_active   = true;
+            white_frame_end_time = t + white_frame_dur;
+            light_map->update();
+        }
+        if (white_frame_active && t >= white_frame_end_time) {
+            white_frame_active = false;
+            light_map->update();
+        }
+    }
+    previous_angle = new_angle;
+
+    // Advance the ray only when visible
+    if (ray_is_active && !white_frame_active) {
+        current_angle = normalise_angle(new_angle);
         light_map->update();
     }
 }

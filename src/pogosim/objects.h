@@ -796,6 +796,8 @@ public:
                              float angular_speed   = 3.0f,
                              float photo_start_at  = -1.0f,
                              float photo_start_dur = 1.0f,
+                             float _white_frame_dur = 1.0f,
+                             int16_t _white_frame_val = 32767,
                              std::string const& category = "objects");
 
     RotatingRayOfLightObject(Simulation* simulation, float x, float y,
@@ -811,6 +813,8 @@ protected:
     void parse_configuration(Configuration const& config,
                              Simulation* simulation) override;
 
+    void start_white_frame(float now_s);
+
 private:
     static float normalise_angle(float a);
 
@@ -821,10 +825,15 @@ private:
     float angular_speed      = 3.0f;   ///< rad·s⁻¹
     float photo_start_at     = -1.0f;  ///< s, <0 ⇒ disabled
     float photo_start_dur    = 1.0f;   ///< s
+    float white_frame_dur    = 0.03f;  ///< s, 0 ⇒ disabled
+    int16_t white_frame_val  = 32767;  ///< level inside the white frame
 
     /* --- evolving state ----------------------------------------------- */
-    float current_angle   = 0.0f;  ///< radians
-    bool  ray_is_active   = true;  ///< false until photo-start is over
+    float  current_angle         = 0.0f;  ///< radians
+    bool   ray_is_active         = true;  ///< false until photo-start is over
+    float  previous_angle        = 0.f;   ///< rad, for wrap-around test
+    bool   white_frame_active    = false;
+    float  white_frame_end_time  = 0.f;   ///< s, when to stop white frame
 };
 
 
