@@ -834,6 +834,8 @@ private:
     float  previous_angle        = 0.f;   ///< rad, for wrap-around test
     bool   white_frame_active    = false;
     float  white_frame_end_time  = 0.f;   ///< s, when to stop white frame
+    float  sim_prev_t            = 0.f;
+    float  ray_current_t         = 0.f;
 };
 
 

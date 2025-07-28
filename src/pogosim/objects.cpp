@@ -822,8 +822,14 @@ void RotatingRayOfLightObject::launch_user_step(float t) {
         }
     }
 
+    if (ray_is_active && !white_frame_active) {
+        float const delta_t = t - sim_prev_t;
+        ray_current_t += delta_t;
+    }
+    sim_prev_t = t;
+
     // Update angle only when active
-    float new_angle = std::fmod(angular_speed * t, 2.f * M_PI);
+    float new_angle = std::fmod(angular_speed * ray_current_t, 2.f * M_PI);
     if (ray_is_active && white_frame_dur > 0.f) {
         bool wrapped = (new_angle < previous_angle);     // 2π → 0 crossing
         if (wrapped) {
