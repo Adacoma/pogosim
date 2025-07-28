@@ -80,6 +80,7 @@ examples/run_tumble_wait/run_tumble_wait
 examples/coverage_neighbors_novelty/coverage_neighbors_novelty
 examples/IMU/IMU
 examples/moving_oscillators/moving_oscillators
+examples/lighthouse_localization/lighthouse_localization
 
 # Apptainer
 *.sif
