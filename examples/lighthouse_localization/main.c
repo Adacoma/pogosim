@@ -10,13 +10,14 @@
 // -----------------------------------------------------------------------------
 //  Global tunables (over-ridden by the simulator at launch)
 // -----------------------------------------------------------------------------
-float lighthouse_omega     = 6.0f;   // rad · s⁻¹
+float lighthouse_omega     = 1.0f;   // rad · s⁻¹
 //float lighthouse_omega     = 3.141593f;   // rad · s⁻¹
 //float lighthouse_omega     = 6.2831f;   // rad · s⁻¹
 float edge_delta           = 50.f;   // ADC counts above dark level ⇒ "hit"
-float lm_lambda0           = 1e-3f;  // initial LM damping (m²)
+float lm_lambda0           = 1e-5f;  // initial LM damping (m²)
 float robot_radius         = 0.026f; // 26 mm
 float sensor_angle_deg[3]  = {  90.f, 210.f, 330.f };   // CCW, sensor 0 = +Y
+float max_dist_from_center = 1.5f;
 
 uint16_t white_level_min =  1500;
 
@@ -51,6 +52,7 @@ typedef struct {
     float alpha[3];                 // Bearings [rad]
     pose_t pose;                    // Estimated pose
     vec2 sensor_pos[3];             // In robot frame
+    bool pose_valid;                // Whether pose is valid or not
 
     // Sweep start detection parameters
     float sweep_start_threshold;   // Brightness threshold for full-white detection
@@ -149,7 +151,7 @@ static float bearing_residual(const float alpha[3], const pose_t *p)
 static bool lm_solve_pose(const float alpha[3], pose_t *pose)
 {
     float lambda = lm_lambda0;
-    const int  max_iter = 10;
+    const int  max_iter = 1000;
 
     for (int it = 0; it < max_iter; ++it) {
 
@@ -283,11 +285,11 @@ static void lighthouse_loop(void)
 
         // Allow 2-sensor solutions after 1 second
         int sensor_count = mydata->got[0] + mydata->got[1] + mydata->got[2];
-        //bool timeout_partial = (now_ms / 1000.f > mydata->sweep_start_time_s + 1.0f) && (sensor_count >= 2);
+        bool timeout_partial = (now_ms / 1000.f > mydata->sweep_start_time_s + 1.0f) && (sensor_count >= 2);
 
         // Check if all rays detected
-        //if (sensor_count == 3 || timeout_partial) {
-        if (sensor_count == 3) {
+        if (sensor_count == 3 || timeout_partial) {
+        //if (sensor_count == 3) {
             // Convert to absolute bearings using sweep start reference
             for (int k = 0; k < 3; ++k) {
                 float delta_time_s = mydata->hit[k].time_s - mydata->sweep_start_time_s;
@@ -299,7 +301,12 @@ static void lighthouse_loop(void)
             }
 
             // Solve pose with absolute bearings
-            bool solve_ok = lm_solve_pose(mydata->alpha, &mydata->pose);
+            //bool solve_ok = lm_solve_pose(mydata->alpha, &mydata->pose);
+            pose_t current_pose;
+            bool solve_ok = lm_solve_pose(mydata->alpha, &current_pose);
+
+            if (fabs(current_pose.pos.x) > max_dist_from_center || fabs(current_pose.pos.y) > max_dist_from_center)
+                solve_ok = false;
 
             printf("# POSE: sensors:%d | Δt = %.3f %.3f %.3f | α = %.3f %.3f %.3f | pose = (%.3f,%.3f,%.2f°) %s\n",
                    sensor_count,
@@ -307,9 +314,15 @@ static void lighthouse_loop(void)
                    mydata->hit[1].time_s - mydata->sweep_start_time_s,
                    mydata->hit[2].time_s - mydata->sweep_start_time_s,
                    mydata->alpha[0], mydata->alpha[1], mydata->alpha[2],
-                   mydata->pose.pos.x, mydata->pose.pos.y,
-                   mydata->pose.yaw*180.f/(float)M_PI,
+                   current_pose.pos.x, current_pose.pos.y,
+                   current_pose.yaw*180.f/(float)M_PI,
                    solve_ok ? "OK" : "FAIL");
+
+            // Copy current pose if it is valid
+            if (solve_ok) {
+                mydata->pose_valid = true;
+                memcpy(&mydata->pose, &current_pose, sizeof(pose_t));
+            }
 
             mydata->state = 0;   // Wait for next sweep start
         }
@@ -330,18 +343,21 @@ void global_setup(void)
     init_from_configuration(lighthouse_omega);
     init_from_configuration(edge_delta);
     init_from_configuration(lm_lambda0);
+    init_from_configuration(max_dist_from_center);
 }
 void create_data_schema(void)
 {
     data_add_column_double("pred_x");
     data_add_column_double("pred_y");
     data_add_column_double("pred_yaw");
+    data_add_column_bool("pose_valid");
 }
 void export_data(void)
 {
     data_set_value_double("pred_x",   mydata->pose.pos.x);
     data_set_value_double("pred_y",   mydata->pose.pos.y);
     data_set_value_double("pred_yaw", mydata->pose.yaw);
+    data_set_value_bool("pose_valid", mydata->pose_valid);
 }
 #endif
 
@@ -367,6 +383,7 @@ void user_init(void)
     }
 
     mydata->pose  = (pose_t){ { 0.05f, 0.f }, 0.2f };
+    mydata->pose_valid = false;
     mydata->state = 0;  // Start in sweep start detection mode
     mydata->sweep_start_time_s = 0.f;
     mydata->sweep_timeout_s = 0.f;
