@@ -82,6 +82,10 @@ communication_ignore_occlusions: false
 # Temperature of the arena and of all objects inside (in Celcius degrees)
 arena_temperature: 25.0
 
+# Number of bins in the light map
+light_map_nb_bin_x: 300
+light_map_nb_bin_y: 300
+
 
 # List of objects created in the simulation, by category
 objects:

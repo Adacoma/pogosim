@@ -85,6 +85,8 @@ class Simulation {
 //    std::pair<float, float> formation_offset;                               ///< Apply an offset to the formation -- used for the chessboard-style formations.
 //    float formation_rotation;                                               ///< Apply a rotation to the formation -- used for the chessboard-style formations.
     bool formation_cluster_at_center;                                       ///< Whether the formation starts by assigning coordinates close to the center  -- used for the chessboard-style formations.
+    float light_map_nb_bin_x;                                               ///< Number of bins in rows in the light map
+    float light_map_nb_bin_y;                                               ///< Number of bins in columns in the light map
 
     double last_frame_shown_t = -1.0;     ///< Time when the last frame was rendered.
     double last_frame_saved_t = -1.0;     ///< Time when the last frame was saved.
