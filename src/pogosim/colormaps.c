@@ -1,21 +1,38 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <math.h>
 #include "colormaps.h"
 
 
 #define SCALE_0_255_TO_0_25(x) ((uint8_t)(((x) * (25.0f / 255.0f)) + 0.5f))
 
-/**
- * @brief  Return a qualitative colour out of a fixed 10-colour set.
- *
- * The colours are pre-scaled so that the brightest component is 25.
- *
- * @param  value Index that selects the colour (wrapped with modulo).
- * @param  r     [out] red   component (0-25)
- * @param  g     [out] green component (0-25)
- * @param  b     [out] blue  component (0-25)
- */
+void hsv_to_rgb(float h, float s, float v, uint8_t *r, uint8_t *g, uint8_t *b) {
+    float c = v * s;
+    float x = c * (1.0f - fabsf(fmodf(h / 60.0f, 2.0f) - 1.0f));
+    float m = v - c;
+    
+    float r_prime, g_prime, b_prime;
+    
+    if (h >= 0 && h < 60) {
+        r_prime = c; g_prime = x; b_prime = 0;
+    } else if (h >= 60 && h < 120) {
+        r_prime = x; g_prime = c; b_prime = 0;
+    } else if (h >= 120 && h < 180) {
+        r_prime = 0; g_prime = c; b_prime = x;
+    } else if (h >= 180 && h < 240) {
+        r_prime = 0; g_prime = x; b_prime = c;
+    } else if (h >= 240 && h < 300) {
+        r_prime = x; g_prime = 0; b_prime = c;
+    } else {
+        r_prime = c; g_prime = 0; b_prime = x;
+    }
+    
+    *r = (uint8_t)((r_prime + m) * 255.0f);
+    *g = (uint8_t)((g_prime + m) * 255.0f);
+    *b = (uint8_t)((b_prime + m) * 255.0f);
+}
+
 void qualitative_colormap(uint8_t value, uint8_t *r, uint8_t *g, uint8_t *b) {
     static const uint8_t colormap[][3] = {
         {25,  0,  0}, // red
@@ -38,13 +55,6 @@ void qualitative_colormap(uint8_t value, uint8_t *r, uint8_t *g, uint8_t *b) {
     *b = colormap[index][2];
 }
 
-/**
- * @brief  Rainbow colormap that sweeps smoothly through the HSV hue wheel.
- *
- * The algorithm is unchanged from the original version except that
- * every RGB component is scaled down to the 0-25 interval so that
- * `adjust_color()` in the simulator does not clip it.
- */
 void rainbow_colormap(uint8_t value, uint8_t *r, uint8_t *g, uint8_t *b) {
     float const normalized = (float)value / 255.0f * 6.0f;
     int   const region     = (int)normalized;      // 0 … 5
