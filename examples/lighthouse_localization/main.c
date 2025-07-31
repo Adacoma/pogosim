@@ -77,6 +77,88 @@ REGISTER_USERDATA(USERDATA);
 // -----------------------------------------------------------------------------
 //  Helper functions
 // -----------------------------------------------------------------------------
+
+#define SCALE_0_255_TO_0_25(x)   (uint8_t)((x) * (25.0f / 255.0f) + 0.5f)
+
+static void update_led_from_position(void) {
+    if (!mydata->pose_valid) {
+        pogobot_led_setColor(255, 0, 0);      // red = no localisation
+        return;
+    }
+
+    vec2 pos = mydata->pose.pos;
+    float angle = atan2f(pos.y, pos.x);       // [-π, π]
+    if (angle < 0.0f) { angle += 2.0f * M_PI; }
+
+    /** HSV ➜ RGB conversion
+     *  h : 0-360°, s,v : 0-1
+     *  We keep s = v = 1 for maximum chroma; only afterwards we down-scale to
+     *  the 0-25 range expected by the simulator.
+     */
+    float hue_deg = angle * 180.0f / (float)M_PI;   // 0-360
+    uint8_t r8, g8, b8;
+    hsv_to_rgb(hue_deg, 1.0f, 1.0f, &r8, &g8, &b8);
+
+    // --- compress to 0-25 so adjust_color() does NOT clip --------------------
+    r8 = SCALE_0_255_TO_0_25(r8);
+    g8 = SCALE_0_255_TO_0_25(g8);
+    b8 = SCALE_0_255_TO_0_25(b8);
+
+    // guarantee at least one channel is non-zero for visibility
+    if (r8 == 0 && g8 == 0 && b8 == 0) { r8 = 1; }
+
+    pogobot_led_setColor(r8, g8, b8);
+
+    // Optional debug print
+    printf("# LED %u,%u,%u  pose=(%.2f,%.2f) angle=%.1f°\n",
+           r8, g8, b8, pos.x, pos.y, hue_deg);
+}
+
+/**
+ * @brief  Update LED #1 with a hue that depends on the radial distance.
+ *
+ * * 0 mm   (centre) → blue (≈ 240° HSV)  
+ * * R/2 mm          → green (≈ 120°)  
+ * * R mm  (border) → red  (≈  0°)  
+ *
+ * The RGB components are scaled to **0–25** so the simulator’s
+ * `adjust_color()` keeps the gradient intact instead of clamping to CMY.
+ */
+static void update_led_from_distance(void)
+{
+    if (!mydata->pose_valid) {
+        // distance unknown – use white as a sentinel
+        pogobot_led_setColors(25, 25, 25, 1);
+        return;
+    }
+
+    // --- 1. Compute normalised distance ------------------------------------
+    float const x_mm = mydata->pose.pos.x * 1000.f;
+    float const y_mm = mydata->pose.pos.y * 1000.f;
+    float const r_mm = sqrtf(x_mm * x_mm + y_mm * y_mm);
+
+    float const radius_mm = max_dist_from_center * 1000.f;
+    float       ratio     = r_mm / radius_mm;       // 0 at centre, 1 at border
+    if (ratio > 1.0f) { ratio = 1.0f; }             // clamp (rare localisation noise)
+
+    // --- 2. Map distance ratio to HSV hue -----------------------------------
+    float const hue_deg = (1.0f - ratio) * 255.0f;
+    uint8_t     r8, g8, b8;
+    hsv_to_rgb(hue_deg, 1.0f, 1.0f, &r8, &g8, &b8); // returns 0–255
+
+    // --- 3. Down-scale so nothing exceeds 25 (avoids simulator clipping) ----
+    r8 = SCALE_0_255_TO_0_25(r8);
+    g8 = SCALE_0_255_TO_0_25(g8);
+    b8 = SCALE_0_255_TO_0_25(b8);
+
+    //qualitative_colormap((uint8_t)hue_deg, &r8, &g8, &b8);
+
+    if (r8 == 0 && g8 == 0 && b8 == 0) { r8 = 1; }  // guarantee visible light
+
+    // --- 4. Apply to LED #1 --------------------------------------------------
+    pogobot_led_setColors(r8, g8, b8, 1);
+}
+
 static bool is_white_condition(void)
 {
     int16_t v[3];
@@ -90,7 +172,7 @@ static bool is_white_condition(void)
     
     // Require at least 2 out of 3 sensors to be bright for "white" condition
     // This prevents single ray hits from being detected as white
-    bool is_white = (white_count >= 2);
+    bool is_white = (white_count >= 3);
     
     // Debug: Print when white detection changes
     static bool last_white = false;
@@ -140,9 +222,9 @@ static float interpolate_hit_time(uint32_t t_prev, int16_t v_prev,
 // Triangulate position from two lighthouse angles
 static bool triangulate_position(float angle1, float angle2, vec2 *pos)
 {
-    // Lighthouse 1 ray direction
+    // Lighthouse 1 ray direction (from lighthouse 1 position)
     vec2 dir1 = { cosf(angle1), sinf(angle1) };
-    // Lighthouse 2 ray direction  
+    // Lighthouse 2 ray direction (from lighthouse 2 position)
     vec2 dir2 = { cosf(angle2), sinf(angle2) };
     
     // Lighthouse positions
@@ -151,20 +233,16 @@ static bool triangulate_position(float angle1, float angle2, vec2 *pos)
     
     // Solve intersection of two rays:
     // l1 + t1 * dir1 = l2 + t2 * dir2
-    // l1.x + t1 * dir1.x = l2.x + t2 * dir2.x
-    // l1.y + t1 * dir1.y = l2.y + t2 * dir2.y
-    //
-    // Rearranging:
-    // t1 * dir1.x - t2 * dir2.x = l2.x - l1.x
-    // t1 * dir1.y - t2 * dir2.y = l2.y - l1.y
+    // Rearranging: t1 * dir1.x - t2 * dir2.x = l2.x - l1.x
+    //              t1 * dir1.y - t2 * dir2.y = l2.y - l1.y
     
     float dx = l2.x - l1.x;
     float dy = l2.y - l1.y;
     
-    float det = dir1.x * (-dir2.y) - dir1.y * (-dir2.x);
-    det = dir1.x * dir2.y - dir1.y * dir2.x;
+    float det = dir1.x * dir2.y - dir1.y * dir2.x;
     
     if (fabsf(det) < 1e-6f) {
+        printf("# TRIANGULATION_ERROR: Parallel rays (det=%.6f)\n", det);
         return false; // Parallel rays
     }
     
@@ -174,8 +252,13 @@ static bool triangulate_position(float angle1, float angle2, vec2 *pos)
     pos->x = l1.x + t1 * dir1.x;
     pos->y = l1.y + t1 * dir1.y;
     
+    printf("# TRIANGULATION: L1(%.2f,%.2f) angle1=%.1f° L2(%.2f,%.2f) angle2=%.1f° → pos(%.3f,%.3f)\n",
+           l1.x, l1.y, angle1 * 180.f / M_PI, l2.x, l2.y, angle2 * 180.f / M_PI, pos->x, pos->y);
+    
     // Check if position is reasonable
     if (fabsf(pos->x) > max_dist_from_center || fabsf(pos->y) > max_dist_from_center) {
+        printf("# TRIANGULATION_ERROR: Position out of bounds (%.3f,%.3f) > %.3f\n", 
+               pos->x, pos->y, max_dist_from_center);
         return false;
     }
     
@@ -362,10 +445,17 @@ static void lighthouse_loop(void)
                         printf("# POSE_ERROR: Failed to triangulate position from angles %.1f°, %.1f° (timeout)\n",
                                angle1 * 180.f / M_PI, angle2 * 180.f / M_PI);
                     }
+                    
+                    // Update LED color based on position
+                    update_led_from_position();
+                    update_led_from_distance();
                 } else {
                     mydata->pose_valid = false;
                     printf("# POSE_ERROR: Missing ray hits on timeout (ray1=%d, ray2=%d)\n", 
                            mydata->got_ray1, mydata->got_ray2);
+                    // Update LED to show error
+                    update_led_from_position();
+                    update_led_from_distance();
                 }
                 
                 // Reset for next cycle
@@ -402,10 +492,17 @@ static void lighthouse_loop(void)
                                angle1 * 180.f / M_PI, angle2 * 180.f / M_PI);
                     }
                     
+                    // Update LED color based on position
+                    update_led_from_position();
+                    update_led_from_distance();
+                    
                 } else {
                     mydata->pose_valid = false;
                     printf("# POSE_ERROR: Missing ray hits (ray1=%d, ray2=%d)\n", 
                            mydata->got_ray1, mydata->got_ray2);
+                    // Update LED to show error
+                    update_led_from_position();
+                    update_led_from_distance();
                 }
                 
                 // Reset for next cycle
@@ -481,12 +578,23 @@ void user_init(void)
     mydata->white_start_s = 0.f;
     mydata->sweep_duration_s = (M_PI * 0.5f) / lighthouse_omega;
 
-    pogobot_led_setColor(0, 255, 0);     // green = ready
+    // Set initial LED color (white = no position detected yet)
+    pogobot_led_setColor(255, 255, 255);
 }
 
 void user_step(void)
 {
     lighthouse_loop();
+    
+    // Periodically update LED color even if no new pose was computed
+    // This handles robots that stay white due to failed localization attempts
+    static uint32_t last_led_update = 0;
+    uint32_t now_ms = current_time_milliseconds();
+    if (now_ms - last_led_update > 1000) { // Update every 1 second
+        update_led_from_position();
+        update_led_from_distance();
+        last_led_update = now_ms;
+    }
 }
 
 int main(void)

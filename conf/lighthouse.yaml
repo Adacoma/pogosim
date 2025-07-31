@@ -27,7 +27,7 @@ GUI: true
 
 # Time
 simulation_time: 10.0     # In s
-time_step: 0.01            # In s
+time_step: 0.010            # In s
 GUI_speed_up: 10.0         # How much the visualisation in the GUI should be sped up
 
 # The initial positions of the robot, set as a formation.
@@ -83,8 +83,8 @@ communication_ignore_occlusions: false
 arena_temperature: 25.0
 
 # Number of bins in the light map
-light_map_nb_bin_x: 300
-light_map_nb_bin_y: 300
+light_map_nb_bin_x: 150
+light_map_nb_bin_y: 150
 
 
 # List of objects created in the simulation, by category
@@ -138,9 +138,10 @@ objects:
                             # start their user program in a synchronous manner.
         photo_start_duration: 1.0   # Duration of the photo start period, in seconds
         #ray_half_width: 0.036       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-        #ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
+        ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
         #ray_half_width: 0.009       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-        ray_half_width: 0.005       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
+        #ray_half_width: 0.005       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
+        #ray_half_width: 0.005       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
         #angular_speed: 6.2831       # Sweep speed in rad · s⁻¹ (default = 3)
         angular_speed: 3.0       # Sweep speed in rad · s⁻¹ (default = 3)
         long_white_frame_duration: 0.5
@@ -151,7 +152,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 20             # Number of objects (Pogobots) in this category
+        nb: 80             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -184,6 +185,7 @@ parameters:
     # Configuration parameters for the lighthouse_localization example
     lighthouse_omega: 3.0
     edge_delta: 50.0
+    max_dist_from_center: 0.9
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
