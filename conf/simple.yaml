@@ -120,13 +120,15 @@ objects:
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
 parameters:
     # Configuration parameters for the run_and_tumble example
-    run_duration_min: 100
-    run_duration_max: 2000
+    run_duration_min: 1000
+    run_duration_max: 5000
     tumble_duration_min: 100
     tumble_duration_max: 1100
     enable_backward_dir: true
+
     max_age: 3000
     led_mode: sign
+    moving_robots: false
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8

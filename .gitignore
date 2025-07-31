@@ -81,6 +81,7 @@ examples/coverage_neighbors_novelty/coverage_neighbors_novelty
 examples/IMU/IMU
 examples/moving_oscillators/moving_oscillators
 examples/lighthouse_localization/lighthouse_localization
+examples/push_sum/push_sum
 
 # Apptainer
 *.sif
