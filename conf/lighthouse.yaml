@@ -26,8 +26,8 @@ show_light_levels: true            # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 20.0     # In s
-time_step: 0.005            # In s
+simulation_time: 10.0     # In s
+time_step: 0.01            # In s
 GUI_speed_up: 10.0         # How much the visualisation in the GUI should be sped up
 
 # The initial positions of the robot, set as a formation.
@@ -58,8 +58,8 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 #       As such, if the distance is enough, the robots will only have max 4 neighbors corresponding to the 4 directions top, left, bottom, right.
 #       The "formation_cluster_at_center" parameter (default=true) specifies whether (true) all robots should put as close as possible to the center of the grid (i.e. center of the arena); or (false) if they should just be placed randomly in the grid.
 #   - aligned_chessboard: similar to formation "chessboard", but all robots have a pi/2 direction.
-initial_formation: random_near_walls # random # imported
-#initial_formation: power_lloyd # random # imported
+#initial_formation: random_near_walls # random # imported
+initial_formation: power_lloyd # random # imported
 #initial_formation: random # imported
 formation_min_space_between_neighbors: 0.0
 formation_max_space_between_neighbors: .inf
@@ -113,8 +113,24 @@ objects:
 #        ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
 #        angular_speed: 1.0          # Sweep speed in rad · s⁻¹ (default = 3)
 
+#    ray:
+#        type: rotating_ray_of_light
+#        geometry: arena    # The light involve the entire simulation
+#        value: 32767          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+#        photo_start_at: -1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
+#                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
+#                            # start their user program in a synchronous manner.
+#        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
+#        #ray_half_width: 0.036       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
+#        ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
+#        #ray_half_width: 0.009       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
+#        #angular_speed: 6.2831       # Sweep speed in rad · s⁻¹ (default = 3)
+#        angular_speed: 1.0       # Sweep speed in rad · s⁻¹ (default = 3)
+#        white_frame_duration: 0.1
+#        white_frame_value: 32767
+
     ray:
-        type: rotating_ray_of_light
+        type: alternating_rays_of_light
         geometry: arena    # The light involve the entire simulation
         value: 32767          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
         photo_start_at: -1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
@@ -122,18 +138,20 @@ objects:
                             # start their user program in a synchronous manner.
         photo_start_duration: 1.0   # Duration of the photo start period, in seconds
         #ray_half_width: 0.036       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-        ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
+        #ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
         #ray_half_width: 0.009       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
+        ray_half_width: 0.005       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
         #angular_speed: 6.2831       # Sweep speed in rad · s⁻¹ (default = 3)
-        angular_speed: 1.0       # Sweep speed in rad · s⁻¹ (default = 3)
-        white_frame_duration: 0.1
+        angular_speed: 3.0       # Sweep speed in rad · s⁻¹ (default = 3)
+        long_white_frame_duration: 0.5
+        short_white_frame_duration: 0.1
         white_frame_value: 32767
 
 
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 10             # Number of objects (Pogobots) in this category
+        nb: 20             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -163,12 +181,9 @@ objects:
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
 parameters:
-    # Configuration parameters for the run_and_tumble example
-    run_duration_min: 100
-    run_duration_max: 2000
-    tumble_duration_min: 100
-    tumble_duration_max: 1100
-    test_vect: [42., 23., 11., 18.]
+    # Configuration parameters for the lighthouse_localization example
+    lighthouse_omega: 3.0
+    edge_delta: 50.0
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8

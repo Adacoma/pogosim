@@ -61,7 +61,8 @@ def make_plots(df: pd.DataFrame, out_dir: Path):
 
     # 1) pred_x vs pred_y (unit disc)
     ax = sns.scatterplot(x="pred_x", y="pred_y", hue="robot_id", data=df, s=20)
-    ax.set(xlim=(-1, 1), ylim=(-1, 1), title="Predicted position (unit circle)")
+    #ax.set(xlim=(-1, 1), ylim=(-1, 1), title="Predicted position (unit circle)")
+    ax.set( title="Predicted position (unit circle)")
     ax.set_aspect("equal", adjustable="box")
     plt.tight_layout()
     plt.savefig(out_dir / "pred_xy.pdf", dpi=300)
