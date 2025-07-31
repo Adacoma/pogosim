@@ -852,6 +852,184 @@ void RotatingRayOfLightObject::launch_user_step(float t) {
 }
 
 
+/************* AlternatingDualRayOfLightObject *************/ // {{{1
+
+float AlternatingDualRayOfLightObject::normalise_angle(float a) {
+    while (a <= -M_PI) a += 2.f * M_PI;
+    while (a >   M_PI) a -= 2.f * M_PI;
+    return a;
+}
+
+
+void AlternatingDualRayOfLightObject::recompute_geometry() {
+    bbox = geom->compute_bounding_box();
+
+    /* centre of bounding box */
+    cx = bbox.x + 0.5f * bbox.width;
+    cy = bbox.y + 0.5f * bbox.height;
+
+    /* apexes: top-left & top-right                                                         *
+     * NB: if the engine Y-axis points downwards, swap +height ↔ 0 as needed.               */
+    ax_l = bbox.x;
+    ay_l = bbox.y + bbox.height;
+    ax_r = bbox.x + bbox.width;
+    ay_r = ay_l;
+
+    auto baseline_l = std::atan2(cy - ay_l, cx - ax_l);
+    auto baseline_r = std::atan2(cy - ay_r, cx - ax_r);
+
+    /* each ray sweeps its π/2 quadrant centred on the baseline direction */
+    left_a0   = baseline_l - M_PI_4;      /* start angle                   */
+    left_a1   = baseline_l + M_PI_4;      /* end   angle                   */
+    right_a0  = baseline_r - M_PI_4;
+    right_a1  = baseline_r + M_PI_4;
+}
+
+
+AlternatingDualRayOfLightObject::AlternatingDualRayOfLightObject(
+        float x, float y, ObjectGeometry& g, LightLevelMap* lm, int16_t _val,
+        float _ray_hw, float _ang_speed, float _long_dur, float _short_dur,
+        int16_t _white_val, std::string const& category)
+    : Object(x, y, g, category),
+      light_map(lm),
+      value(_val),
+      ray_half_width(_ray_hw),
+      angular_speed(_ang_speed),
+      long_white_dur(_long_dur),
+      short_white_dur(_short_dur),
+      white_val(_white_val) {
+
+    recompute_geometry();
+    light_map->register_callback(
+        [this](LightLevelMap& m){ update_light_map(m); });
+
+    /* begin with the long white frame */
+    phase_start_t = 0.f;
+    request_map_refresh();
+}
+
+AlternatingDualRayOfLightObject::AlternatingDualRayOfLightObject(
+        Simulation* simulation, float x, float y, LightLevelMap* lm,
+        Configuration const& cfg, std::string const& category)
+    : Object(simulation, x, y, cfg, category),
+      light_map(lm) {
+
+    parse_configuration(cfg, simulation);
+    recompute_geometry();
+    light_map->register_callback(
+        [this](LightLevelMap& m){ update_light_map(m); });
+
+    phase_start_t = 0.f;
+    request_map_refresh();
+}
+
+void AlternatingDualRayOfLightObject::parse_configuration(
+        Configuration const& cfg, Simulation* simulation) {
+    Object::parse_configuration(cfg, simulation);
+
+    value            = cfg["value"].get(10);
+    ray_half_width   = cfg["ray_half_width"].get(0.1f);
+    angular_speed    = cfg["angular_speed"].get(3.f);
+    long_white_dur   = cfg["long_white_frame_duration"].get(1.f);
+    short_white_dur  = cfg["short_white_frame_duration"].get(0.03f);
+    white_val        = cfg["white_frame_value"].get(32767);
+}
+
+
+void AlternatingDualRayOfLightObject::enter_phase(phase_t p, float now_s) {
+    phase          = p;
+    phase_start_t  = now_s;
+
+    switch (phase) {
+    case phase_t::LEFT_RAY:  current_angle = left_a0;   break;
+    case phase_t::RIGHT_RAY: current_angle = right_a0;  break;
+    default: break;
+    }
+    request_map_refresh();
+}
+
+
+void AlternatingDualRayOfLightObject::launch_user_step(float t) {
+    Object::launch_user_step(t);
+    float const dt = t - prev_t;
+    prev_t = t;
+
+    switch (phase) {
+    /* ─────── long white flash ─────── */
+    case phase_t::LONG_WHITE:
+        if (t - phase_start_t >= long_white_dur)
+            enter_phase(phase_t::LEFT_RAY, t);
+        break;
+
+    /* ─────── left ray sweeping ────── */
+    case phase_t::LEFT_RAY: {
+        current_angle += angular_speed * dt;
+        if (current_angle >= left_a1)
+            enter_phase(phase_t::SHORT_WHITE, t);
+        else
+            request_map_refresh();
+        break;
+    }
+
+    /* ─────── short white flash ────── */
+    case phase_t::SHORT_WHITE:
+        if (t - phase_start_t >= short_white_dur)
+            enter_phase(phase_t::RIGHT_RAY, t);
+        break;
+
+    /* ─────── right ray sweeping ───── */
+    case phase_t::RIGHT_RAY: {
+        current_angle += angular_speed * dt;
+        if (current_angle >= right_a1)
+            enter_phase(phase_t::LONG_WHITE, t);
+        else
+            request_map_refresh();
+        break;
+    }
+    }
+}
+
+
+void AlternatingDualRayOfLightObject::update_light_map(LightLevelMap& l) {
+    const size_t nx = l.get_num_bins_x();
+    const size_t ny = l.get_num_bins_y();
+    const float  bw = l.get_bin_width();
+    const float  bh = l.get_bin_height();
+
+    auto geom_grid = geom->export_geometry_grid(nx, ny, bw, bh, x, y);
+
+    /* pre-compute which apex / mode is active */
+    bool  white_mode   = (phase == phase_t::LONG_WHITE ||
+                          phase == phase_t::SHORT_WHITE);
+    bool  use_left_ray = (phase == phase_t::LEFT_RAY);
+
+    float ax = use_left_ray ? ax_l : ax_r;
+    float ay = use_left_ray ? ay_l : ay_r;
+
+    for (size_t j = 0; j < ny; ++j) {
+        for (size_t i = 0; i < nx; ++i) {
+            if (!geom_grid[j][i]) continue;
+
+            int16_t level = 0;
+
+            if (white_mode) {
+                level = white_val;                                   /* flood */
+            } else {
+                /* cell centre in world coordinates */
+                float px = (i + 0.5f) * bw;
+                float py = (j + 0.5f) * bh;
+
+                float ang = std::atan2(py - ay, px - ax);
+                float diff = std::fabs(normalise_angle(ang - current_angle));
+                if (diff <= ray_half_width) level = value;
+            }
+
+            if (level > 0) l.set_light_level(i, j, level);
+        }
+    }
+}
+
+
 /************* PhysicalObject *************/ // {{{1
 
 PhysicalObject::PhysicalObject(uint16_t _id, float _x, float _y,
@@ -1057,6 +1235,9 @@ Object* object_factory(Simulation* simulation, uint16_t id, float x, float y, b2
 
     } else if (type == "rotating_ray_of_light") {
         res = new RotatingRayOfLightObject(simulation, x, y, light_map, config, category);
+
+    } else if (type == "alternating_rays_of_light") {
+        res = new AlternatingDualRayOfLightObject(simulation, x, y, light_map, config, category);
 
     } else if (type == "passive_object") {
         res = new PassiveObject(simulation, id, x, y, world_id, config, category);

@@ -839,6 +839,66 @@ private:
 };
 
 
+class AlternatingDualRayOfLightObject : public Object {
+public:
+    AlternatingDualRayOfLightObject(float x, float y, ObjectGeometry& geom,
+                                    LightLevelMap* light_map, int16_t value,
+                                    float ray_half_width          = 0.1f,
+                                    float angular_speed           = 3.0f,
+                                    float long_white_frame_dur    = 1.0f,
+                                    float short_white_frame_dur   = 0.03f,
+                                    int16_t white_frame_val       = 32767,
+                                    std::string const& category   = "objects");
+
+    AlternatingDualRayOfLightObject(Simulation* simulation, float x, float y,
+                                    LightLevelMap* light_map,
+                                    Configuration const& config,
+                                    std::string const& category = "objects");
+
+    void render(SDL_Renderer*, b2WorldId) const override {}
+    void launch_user_step(float t) override;
+    void update_light_map(LightLevelMap& l);
+
+protected:
+    void parse_configuration(Configuration const& config,
+                             Simulation* simulation) override;
+
+private:
+    /* helpers ---------------------------------------------------------- */
+    static float normalise_angle(float a);
+    void         recompute_geometry();
+    void         request_map_refresh() { light_map->update(); }
+
+    /* phase machine ---------------------------------------------------- */
+    enum class phase_t { LONG_WHITE, LEFT_RAY, SHORT_WHITE, RIGHT_RAY };
+
+    void enter_phase(phase_t p, float now_s);
+
+    /* parameters ------------------------------------------------------- */
+    LightLevelMap* light_map       = nullptr;
+    int16_t         value           = 0;
+    float           ray_half_width  = 0.1f;     /* rad  */
+    float           angular_speed   = 3.0f;     /* rad·s⁻¹ */
+    float           long_white_dur  = 1.0f;     /* s    */
+    float           short_white_dur = 0.03f;    /* s    */
+    int16_t         white_val       = 32767;
+
+    /* geometry --------------------------------------------------------- */
+    BoundingBox bbox {};
+    float       cx = 0.f, cy = 0.f;          /* centre of geometry         */
+    float       ax_l = 0.f, ay_l = 0.f;      /* top-left  apex             */
+    float       ax_r = 0.f, ay_r = 0.f;      /* top-right apex             */
+    float       left_a0  = 0.f, left_a1  = 0.f;
+    float       right_a0 = 0.f, right_a1 = 0.f;
+
+    /* evolving state --------------------------------------------------- */
+    phase_t phase            = phase_t::LONG_WHITE;
+    float   phase_start_t    = 0.f;          /* s                           */
+    float   prev_t           = 0.f;          /* s                           */
+    float   current_angle    = 0.f;          /* rad – of active ray         */
+};
+
+
 /**
  * @brief A physical object, i.e. with physics properties (e.g. collisions) modelled by Box2D
  *
