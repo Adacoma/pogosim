@@ -105,6 +105,7 @@ To launch examples code you can use the following commands:
 ./examples/coverage_neighbors_novelty/coverage_neighbors_novelty -c conf/coverage_neighbors_novelty.yaml   # More complex run-and-tumble example, with two objectives: neighbor novelty, and isolation avoidance (as a proxy to global coverage)
 ./examples/IMU/IMU -c conf/simple.yaml                                  # A run-and-tumble example showing how to retrieve IMU information (gyroscope, accelerometer, temperature sensor)
 ./examples/moving_oscillators/moving_oscillators -c conf/simple.yaml    # Showcases a Kuramoto-style moving oscillators swarm achieving synchronization. The robots move according to a run-and-tumble algorithm.
+./examples/lighthouse_localization/lighthouse_localization -c conf/lighthouse.yaml  # Robot estimate their X,Y position using two rotating lighthouse inspired by the **Valve SteamVR** tracking system, often used with drone localization.
 ```
 
 

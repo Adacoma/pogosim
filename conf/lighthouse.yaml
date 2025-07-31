@@ -14,8 +14,8 @@ enable_data_logging: true
 data_filename: "frames/data.feather"
 enable_console_logging: true
 console_filename: "frames/console.txt"
-save_data_period: 1.0       # In s, or -1 to disable data export (see also "enable_data_logging")
-save_video_period: 1.0      # In s, or -1 to disable frame export
+save_data_period: 0.025       # In s, or -1 to disable data export (see also "enable_data_logging")
+save_video_period: 0.025      # In s, or -1 to disable frame export
 frames_name: "frames/f{:010.4f}.png"
 
 seed: 0
@@ -89,46 +89,6 @@ light_map_nb_bin_y: 150
 
 # List of objects created in the simulation, by category
 objects:
-##    # An object category containing a single light spot encompassing the entire simulation
-#    global_light:
-#        type: static_light  # The light is not active (does not move and does not have a controller)
-#        geometry: global    # The light involve the entire simulation
-#        value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
-#        photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
-#                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
-#                            # start their user program in a synchronous manner.
-#        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
-#        photo_start_value: 32767    # Light value during the photo start period (between 0 and 32767). Should be very different from the normal value of the light
-#
-#
-#    ray:
-#        type: rotating_ray_of_light
-#        geometry: arena    # The light involve the entire simulation
-#        value: 32767          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
-#        photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
-#                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
-#                            # start their user program in a synchronous manner.
-#        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
-#        #ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-#        ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-#        angular_speed: 1.0          # Sweep speed in rad · s⁻¹ (default = 3)
-
-#    ray:
-#        type: rotating_ray_of_light
-#        geometry: arena    # The light involve the entire simulation
-#        value: 32767          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
-#        photo_start_at: -1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
-#                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
-#                            # start their user program in a synchronous manner.
-#        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
-#        #ray_half_width: 0.036       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-#        ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-#        #ray_half_width: 0.009       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-#        #angular_speed: 6.2831       # Sweep speed in rad · s⁻¹ (default = 3)
-#        angular_speed: 1.0       # Sweep speed in rad · s⁻¹ (default = 3)
-#        white_frame_duration: 0.1
-#        white_frame_value: 32767
-
     ray:
         type: alternating_rays_of_light
         geometry: arena    # The light involve the entire simulation
@@ -140,9 +100,6 @@ objects:
         #ray_half_width: 0.036       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
         ray_half_width: 0.018       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
         #ray_half_width: 0.009       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-        #ray_half_width: 0.005       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-        #ray_half_width: 0.005       # Half the angular aperture of the ray in radians (default ≈ 5.7 ° = 0.1 rad).
-        #angular_speed: 6.2831       # Sweep speed in rad · s⁻¹ (default = 3)
         angular_speed: 3.0       # Sweep speed in rad · s⁻¹ (default = 3)
         long_white_frame_duration: 0.5
         short_white_frame_duration: 0.1

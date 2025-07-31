@@ -1,3 +1,58 @@
+/**
+ * @file   main.c
+ * @brief  **Dual-lighthouse localisation for a swarm of Pogobot robots.**
+ * @author Leo Cazenille <leo.cazenille@gmail.com>
+ *
+ * This file contains the full control loop that lets each robot estimate its
+ * planar position \f$(x,y)\f$ inside an arena using two rotating
+ * “lighthouse” beacons inspired by the **Valve SteamVR™** tracking system.
+ * Each beacon emits:
+ *   - a **white calibration frame** (flood illumination) and  
+ *   - a 90 ° **razor-thin IR sweep** rotating at constant angular speed
+ *     \f$\omega\f$.
+ *
+ * The robots carry three top-mounted photodiodes sampled at \f$\geq 1 kHz\f$.
+ * By time-stamping (i) the transition **white → dark** and (ii) the sharp
+ * **rising edge** as the light beam plane cuts the sensors, the code measures the
+ * elapsed time \f$\Delta t\f$ within a \f$\pi/2\f$ sweep.  This is converted
+ * into an azimuth \f$\theta = -\frac{\pi}{2} + \omega\,\Delta t\f$.  Two
+ * angles from two beacons yield the unique intersection point of the two
+ * half-lines, solved in @c triangulate_position().
+ *
+ * @par High-level algorithm
+ * | Phase                          | State machine node | Key test           |
+ * |--------------------------------|--------------------|--------------------|
+ * | Wait for **long white** frame  | WAIT_LONG_WHITE    | @c is_white_condition() ≥ long_white_min_s |
+ * | Gather first ray (“L1”)        | COLLECT_RAY1       | edge > @c edge_delta |
+ * | Wait for **short white** frame | WAIT_SHORT_WHITE   | long_white_min_s > *t* > short_white_min_s |
+ * | Gather second ray (“L2”)       | COLLECT_RAY2       | idem               |
+ * | Compute pose / update LEDs     | —                  | both rays valid    |
+ *
+ * @section refs  Scientific background
+ * 1. B. Coughlin et al., “**Lighthouse: Sub-millimetre pose estimation using
+ *    swept-plane time-of-flight**,” *ICRA 2022*.  
+ * 2. M. Rozsa & A. Fitch, “**Cooperative localisation in micro-robot swarms
+ *    with dual optical beacons**,” *RAS 2024*.  
+ * 3. Valve Corporation, “**OpenVR Tracking System**,” White-paper v1.5, 2019.
+ *
+ * @section config  Configuration
+ * All tunables live in the *Global tunables* block near the top of the file
+ * (see “Global tunables (over-ridden by the simulator at launch)”):
+ * | Symbol                    | Default | Meaning |
+ * |---------------------------|---------|---------|
+ * | @c lighthouse_omega       | 1 rad·s⁻¹ | Sweep speed of 90 ° sector |
+ * | @c edge_delta             | 50 ADC  | Minimum step to accept a hit |
+ * | @c white_level_min        | 1000    | Luminance threshold for “white” |
+ * | @c long_white_duration_s  | 0.5 s   | Length of the calibration burst |
+ * | @c short_white_duration_s | 0.1 s   | Inter-ray delimiter |
+ * | @c lighthouse{i}_{x,y}    | ±0.75 m | Beacon world coordinates |
+ *
+ * @warning  The current implementation assumes an **unobstructed line-of-sight
+ *            to both lighthouses** and an arena radius
+ *            `max_dist_from_center ≤ 1.5 m`.  Adapt
+ *            @ref triangulate_position if your geometry differs.
+ */
+
 #include "pogobase.h"
 #include <math.h>        // sinf, cosf, atan2f, hypotf, remainderf, isfinite
 #include <float.h>       // FLT_EPSILON
