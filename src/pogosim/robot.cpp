@@ -502,12 +502,17 @@ b2Vec2 PogobotObject::get_photosensor_position(uint8_t sensor_number) const {
         return {NAN, NAN};
     }
 
-    /* Each sensor sits on the rim (radius)                                *
-     *  – sensor 0 : straight BACK  (π/2 rad in robot frame)               *
-     *  – sensor 1 : +120 ° from sensor 0                                   *
-     *  – sensor 2 : +240 ° from sensor 0                                   */
-    constexpr float two_pi_over_three = 2.0f * M_PI / 3.0f;
-    float const local_ang = M_PI / 2.0f + sensor_number * two_pi_over_three;
+    /* Each sensor sits on the rim (radius)
+     *  – sensor 0 : straight BACK  (π rad in robot frame)
+     *  – sensor 1 : +140 ° from sensor 0
+     *  – sensor 2 : +80  ° from sensor 1
+     */
+    constexpr std::array<float, 3> sensor_angles = {
+        M_PI,                              // 180°
+        320.0f * M_PI / 180.0f,            // 320°
+        40.0f  * M_PI / 180.0f             //  40°
+    };
+    float const local_ang = sensor_angles[sensor_number];
 
     /* Local offset, in millimetres -------------------------------------- */
     float const local_x =  radius * std::cos(local_ang);
