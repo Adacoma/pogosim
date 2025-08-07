@@ -458,14 +458,15 @@ void Simulation::init_SDL() {
         throw std::runtime_error("Error while initializing SDL");
     }
 
+    const char* title = (std::string("Pogosim ") + std::string(POGOSIM_VERSION)).c_str();
     if (enable_gui) {
-        window = SDL_CreateWindow("Swarm Robotics Simulator with Walls",
+        window = SDL_CreateWindow(title,
                 SDL_WINDOWPOS_CENTERED,
                 SDL_WINDOWPOS_CENTERED,
                 window_width, window_height,
                 SDL_WINDOW_SHOWN);
     } else {
-        window = SDL_CreateWindow("Swarm Robotics Simulator with Walls",
+        window = SDL_CreateWindow(title,
                 SDL_WINDOWPOS_CENTERED,
                 SDL_WINDOWPOS_CENTERED,
                 window_width, window_height,
