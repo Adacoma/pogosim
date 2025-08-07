@@ -59,7 +59,8 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 #       As such, if the distance is enough, the robots will only have max 4 neighbors corresponding to the 4 directions top, left, bottom, right.
 #       The "formation_cluster_at_center" parameter (default=true) specifies whether (true) all robots should put as close as possible to the center of the grid (i.e. center of the arena); or (false) if they should just be placed randomly in the grid.
 #   - aligned_chessboard: similar to formation "chessboard", but all robots have a pi/2 direction.
-initial_formation: power_lloyd
+#initial_formation: power_lloyd
+initial_formation: random
 
 # In the chessboard formations, the euclidean distance between two connected points of the grid.
 chessboard_distance_between_neighbors: 110
@@ -78,6 +79,7 @@ objects:
     # An object category containing a single light spot encompassing the entire simulation
     global_light:
         type: static_light  # The light is not active (does not move and does not have a controller)
+        light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
         geometry: global    # The light involve the entire simulation
         value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
         photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 

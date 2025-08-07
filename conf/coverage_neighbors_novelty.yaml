@@ -85,6 +85,7 @@ objects:
     # An object category containing a single light spot encompassing the entire simulation
     global_light:
         type: static_light  # The light is not active (does not move and does not have a controller)
+        light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
         geometry: global    # The light involve the entire simulation
         value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
         photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds).
