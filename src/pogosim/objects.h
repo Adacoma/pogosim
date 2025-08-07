@@ -658,7 +658,7 @@ public:
      *  from the geometrical centre (`x`,`y`).  
      *  The intensity at the outer edge of the gradient is #edge_value.
      */
-    enum class LightMode { STATIC, GRADIENT };
+    enum class LightMode { STATIC, GRADIENT, PLANE };
 
     /**
      * @brief Construct a light object programmatically.
@@ -699,6 +699,8 @@ public:
                       LightMode _mode               = LightMode::STATIC,
                       int16_t _edge_value           = 0,
                       float   _gradient_radius      = -1.0f,
+                      float   _plane_angle          = 0.0f,
+                      float   _plane_half_span      = 1000.0f,
                       float   _photo_start_at       = -1.0f,
                       float   _photo_start_duration = 1.0f,
                       int16_t _photo_start_value    = 32767,
@@ -753,7 +755,7 @@ protected:
     /** Saved intensity for restoring after a photo-start pulse. */
     int16_t orig_value = 0;
 
-    /** Intensity at #gradient_radius (GRADIENT mode only). */
+    /** Intensity at #gradient_radius (GRADIENT and PLANE modes only). */
     int16_t edge_value = 0;
 
     /**
@@ -761,6 +763,13 @@ protected:
      * A non-positive value means “compute automatically”.
      */
     float gradient_radius = -1.0f;
+
+    // Direction of the plane’s normal, *in radians* (0 → +x, π/2 → +y)
+    float plane_angle = 0.0f;
+
+    // Half-width (mm) of the transition zone.  
+    // The intensity goes from `value` to `edge_value` over a span of 2·plane_half_span.
+    float plane_half_span = 1000.0f;
 
     /** Selected intensity distribution strategy. */
     LightMode mode = LightMode::STATIC;

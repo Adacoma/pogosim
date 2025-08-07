@@ -577,6 +577,8 @@ StaticLightObject::StaticLightObject(float x, float y,
                                      LightMode _mode,
                                      int16_t _edge_value,
                                      float   _gradient_radius,
+                                     float   _plane_angle,
+                                     float   _plane_half_span,
                                      float   _photo_start_at,
                                      float   _photo_start_duration,
                                      int16_t _photo_start_value,
@@ -586,6 +588,8 @@ StaticLightObject::StaticLightObject(float x, float y,
       orig_value(_value),
       edge_value(_edge_value),
       gradient_radius(_gradient_radius),
+      plane_angle(_plane_angle),
+      plane_half_span(_plane_half_span),
       mode(_mode),
       light_map(lmap),
       photo_start_at(_photo_start_at),
@@ -635,7 +639,7 @@ void StaticLightObject::update_light_map(LightLevelMap& l) {
 
     auto geometry_grid = geom->export_geometry_grid(nx, ny, bw, bh, x, y);
 
-    /* ----- optional automatic radius (max distance inside geometry) ------ */
+    // Automatic radius (max distance inside geometry)
     float effective_radius = gradient_radius;
     if (!performing_photo_start && mode == LightMode::GRADIENT && effective_radius <= 0.0f) {
         for (size_t j = 0; j < ny; ++j) {
@@ -647,11 +651,39 @@ void StaticLightObject::update_light_map(LightLevelMap& l) {
                 effective_radius = std::max(effective_radius, dist);
             }
         }
-        /* Degenerate case: single-bin objects */
+        // Degenerate case: single-bin objects
         if (effective_radius <= 0.0f) { effective_radius = std::max(bw, bh) * 0.5f; }
     }
 
-    /* ----------------------- write contribution -------------------------- */
+    if (!performing_photo_start && mode == LightMode::PLANE) {
+        // Pre–compute the unit normal once
+        const float nx_plane = std::cos(plane_angle);
+        const float ny_plane = std::sin(plane_angle);
+        int16_t level = value;
+
+        for (size_t j = 0; j < ny; ++j) {
+            for (size_t i = 0; i < nx; ++i) {
+                if (!geometry_grid[j][i]) { continue; }
+
+                const float cx   = (i + 0.5f) * bw;
+                const float cy   = (j + 0.5f) * bh;
+
+                // Signed distance of the bin centre to the plane origin (x,y)
+                const float proj = (cx - x) * nx_plane + (cy - y) * ny_plane;
+
+                // Normalised position in [0,1] inside the transition zone
+                const float ratio = std::clamp(
+                    (proj / plane_half_span + 1.f) * 0.5f, 0.f, 1.f);
+
+                level = static_cast<int16_t>(
+                    std::lround(value + (edge_value - value) * ratio));
+                l.add_light_level(i, j, level);
+            }
+        }
+        return;
+    }
+
+    // Write contribution
     for (size_t j = 0; j < ny; ++j) {
         for (size_t i = 0; i < nx; ++i) {
             if (!geometry_grid[j][i]) { continue; }
@@ -674,11 +706,23 @@ void StaticLightObject::update_light_map(LightLevelMap& l) {
 void StaticLightObject::parse_configuration(Configuration const& config, Simulation* simulation) {
     Object::parse_configuration(config, simulation);
     mode = config["light_mode"].get(std::string("static")) == "gradient" ? LightMode::GRADIENT : LightMode::STATIC;
+    auto mode_str = config["light_mode"].get(std::string("static"));
+    if (mode_str == "static") {
+        mode = LightMode::STATIC;
+    } else if (mode_str == "gradient") {
+        mode = LightMode::GRADIENT;
+    } else if (mode_str == "plane") {
+        mode = LightMode::PLANE;
+    } else {
+        throw std::runtime_error("Unknown light_mode: '" + mode_str + "'. Use either 'static', 'gradient' or 'plane'.");
+    }
     value = config["value"].get(10);
     orig_value = value;
-    edge_value = config["edge_value"].get(0);              // Only used in GRADIENT
-    gradient_radius = config["gradient_radius"].get(-1.f); // Only used in GRADIENT
-    photo_start_at = config["photo_start_at"].get(-1.0f);
+    edge_value = config["edge_value"].get(0);               // Only used in GRADIENT and PLANE
+    gradient_radius = config["gradient_radius"].get(-1.f);  // Only used in GRADIENT
+    plane_angle     = config["plane_angle"].get(0.f);       // Only used in PLANE
+    plane_half_span = config["plane_half_span"].get(1000.f);// Only used in PLANE
+    photo_start_at  = config["photo_start_at"].get(-1.0f);
     photo_start_duration = config["photo_start_duration"].get(1.0f);
     photo_start_value = config["photo_start_value"].get(32767);
 }

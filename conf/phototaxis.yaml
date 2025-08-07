@@ -70,6 +70,7 @@ objects:
     # An object category containing a single light spot encompassing the entire simulation
     global_light:
         type: static_light  # The light is not active (does not move and does not have a controller)
+        light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
         geometry: global    # The light involve the entire simulation
         value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
         photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
@@ -82,7 +83,7 @@ objects:
     # An object category containing a small light spot around the middle of the arena
     target_light:
         type: static_light  # The light is not active (does not move and does not have a controller)
-        light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+        light_mode: static  # Type of light level paradigm: 'static' (same value across the entire geometry), 'gradient' (``value`` at the center, ``edge_value`` at the edge) or 'plane' (planar gradient towards angle ``plane_angle`` with half span ``plane_half_span``)
         geometry: rectangle # Shape of the light. Can be 'disk', 'rectangle' or 'global'
         x: 1000             # Center of the light spot, X coordinate, in mm
         y: 500              # Center of the light spot, Y coordinate, in mm
@@ -93,13 +94,27 @@ objects:
     # An object category containing a small light spot around the middle of the arena
     target_light:
         type: static_light    # The light is not active (does not move and does not have a controller)
+        light_mode: gradient  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
         geometry: disk        # Shape of the light. Can be 'disk', 'rectangle' or 'global'
         x: 200                # Center of the light spot, X coordinate, in mm
         y: 1100               # Center of the light spot, Y coordinate, in mm
         radius: 400           # Radius of the light spot. in mm
-        light_mode: gradient  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
         value: 30000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
-        edge_value: 0.0       # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
+        edge_value: 0         # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
+
+    # An object category containing a small light spot around the middle of the arena
+    target_light:
+        type: static_light    # The light is not active (does not move and does not have a controller)
+        light_mode: plane     # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+        geometry: rectangle   # Shape of the light. Can be 'disk', 'rectangle' or 'global'
+        x: 400                # Center of the light spot, X coordinate, in mm
+        y: 400                # Center of the light spot, Y coordinate, in mm
+        body_width: 500       # Width of the rectangle geometry, in mm
+        body_height: 500      # Height of the rectangle geometry, in mm
+        value: 30000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+        edge_value: 5000      # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
+        plane_angle: 0.785398 # Angle orientating the planar gradient, in rad
+        plane_half_span: 150  # Half span of the planar gradient from ``value`` to ``edge_value``, in mm
 
 
     # An object category containing the Pogobot robots
