@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import os
 import shutil
 import subprocess
@@ -15,8 +14,6 @@ from matplotlib.cm import get_cmap
 from matplotlib.collections import LineCollection
 import numpy as np
 import seaborn as sns
-from matplotlib.backends.backend_pdf import PdfPages
-from pandas import DataFrame
 import pandas as pd
 
 from pogosim import utils
@@ -26,7 +23,7 @@ from pogosim import __version__
 ############### HEATMAP ############### {{{1
 
 def plot_arena_heatmaps(
-    df: DataFrame,
+    df: pd.DataFrame,
     *,
     x_col: str = "x",
     y_col: str = "y",
@@ -46,7 +43,7 @@ def plot_arena_heatmaps(
     show_axes_labels: bool = True,
     bin_value: str = "count",             # "count" | "density"
     cbar_shrink: float = 0.80,            # colour-bar height factor
-) -> Path:
+) -> None:
     """
     Render one landscape PDF page that holds a left-to-right row of heat-maps,
     **with X and Y axes in real coordinates**.
@@ -162,12 +159,7 @@ def plot_arena_heatmaps(
     plt.subplots_adjust(left=0.15, bottom=0.10, right=0.93, top=0.94)
 
     # ── 5. save a single-page PDF ─────────────────────────────────────── #
-    pdf_path = Path(pdf_path).expanduser().resolve()
-    with PdfPages(pdf_path, metadata={"Title": "Arena heat-maps"}) as pdf:
-        pdf.savefig(fig, dpi=dpi)
-    plt.close(fig)
-    return pdf_path
-
+    utils.save_figure(pdf_path, dpi=dpi)
 
 
 ############### TRACES ############### {{{1
@@ -434,11 +426,17 @@ def create_all_locomotion_plots(input_file, output_dir):
     df, meta = utils.load_dataframe(input_file)
     config = meta.get("configuration", {})
 
+    # Insert a run column, might be needed for some plotting functions
+    if "run" not in df.columns:
+        df["run"] = 0
+
     # Create Heatmaps
+    print("Creating heatmaps...")
     plot_arena_heatmaps(df, bins=30, pdf_path=os.path.join(output_dir, "arena_heatmaps.pdf"), use_kde=False, bin_value="density", show_grid_lines=False)
     plot_arena_heatmaps(df, bins=30, pdf_path=os.path.join(output_dir, "arena_heatmaps_kde.pdf"), use_kde=True, bin_value="density", show_grid_lines=False)
 
     # Create trace plots
+    print("Creating trace plots...")
     trace_path = os.path.join(output_dir, "traces")
     shutil.rmtree(trace_path, ignore_errors=True)
     os.makedirs(trace_path, exist_ok=True)
