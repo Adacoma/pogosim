@@ -1103,18 +1103,19 @@ void PhysicalObject::launch_user_step(float t) {
     Object::launch_user_step(t);
 
     // Compute acceleration statistics
-    _estimated_dt = t - _last_time;
-    _last_time = t;
-    // Translational acceleration in world frame
-    b2Vec2 now_v = b2Body_GetLinearVelocity(body_id);
-    b2Vec2 a_world = (now_v - _prev_v) * (1.0f / _estimated_dt);
-    _prev_v = now_v;
-    // Specific force (proper accel) → subtract gravity
-    b2Vec2 gravity = {0.0f, 0.0f};   // Same as Box2D world. TODO update
-    b2Vec2 f_world = a_world - gravity;
-    // Rotate into body frame
-    _lin_acc = b2Body_GetLocalVector(body_id, f_world);
-
+    if (b2Body_IsValid(body_id)) {
+        _estimated_dt = t - _last_time;
+        _last_time = t;
+        // Translational acceleration in world frame
+        b2Vec2 now_v = b2Body_GetLinearVelocity(body_id);
+        b2Vec2 a_world = (now_v - _prev_v) * (1.0f / _estimated_dt);
+        _prev_v = now_v;
+        // Specific force (proper accel) → subtract gravity
+        b2Vec2 gravity = {0.0f, 0.0f};   // Same as Box2D world. TODO update
+        b2Vec2 f_world = a_world - gravity;
+        // Rotate into body frame
+        _lin_acc = b2Body_GetLocalVector(body_id, f_world);
+    }
 }
 
 b2Vec2 PhysicalObject::get_position() const {
