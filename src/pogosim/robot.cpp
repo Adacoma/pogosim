@@ -99,6 +99,7 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
        float _max_linear_speed, float _max_angular_speed,
        float _linear_noise_stddev, float _angular_noise_stddev,
        std::pair<int16_t, int16_t> photosensors_systematic_bias_domain,
+       float _photosensors_noise_stddev,
        std::string const& _category)
     : PhysicalObject(_id, _x, _y, geom, world_id,
       _linear_damping, _angular_damping,
@@ -106,7 +107,8 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
     communication_radius(_communication_radius), msg_success_rate(std::move(_msg_success_rate)),
     temporal_noise_stddev(_temporal_noise_stddev),
     max_linear_speed(_max_linear_speed), max_angular_speed(_max_angular_speed),
-    linear_noise_stddev(_linear_noise_stddev), angular_noise_stddev(_angular_noise_stddev) {
+    linear_noise_stddev(_linear_noise_stddev), angular_noise_stddev(_angular_noise_stddev),
+    photosensors_noise_stddev(_photosensors_noise_stddev) {
     data = malloc(_userdatasize);
     initialize_time();
     create_robot_body(world_id);
@@ -135,6 +137,7 @@ void PogobotObject::parse_configuration(Configuration const& config, Simulation*
 
     auto photosensors_systematic_bias_domain = config["photosensors_systematic_bias_domain"].get<std::pair<int16_t,int16_t>>({0, 0});
     initialize_photosensors_bias(photosensors_systematic_bias_domain);
+    photosensors_noise_stddev  = config["photosensors_noise_stddev"].get(0.0f);
 }
 
 
@@ -652,7 +655,7 @@ PogobjectObject::PogobjectObject(uint16_t _id, float _x, float _y,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
-      0.0f, 0.0f, 0.0f, 0.0f, {0,0}, _category) {
+      0.0f, 0.0f, 0.0f, 0.0f, {0,0}, 0.0f, _category) {
     for (size_t i = 0; i != motorB; i++)
         set_motor(static_cast<motor_id>(i), 0);
 }
@@ -750,7 +753,7 @@ Pogowall::Pogowall(uint16_t _id, float _x, float _y,
       _density, _friction, _restitution,
       _max_linear_speed, _max_angular_speed,
       _linear_noise_stddev, _angular_noise_stddev,
-      {0, 0}, _category) {
+      {0, 0}, 0.0f, _category) {
     auto bd = geom->compute_bounding_disk();
     PhysicalObject::move(bd.center_x, bd.center_y);
 }

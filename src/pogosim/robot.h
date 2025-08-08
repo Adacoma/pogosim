@@ -179,6 +179,7 @@ public:
            float _max_linear_speed = 100.0f, float _max_angular_speed = 1.0f,
            float _linear_noise_stddev = 0.0f, float _angular_noise_stddev = 0.0f,
            std::pair<int16_t, int16_t> photosensors_systematic_bias_domain = {0, 0},
+           float _photosensors_noise_stddev = 0.0f,
            std::string const& _category = "robots");
 
     /**
@@ -227,7 +228,6 @@ public:
     uint8_t percent_msgs_sent_per_ticks = 20;   ///< Percentage of messages sent per tick.
     uint32_t nb_msgs_sent = 0;                  ///< Counter for messages sent.
     uint32_t nb_msgs_recv = 0;                  ///< Counter for messages received.
-    std::vector<int16_t> photosensors_biases = {0, 0, 0}; ///< Level of systematic bias to apply to each photosensor
 
     // Time-related utilities
     std::set<time_reference_t*> stop_watches;   ///< Set of registered stop watches.
@@ -413,6 +413,12 @@ protected:
      * @brief Initialize the level of bias each photosensor has, based on provided configuration/parameters
      */
     virtual void initialize_photosensors_bias(std::pair<int16_t, int16_t>& domain);
+
+public:
+    // Photosensors noise and biaises
+    std::vector<int16_t> photosensors_biases = {0, 0, 0}; ///< Level of systematic bias to apply to each photosensor
+    float photosensors_noise_stddev = 0.0f;     ///< Stddev of the Gaussian noise to apply to photosensors light levels
+
 };
 
 

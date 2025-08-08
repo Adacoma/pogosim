@@ -269,7 +269,12 @@ void pogobot_led_setColors(const uint8_t r, const uint8_t g, const uint8_t b, ui
 
 int16_t pogobot_photosensors_read( uint8_t sensor_number ) {
     b2Vec2 pos = current_robot->get_photosensor_position(sensor_number);
-    int16_t const val = simulation->get_light_map()->get_light_level_at(pos.x * VISUALIZATION_SCALE, pos.y * VISUALIZATION_SCALE);
+    int16_t val = simulation->get_light_map()->get_light_level_at(pos.x * VISUALIZATION_SCALE, pos.y * VISUALIZATION_SCALE);
+    float const noise_level = current_robot->photosensors_noise_stddev;
+    if (noise_level > 0.0f) {
+        std::normal_distribution<float> dist(0.0f, noise_level);
+        val += dist(rnd_gen);
+    }
     return val + current_robot->photosensors_biases[sensor_number]; // Add systematic bias to the measure
 }
 

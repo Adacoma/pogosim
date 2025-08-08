@@ -109,6 +109,7 @@ objects:
 
         photosensors_systematic_bias_domain: [-10, 100] # Systematic bias to apply to each 3 photosensor of each robot, to simulate real-robot biases.
                                                         #  Domain pair between -32767 and 32767.
+        photosensors_noise_stddev: 0.0  # Stddev of a gaussian noise to apply to photosensor detected light levels.
 
         # Communication propeties
         communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)

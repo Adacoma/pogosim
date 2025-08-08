@@ -129,10 +129,10 @@ void user_step(void) {
     int16_t p0 = pogobot_photosensors_read(0);
     int16_t p1 = pogobot_photosensors_read(1);
     int16_t p2 = pogobot_photosensors_read(2);
-    int32_t curr_light = (p0 + p1 + p2) / 3;
+    int16_t curr_light = (int32_t) ((p0 + p1 + p2) / 3);
 
     if (pogobot_ticks % 1000 == 0 && pogobot_helper_getid() == 0) {     // Only print messages for robot 0
-        printf("# Robot ID: %d   pogobot_ticks: %lu  curr_light: %ld  p0: %d  phase: %d\n",
+        printf("# Robot ID: %d   pogobot_ticks: %lu  curr_light: %d  p0: %d  phase: %d\n",
                 pogobot_helper_getid(),
                 pogobot_ticks,       // Increased by one at each execution of user_step
                 curr_light, p0, mydata->phase);
