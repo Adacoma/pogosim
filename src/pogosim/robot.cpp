@@ -98,6 +98,7 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
        float _density, float _friction, float _restitution,
        float _max_linear_speed, float _max_angular_speed,
        float _linear_noise_stddev, float _angular_noise_stddev,
+       std::pair<int16_t, int16_t> photosensors_systematic_bias_domain,
        std::string const& _category)
     : PhysicalObject(_id, _x, _y, geom, world_id,
       _linear_damping, _angular_damping,
@@ -109,6 +110,7 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
     data = malloc(_userdatasize);
     initialize_time();
     create_robot_body(world_id);
+    initialize_photosensors_bias(photosensors_systematic_bias_domain);
 }
 
 PogobotObject::PogobotObject(Simulation* simulation, uint16_t _id, float _x, float _y,
@@ -130,6 +132,21 @@ void PogobotObject::parse_configuration(Configuration const& config, Simulation*
     max_angular_speed     = config["max_angular_speed"].get(1.0f);
     linear_noise_stddev   = config["linear_noise_stddev"].get(0.0f);
     angular_noise_stddev  = config["angular_noise_stddev"].get(0.0f);
+
+    auto photosensors_systematic_bias_domain = config["photosensors_systematic_bias_domain"].get<std::pair<int16_t,int16_t>>({0, 0});
+    initialize_photosensors_bias(photosensors_systematic_bias_domain);
+}
+
+
+void PogobotObject::initialize_photosensors_bias(std::pair<int16_t, int16_t>& domain) {
+    if (domain.first == 0 && domain.second == 0) {
+        photosensors_biases = {0, 0, 0};
+    } else {
+        std::uniform_int_distribution<int16_t> dis(domain.first, domain.second);
+        for (size_t i = 0; i < photosensors_biases.size(); ++i) {
+            photosensors_biases[i] = dis(rnd_gen);
+        }
+    }
 }
 
 
@@ -635,7 +652,7 @@ PogobjectObject::PogobjectObject(uint16_t _id, float _x, float _y,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
-      0.0f, 0.0f, 0.0f, 0.0f, _category) {
+      0.0f, 0.0f, 0.0f, 0.0f, {0,0}, _category) {
     for (size_t i = 0; i != motorB; i++)
         set_motor(static_cast<motor_id>(i), 0);
 }
@@ -733,7 +750,7 @@ Pogowall::Pogowall(uint16_t _id, float _x, float _y,
       _density, _friction, _restitution,
       _max_linear_speed, _max_angular_speed,
       _linear_noise_stddev, _angular_noise_stddev,
-      _category) {
+      {0, 0}, _category) {
     auto bd = geom->compute_bounding_disk();
     PhysicalObject::move(bd.center_x, bd.center_y);
 }
