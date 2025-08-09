@@ -141,7 +141,7 @@ def plot_interindividual_distance_knn_over_time(
     df: pd.DataFrame,
     output_path: str | Path,
     *,
-    k: int = 5,
+    k: int = 3,
     communication_radius: float = 133.0,
     neighbors_col: str = "neighbors_list",
     aggregate_by: str = "run",
@@ -212,6 +212,292 @@ def plot_interindividual_distance_knn_over_time(
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Degree/Fano metrics (positions-only; KDTree-based)
+
+def _degrees_within_radius(points: np.ndarray, radius: float) -> np.ndarray:
+    """
+    @brief  Return the neighbour degree (count within @p radius, excl. self)
+            for each point.
+    """
+    if points.shape[0] < 2:
+        return np.empty(0, dtype=int)
+    tree = KDTree(points)
+    neigh = tree.query_ball_point(points, r=radius)
+    return np.asarray([len(lst) - 1 for lst in neigh], dtype=int)
+
+
+def compute_fano_over_time_corrected(
+    df: pd.DataFrame,
+    figure_folder: str | Path,
+    *,
+    communication_radius: float = 133.0,
+    run_id: int = 0,
+    plot: bool = True,
+) -> pd.DataFrame:
+    """
+    @brief  Fano factor of the per-agent degree distribution over time
+            (single run).
+
+    @return DataFrame with columns {time, mean_degree, variance, fano_factor}.
+    """
+    if "run" not in df.columns:
+        df = df.copy()
+        df["run"] = 0
+
+    run_data = df[df["run"] == run_id]
+    rows: list[tuple[float, float, float, float]] = []
+
+    for t, grp in run_data.groupby("time"):
+        pts = grp[["x", "y"]].to_numpy()
+        deg = _degrees_within_radius(pts, communication_radius)
+        if deg.size == 0:
+            continue
+        mu = float(deg.mean())
+        var = float(deg.var())
+        fano = (var / mu) if mu > 0 else np.nan
+        rows.append((float(t), mu, var, fano))
+
+    fano_df = pd.DataFrame(rows, columns=["time", "mean_degree", "variance", "fano_factor"])
+
+    if plot and not fano_df.empty:
+        plt.figure(figsize=(10, 6))
+        plt.plot(fano_df["time"], fano_df["fano_factor"], label="Fano Factor")
+        plt.xlabel("Time")
+        plt.ylabel("Fano Factor (σ² / μ)")
+        plt.title("Fano Factor of Degree Distribution Over Time")
+        plt.grid(True)
+        plt.tight_layout()
+        utils.save_figure(Path(figure_folder) / "fano_factor_over_time_corrected.pdf")
+
+    return fano_df
+
+
+def compute_overall_neighbor_degree_histogram(
+    df: pd.DataFrame,
+    figure_folder: str | Path,
+    *,
+    communication_radius: float = 133.0,
+    run_id: int = 0,
+    plot: bool = True,
+) -> dict | None:
+    """
+    @brief  Aggregate all per-agent degrees across all times for a single run
+            and (optionally) plot the histogram.
+    """
+    if "run" not in df.columns:
+        df = df.copy()
+        df["run"] = 0
+
+    run_data = df[df["run"] == run_id]
+    all_degrees: list[int] = []
+
+    for _, grp in run_data.groupby("time"):
+        pts = grp[["x", "y"]].to_numpy()
+        deg = _degrees_within_radius(pts, communication_radius)
+        if deg.size:
+            all_degrees.extend(deg.tolist())
+
+    if not all_degrees:
+        print("No neighbor degrees found.")
+        return None
+
+    arr = np.asarray(all_degrees, dtype=int)
+    mu = float(arr.mean())
+    var = float(arr.var())
+    fano = (var / mu) if mu > 0 else np.nan
+
+    print("\n[Overall Degree Stats]")
+    print(f"Mean degree: {mu:.2f}")
+    print(f"Variance: {var:.2f}")
+    print(f"Fano factor: {fano:.2f}")
+    print(f"Total samples: {arr.size}")
+
+    if plot:
+        plt.figure(figsize=(8, 5))
+        bins = np.arange(arr.min(), arr.max() + 2) - 0.5  # centered bins
+        plt.hist(arr, bins=bins, edgecolor="black")
+        plt.xlabel("Number of neighbors (degree)")
+        plt.ylabel("Total agent-time samples")
+        plt.title("Overall Neighbor Degree Distribution (All Time Points)")
+        plt.grid(True)
+        plt.tight_layout()
+        utils.save_figure(Path(figure_folder) / "overall_neighbor_degree_histogram.pdf")
+
+    return {"degrees": arr, "mean": mu, "variance": var, "fano_factor": fano}
+
+
+def compute_degree_histogram_first_last(
+    df: pd.DataFrame,
+    figure_folder: str | Path,
+    *,
+    communication_radius: float = 133.0,
+    plot: bool = True,
+) -> dict:
+    """
+    @brief  Compare degree distributions at the first and last time step of
+            each run; aggregate across runs and (optionally) plot side-by-side.
+    """
+    if "run" not in df.columns:
+        df = df.copy()
+        df["run"] = 0
+
+    first_deg: list[int] = []
+    last_deg: list[int] = []
+
+    for _, run_df in df.groupby("run"):
+        times = sorted(run_df["time"].unique())
+        if len(times) < 2:
+            continue
+        for t, sink in ((times[0], first_deg), (times[-1], last_deg)):
+            pts = run_df[run_df["time"] == t][["x", "y"]].to_numpy()
+            deg = _degrees_within_radius(pts, communication_radius)
+            if deg.size:
+                sink.extend(deg.tolist())
+
+    first = np.asarray(first_deg, dtype=int)
+    last  = np.asarray(last_deg, dtype=int)
+
+    def _stats(a: np.ndarray) -> dict:
+        if a.size == 0:
+            return {"mean": np.nan, "var": np.nan, "fano": np.nan, "samples": 0}
+        mu = float(a.mean()); var = float(a.var())
+        return {"mean": mu, "var": var, "fano": (var / mu) if mu > 0 else np.nan, "samples": int(a.size)}
+
+    stats = {"first": _stats(first), "last": _stats(last)}
+
+    if plot:
+        plt.figure(figsize=(12, 5))
+
+        # First time step
+        plt.subplot(1, 2, 1)
+        if first.size:
+            bins = np.arange(first.min(), first.max() + 2) - 0.5
+            plt.hist(first, bins=bins, edgecolor="black")
+            plt.xlabel("Number of neighbors (degree)")
+            plt.ylabel("Count (across all agents & runs)")
+            plt.title("First time step")
+        else:
+            plt.text(0.5, 0.5, "No data", transform=plt.gca().transAxes,
+                     ha="center", va="center")
+
+        # Last time step
+        plt.subplot(1, 2, 2)
+        if last.size:
+            bins = np.arange(last.min(), last.max() + 2) - 0.5
+            plt.hist(last, bins=bins, edgecolor="black")
+            plt.xlabel("Number of neighbors (degree)")
+            plt.ylabel("Count (across all agents & runs)")
+            plt.title("Last time step")
+        else:
+            plt.text(0.5, 0.5, "No data", transform=plt.gca().transAxes,
+                     ha="center", va="center")
+
+        plt.tight_layout()
+        utils.save_figure(Path(figure_folder) / "degree_histogram_first_last.pdf")
+
+    return stats
+
+
+def compute_fano_over_time_all_runs(
+    df: pd.DataFrame,
+    figure_folder: str | Path,
+    *,
+    communication_radius: float = 133.0,
+    plot: bool = True,
+) -> pd.DataFrame:
+    """
+    @brief  Fano factor over time after pooling all runs at each time instant.
+
+    @return DataFrame with columns {time, mean_degree, variance, fano_factor}.
+    """
+    if "run" not in df.columns:
+        df = df.copy()
+        df["run"] = 0
+
+    rows: list[tuple[float, float, float, float]] = []
+
+    for t, tdf in df.groupby("time"):
+        deg_all: list[int] = []
+        for _, run_df in tdf.groupby("run"):
+            pts = run_df[["x", "y"]].to_numpy()
+            deg = _degrees_within_radius(pts, communication_radius)
+            if deg.size:
+                deg_all.extend(deg.tolist())
+        if not deg_all:
+            continue
+        arr = np.asarray(deg_all, dtype=int)
+        mu = float(arr.mean())
+        var = float(arr.var())
+        fano = (var / mu) if mu > 0 else np.nan
+        rows.append((float(t), mu, var, fano))
+
+    fano_df = pd.DataFrame(rows, columns=["time", "mean_degree", "variance", "fano_factor"])
+
+    if plot and not fano_df.empty:
+        plt.figure(figsize=(10, 6))
+        plt.plot(fano_df["time"], fano_df["fano_factor"], label="Fano Factor")
+        plt.xlabel("Time")
+        plt.ylabel("Fano Factor (σ² / μ)")
+        plt.title("Fano Factor of Degree Distribution Over Time (All Runs)")
+        plt.grid(True)
+        plt.tight_layout()
+        utils.save_figure(Path(figure_folder) / "fano_factor_over_time_all_runs.pdf")
+
+    return fano_df
+
+
+def compute_overall_neighbor_degree_histogram_all_runs(
+    df: pd.DataFrame,
+    figure_folder: str | Path,
+    *,
+    communication_radius: float = 133.0,
+    plot: bool = True,
+) -> dict | None:
+    """
+    @brief  Aggregate all per-agent degrees across all runs and times; plot a
+            single histogram (optional).
+    """
+    if "run" not in df.columns:
+        df = df.copy()
+        df["run"] = 0
+
+    all_deg: list[int] = []
+    for (_, _), grp in df.groupby(["run", "time"]):
+        pts = grp[["x", "y"]].to_numpy()
+        deg = _degrees_within_radius(pts, communication_radius)
+        if deg.size:
+            all_deg.extend(deg.tolist())
+
+    if not all_deg:
+        print("No neighbor degrees found.")
+        return None
+
+    arr = np.asarray(all_deg, dtype=int)
+    mu = float(arr.mean())
+    var = float(arr.var())
+    fano = (var / mu) if mu > 0 else np.nan
+
+    print("\n[Overall Degree Stats - All Runs]")
+    print(f"Mean degree: {mu:.2f}")
+    print(f"Variance: {var:.2f}")
+    print(f"Fano factor: {fano:.2f}")
+    print(f"Total agent-time samples: {arr.size}")
+
+    if plot:
+        plt.figure(figsize=(8, 5))
+        bins = np.arange(arr.min(), arr.max() + 2) - 0.5
+        plt.hist(arr, bins=bins, edgecolor="black")
+        plt.xlabel("Number of neighbors (degree)")
+        plt.ylabel("Total agent-time samples")
+        plt.title("Neighbor Degree Distribution (All Runs, All Time Points)")
+        plt.grid(True)
+        plt.tight_layout()
+        utils.save_figure(Path(figure_folder) / "overall_neighbor_degree_histogram_all_runs.pdf")
+
+    return {"degrees": arr, "mean": mu, "variance": var, "fano_factor": fano}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Front-end helpers
 def create_all_neighbors_plots(
     input_file: str | Path,
@@ -222,9 +508,12 @@ def create_all_neighbors_plots(
 ) -> None:
     """
     @brief  Load data, compute communication radius heuristically and emit plots.
+            Also runs degree/Fano analyses and serializes all stats to a pickle.
 
     @param[in]  stat_basis  Choose `"run"`, `"robot"` or `"both"`.
     """
+    import pickle
+
     os.makedirs(output_dir, exist_ok=True)
 
     df, meta = utils.load_dataframe(input_file)
@@ -238,8 +527,16 @@ def create_all_neighbors_plots(
     radius = float(cfg_rbt.get("radius", 26.5))
     comm_radius = float(cfg_rbt.get("communication_radius", 80)) + radius * 2
 
+    # Choose a canonical run for single-run stats: first available run id
+    run_ids = sorted(df["run"].unique().tolist())
+    first_run_id = int(run_ids[0]) if run_ids else 0
+
+    # ── k-NN distance plots (controlled by stat_basis) ─────────────────────────
+    knn_run_df   = None
+    knn_robot_df = None
+
     if stat_basis in ("run", "both"):
-        plot_interindividual_distance_knn_over_time(
+        knn_run_df = plot_interindividual_distance_knn_over_time(
             df,
             Path(output_dir) / "knn_run.pdf",
             communication_radius=comm_radius,
@@ -248,13 +545,75 @@ def create_all_neighbors_plots(
         )
 
     if stat_basis in ("robot", "both"):
-        plot_interindividual_distance_knn_over_time(
+        knn_robot_df = plot_interindividual_distance_knn_over_time(
             df,
             Path(output_dir) / "knn_robot.pdf",
             communication_radius=comm_radius,
             neighbors_col=neighbors_col,
             aggregate_by="robot",
         )
+
+    # ── New degree/Fano analyses (always run) ──────────────────────────────────
+    fano_time_single_run_df = compute_fano_over_time_corrected(
+        df,
+        output_dir,
+        communication_radius=comm_radius,
+        run_id=first_run_id,
+        plot=True,
+    )
+
+    overall_degree_single_run = compute_overall_neighbor_degree_histogram(
+        df,
+        output_dir,
+        communication_radius=comm_radius,
+        run_id=first_run_id,
+        plot=True,
+    )
+
+    first_last_degree_stats = compute_degree_histogram_first_last(
+        df,
+        output_dir,
+        communication_radius=comm_radius,
+        plot=True,
+    )
+
+    fano_time_all_runs_df = compute_fano_over_time_all_runs(
+        df,
+        output_dir,
+        communication_radius=comm_radius,
+        plot=True,
+    )
+
+    overall_degree_all_runs = compute_overall_neighbor_degree_histogram_all_runs(
+        df,
+        output_dir,
+        communication_radius=comm_radius,
+        plot=True,
+    )
+
+    # ── Serialize everything for later programmatic use ────────────────────────
+    stats = {
+        "metadata": {
+            "comm_radius": comm_radius,
+            "first_run_id": first_run_id,
+            "input_file": str(input_file),
+            "version": __version__,
+        },
+        "knn": {
+            "run_df": knn_run_df,
+            "robot_df": knn_robot_df,
+        },
+        "degree_fano": {
+            "fano_time_single_run_df": fano_time_single_run_df,
+            "overall_degree_single_run": overall_degree_single_run,  # dict | None
+            "first_last_degree_stats": first_last_degree_stats,      # dict
+            "fano_time_all_runs_df": fano_time_all_runs_df,
+            "overall_degree_all_runs": overall_degree_all_runs,      # dict | None
+        },
+    }
+
+    with open(Path(output_dir) / "neighbors_stats.pkl", "wb") as fh:
+        pickle.dump(stats, fh)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
