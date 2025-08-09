@@ -82,6 +82,7 @@ examples/IMU/IMU
 examples/moving_oscillators/moving_oscillators
 examples/lighthouse_localization/lighthouse_localization
 examples/push_sum/push_sum
+examples/active_brownian_particles/active_brownian_particles
 
 # Apptainer
 *.sif
