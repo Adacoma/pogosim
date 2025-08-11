@@ -487,6 +487,129 @@ def plot_voronoi_evolution(
     return fig, axes
 
 
+def plot_cv_mean_across_arenas(
+    df_all: pd.DataFrame,
+    out_dir: str | Path,
+    *,
+    filename: str = "cv_mean_across_arenas_over_time.pdf",
+) -> None:
+    """
+    @brief Plot the mean coefficient of variation (CV) of Voronoi cell area
+           as a function of time for each arena, together with a global mean.
+
+    @param df_all   DataFrame that concatenates per-arena metrics (as produced
+                    by create_all_coverage_plots), must contain columns:
+                    {"time", "cv_area", "arena_name"}.
+                    If the column is named "arena" (legacy), it is accepted.
+    @param out_dir  Output directory for the saved figure (PDF).
+    @param filename Output filename (PDF/PNG/etc.), defaults to PDF.
+    """
+    if df_all is None or df_all.empty:
+        print("plot_cv_mean_across_arenas: no data to plot.")
+        return
+
+    # Accept legacy column name "arena"
+    if "arena_name" not in df_all.columns:
+        if "arena" in df_all.columns:
+            df_all = df_all.rename(columns={"arena": "arena_name"})
+        else:
+            raise ValueError("Expected 'arena_name' (or legacy 'arena') column in df_all.")
+
+    # Defensive sort by time (x-axis monotonic)
+    df_all = df_all.sort_values("time")
+
+    # Figure
+    plt.figure(figsize=(10, 6))
+
+    # Per-arena mean CV curves
+    for arena in sorted(df_all["arena_name"].dropna().unique().tolist()):
+        arena_df = df_all[df_all["arena_name"] == arena]
+        mean_series = arena_df.groupby("time", sort=True)["cv_area"].mean()
+        if not mean_series.empty:
+            plt.plot(mean_series.index, mean_series.values, label=str(arena), alpha=0.6)
+
+    # Global mean across arenas (at each time)
+    global_cv = df_all.groupby("time", sort=True)["cv_area"].mean()
+    if not global_cv.empty:
+        plt.plot(global_cv.index, global_cv.values, label="Mean across arenas", linewidth=2.5)
+
+    plt.xlabel("Time")
+    plt.ylabel("Mean CV of Voronoi Cell Area")
+    plt.title("Mean CV of Voronoi Cell Area Over Time (across arenas)")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+
+    utils.save_figure(Path(out_dir) / filename)
+
+
+
+def _ensure_arena_col(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    @brief Normalize the arena column name to 'arena_name'.
+    Accepts legacy 'arena' and returns a shallow copy if renaming is needed.
+    """
+    if "arena_name" in df.columns:
+        return df
+    if "arena" in df.columns:
+        return df.rename(columns={"arena": "arena_name"})
+    raise ValueError("Expected column 'arena_name' (or legacy 'arena').")
+
+def compute_cv_mean_across_arenas_over_time(df_all: pd.DataFrame) -> pd.DataFrame:
+    """
+    @brief Compute the mean CV of Voronoi cell area across arenas as a function of time.
+
+    @details
+      - First averages CV within each arena at each time (handles multiple runs/rows),
+        then averages those arena means across arenas (equal weight per arena).
+      - Returns a DataFrame with per-time aggregates only (no per-arena rows).
+
+    @param df_all  Concatenated metrics with columns at least:
+                   {'time', 'cv_area', 'arena_name'} (or legacy 'arena').
+
+    @return DataFrame with columns:
+            - 'time'
+            - 'cv_mean_across_arenas'  (mean of per-arena means at that time)
+            - 'n_arenas'               (number of arenas contributing at that time)
+            - 'cv_std_across_arenas'   (std of per-arena means at that time; NaN if n=1)
+            - 'cv_sem_across_arenas'   (std / sqrt(n); NaN if n<2)
+    """
+    if df_all is None or df_all.empty:
+        return pd.DataFrame(columns=[
+            "time", "cv_mean_across_arenas", "n_arenas",
+            "cv_std_across_arenas", "cv_sem_across_arenas"
+        ])
+
+    df_all = _ensure_arena_col(df_all)
+
+    if "time" not in df_all.columns or "cv_area" not in df_all.columns:
+        raise ValueError("Expected columns 'time' and 'cv_area' in input DataFrame.")
+
+    # 1) Per-arena mean CV(t)
+    per_arena = (
+        df_all.groupby(["arena_name", "time"], sort=True)["cv_area"]
+        .mean()
+        .rename("cv_mean_per_arena")
+        .reset_index()
+    )
+
+    # 2) Global mean across arenas at each time (equal weight per arena)
+    agg = (
+        per_arena.groupby("time", sort=True)["cv_mean_per_arena"]
+        .agg(["mean", "std", "count"])
+        .rename(columns={"mean": "cv_mean_across_arenas",
+                         "std": "cv_std_across_arenas",
+                         "count": "n_arenas"})
+        .reset_index()
+    )
+
+    # 3) Standard error of the mean (SEM)
+    agg["cv_sem_across_arenas"] = agg["cv_std_across_arenas"] / agg["n_arenas"].pow(0.5)
+
+    return agg[["time", "cv_mean_across_arenas", "n_arenas",
+                "cv_std_across_arenas", "cv_sem_across_arenas"]]
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Orchestration
 
@@ -606,11 +729,14 @@ def create_all_coverage_plots(
                 run_id=single_run, communication_radius=comm_r, arena_name=str(label),
             )
 
-
     # Persist combined metrics
     if results:
         combined = pd.concat(results, ignore_index=True)
         combined.to_csv(Path(output_dir) / "voronoi_metrics_per_arena.csv", index=False)
+
+        # Cross-arena CV mean curve (only meaningful if ≥2 arenas)
+        if combined["arena_name"].nunique() >= 2:
+            plot_cv_mean_across_arenas(combined, output_dir)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
