@@ -14,6 +14,8 @@ import re
 import string
 from typing import Any, Dict, Iterable, List
 import uuid
+import pyarrow as pa
+import pyarrow.feather as paw
 
 from pogosim import utils
 from pogosim import __version__
@@ -377,16 +379,36 @@ class PogobotBatchRunner:
 
         # ── 3. Merge tmp → final (append or create) ----------------------------
         try:
+            # Load rows produced by this launcher
             new_df = pd.read_feather(tmp_output)
+
+            # Read original multi-config text once, store under 'configuration'
+            with open(self.multi_config_file, "r", encoding="utf-8") as f:
+                cfg_text = f.read()
+            meta_update = {b"configuration": cfg_text.encode("utf-8")}
+
             if os.path.exists(final_output):
-                old_df = pd.read_feather(final_output)
-                pd.concat([old_df, new_df], ignore_index=True).to_feather(final_output)
-                logging.info("Appended %d rows to %s", len(new_df), final_output)
+                # Read existing file with Arrow to keep its metadata
+                old_table = paw.read_table(final_output)
+                old_meta = old_table.schema.metadata or {}
+                # Append rows
+                combined_df = pd.concat([old_table.to_pandas(), new_df], ignore_index=True)
+                merged_meta = {**old_meta, **meta_update}
             else:
-                new_df.to_feather(final_output)
-                logging.info("Created %s with %d rows", final_output, len(new_df))
+                combined_df = new_df
+                merged_meta = meta_update
+
+            # Write Arrow table with schema metadata
+            table = pa.Table.from_pandas(combined_df)
+            table = table.replace_schema_metadata(merged_meta)
+            paw.write_feather(table, final_output)  # version=2 by default
+
+            logging.info(
+                ("%s with %d rows" % ("Appended to" if os.path.exists(final_output) else "Created", len(new_df)))
+                + f" → {final_output}"
+            )
         finally:
-            os.remove(tmp_output)                      # always clean up temp
+            os.remove(tmp_output)  # always clean up temp
 
         return final_output
 
