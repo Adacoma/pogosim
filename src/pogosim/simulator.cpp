@@ -81,11 +81,12 @@ Simulation::Simulation(Configuration& _config)
 }
 
 Simulation::~Simulation() {
-    FC_FreeFont(font);
-    TTF_Quit();
+    // XXX Disable some free/destroy/quit functions, as they can crash with older versions of SDL2
+    //FC_FreeFont(font);
+    //TTF_Quit();
     b2DestroyWorld(worldId);
-    if (renderer)
-        SDL_DestroyRenderer(renderer);
+    //if (renderer)
+    //    SDL_DestroyRenderer(renderer);
     if (window)
         SDL_DestroyWindow(window);
     SDL_Quit();
