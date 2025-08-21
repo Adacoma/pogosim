@@ -10,8 +10,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Use legacy FindBoost instead of BoostConfig.cmake (avoids per‑component configs like boost_systemConfig.cmake)
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 OLD)
+endif()
+set(Boost_NO_BOOST_CMAKE ON)
+
 # Find required packages
-find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost 1.70 REQUIRED COMPONENTS system)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_gfx REQUIRED)
 find_package(SDL2_ttf REQUIRED)
