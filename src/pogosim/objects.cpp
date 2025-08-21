@@ -714,7 +714,8 @@ void StaticLightObject::parse_configuration(Configuration const& config, Simulat
     } else if (mode_str == "plane") {
         mode = LightMode::PLANE;
     } else {
-        throw std::runtime_error("Unknown light_mode: '" + mode_str + "'. Use either 'static', 'gradient' or 'plane'.");
+        glogger->warn("Unknown light_mode: '{}'. Use either 'static', 'gradient' or 'plane'. Using 'static' by default.", mode_str);
+        mode = LightMode::STATIC;
     }
     value = config["value"].get(10);
     orig_value = value;
