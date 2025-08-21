@@ -17,7 +17,7 @@ endif()
 set(Boost_NO_BOOST_CMAKE ON)
 
 # Find required packages
-find_package(Boost 1.70 REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS system)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_gfx REQUIRED)
 find_package(SDL2_ttf REQUIRED)
