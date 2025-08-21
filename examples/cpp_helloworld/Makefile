@@ -10,10 +10,10 @@ ifeq ($(OS), Darwin)  # macOS
 	SIM_LD_FLAGS_POGOSIM = -Wl,-force_load,/usr/local/lib/libpogosim.a
 	STDCPP_LIB = -lc++
 	SIM_LD_EXT = -L/usr/local/lib -L/opt/homebrew/lib
-	SIM_INCLUDES_EXT = -I/usr/local/include -L/opt/homebrew/include
+	SIM_INCLUDES_EXT = -I/usr/local/include -I/opt/homebrew/include
 else  # Linux
 	SIM_LD_FLAGS_BOX2D = -lbox2d
-	SIM_LD_FLAGS_POGOSIM = -Wl,--whole-archive -lpogosim -Wl,--no-whole-archive
+	SIM_LD_FLAGS_POGOSIM = -Wl,--whole-archive -lpogosim -Wl,--no-whole-archive -lboost_system 
 	WHOLE_ARCHIVE_FLAG = -Wl,--whole-archive
 	STDCPP_LIB = -lstdc++
 	SIM_LD_EXT = -L/usr/local/lib
@@ -67,7 +67,7 @@ SIM_CFLAGS = -Wall -MMD -MP -O2 -std=c11 -I$(POGOSIM_INCLUDE_DIR) $(SIM_INCLUDES
 # Updated C++ flags for C++20 support
 SIM_CXXFLAGS = -Wall -MMD -MP -O2 -std=c++20 -fno-exceptions -fno-rtti \
 	$(shell pkg-config --cflags spdlog) -pthread -I$(POGOSIM_INCLUDE_DIR) $(SIM_INCLUDES_EXT)
-SIM_LDFLAGS = $(SIM_LD_FLAGS_BOX2D)  $(SIM_LD_FLAGS_POGOSIM) -lboost_system -lyaml-cpp \
+SIM_LDFLAGS = $(SIM_LD_FLAGS_BOX2D)  $(SIM_LD_FLAGS_POGOSIM) -lyaml-cpp \
 	$(shell pkg-config --libs spdlog) \
 	-lSDL2 -lSDL2_gfx -lSDL2_ttf -lbox2d $(STDCPP_LIB) -lfmt -lm -larrow $(SIM_LD_EXT)
 
