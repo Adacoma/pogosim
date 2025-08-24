@@ -127,7 +127,7 @@ jobs:
         run: |
           git config --global --add safe.directory "$(wslpath "$GITHUB_WORKSPACE")"
           set -euxo pipefail
-          REPO="$(wslpath "$GITHUB_WORKSPACE")"
+          REPO="$(wslpath -u '${{ github.workspace }}')"
           cd "$REPO"
 
           # Install Apache Arrow
@@ -157,9 +157,24 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: wsl-bash {0}
         run: |
-          REPO="$(wslpath "$GITHUB_WORKSPACE")"
+          REPO="$(wslpath -u '${{ github.workspace }}')"
           cd "$REPO"
           ./build.sh Release
+
+      # Step 4: Run tests
+      - name: Launch Pogosim
+        if: matrix.os != 'windows-latest'
+        run: |
+          ./examples/hanabi/hanabi -c conf/pair.yaml -g -nr
+
+      # Step 4: Run tests
+      - name: Launch Pogosim (Windows+WSL2)
+        if: matrix.os == 'windows-latest'
+        shell: wsl-bash {0}
+        run: |
+          REPO="$(wslpath -u '${{ github.workspace }}')"
+          cd "$REPO"
+          ./examples/hanabi/hanabi -c conf/pair.yaml -g -nr
 
 #      # Step 4: Run tests
 #      - name: Run tests
