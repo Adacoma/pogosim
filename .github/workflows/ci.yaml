@@ -118,8 +118,8 @@ jobs:
           update: 'true'
           additional-packages: >-
             build-essential cmake ninja-build pkg-config git ca-certificates lsb-release wget gpg
-            libfmt-dev libspdlog-dev libyaml-cpp-dev libsdl2-dev libsdl2-ttf-dev
-            libboost-system-dev libeigen3-dev
+            libboost-system-dev libsdl2-dev libsdl2-image-dev libsdl2-gfx-dev libsdl2-ttf-dev
+            libyaml-cpp-dev libspdlog-dev wget unzip ca-certificates lsb-release
 
       - name: Install dependencies (Windows+WSL2)
         if: matrix.os == 'windows-latest'
