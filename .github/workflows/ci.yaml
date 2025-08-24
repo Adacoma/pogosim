@@ -39,15 +39,15 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        #os: [ubuntu-latest, macos-latest, windows-latest]  # Test on multiple OS
-        os: [ubuntu-latest, macos-latest]  # Test on multiple OS
+        os: [ubuntu-latest, macos-latest, windows-latest]  # Test on multiple OS
+        #os: [ubuntu-latest, macos-latest]  # Test on multiple OS
         #os: [ubuntu-latest]  # Test on multiple OS
     runs-on: ${{ matrix.os }}
 
     steps:
       # Step 1: Checkout the repository
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Step 2: Install dependencies (Ubuntu)
       - name: Install dependencies (Ubuntu)
@@ -92,11 +92,49 @@ jobs:
           sudo make install
           cd ../..
 
-      # Step 2: Install dependencies (Windows)
-      - name: Install dependencies (Windows)
+#      # Step 2: Install dependencies (Windows)
+#      - name: Install dependencies (Windows)
+#        if: matrix.os == 'windows-latest'
+#        run: |
+#          choco install cmake git boost sdl2 sdl2_image sdl2_ttf yaml-cpp spdlog apache-arrow fmt -y
+#
+#          # Install Box2D
+#          git clone https://github.com/erincatto/box2d.git
+#          cd box2d
+#          git checkout 28adacf82377d4113f2ed00586141463244b9d10
+#          mkdir build
+#          cd build
+#          cmake -DBOX2D_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX="C:/Program Files/Box2D" ..
+#          cmake --build .
+#          cmake --install . --prefix "C:/Program Files/Box2D"
+#          cd ../..
+
+      - name: Setup WSL2 (Ubuntu 24.04)
         if: matrix.os == 'windows-latest'
+        uses: Vampire/setup-wsl@v6
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+          update: 'true'
+          additional-packages: >-
+            build-essential cmake ninja-build pkg-config git ca-certificates lsb-release wget gpg
+            libfmt-dev libspdlog-dev libyaml-cpp-dev libsdl2-dev libsdl2-ttf-dev
+            libboost-system-dev libeigen3-dev
+
+      - name: Install dependencies (Windows+WSL2)
+        if: matrix.os == 'windows-latest'
+        shell: wsl-bash {0}
         run: |
-          choco install cmake git boost sdl2 sdl2_image sdl2_ttf yaml-cpp spdlog apache-arrow fmt -y
+          git config --global --add safe.directory "$(wslpath "$GITHUB_WORKSPACE")"
+          set -euxo pipefail
+          REPO="$(wslpath "$GITHUB_WORKSPACE")"
+          cd "$REPO"
+
+          # Install Apache Arrow
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt update
+          sudo apt install -y -V libarrow-dev
 
           # Install Box2D
           git clone https://github.com/erincatto/box2d.git
@@ -104,14 +142,23 @@ jobs:
           git checkout 28adacf82377d4113f2ed00586141463244b9d10
           mkdir build
           cd build
-          cmake -DBOX2D_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX="C:/Program Files/Box2D" ..
+          cmake -DBOX2D_BUILD_DOCS=OFF -DGLFW_BUILD_WAYLAND=OFF -DCMAKE_INSTALL_PREFIX=/usr ..
           cmake --build .
-          cmake --install . --prefix "C:/Program Files/Box2D"
+          sudo make install
           cd ../..
 
       # Step 3: Build the project
       - name: Build
+        if: matrix.os != 'windows-latest'
         run: |
+          ./build.sh Release
+
+      - name: Build (Windows+WSL2)
+        if: matrix.os == 'windows-latest'
+        shell: wsl-bash {0}
+        run: |
+          REPO="$(wslpath "$GITHUB_WORKSPACE")"
+          cd "$REPO"
           ./build.sh Release
 
 #      # Step 4: Run tests
