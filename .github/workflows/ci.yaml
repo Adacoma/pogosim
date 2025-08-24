@@ -134,7 +134,7 @@ jobs:
           wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
           sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
           sudo apt update
-          sudo apt install -y -V libarrow-dev
+          sudo apt install -y -V libarrow-dev dos2unix
 
           # Install Box2D
           git clone https://github.com/erincatto/box2d.git
@@ -157,9 +157,11 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: wsl-bash {0}
         run: |
+          set -euxo pipefail
           REPO="$(wslpath -u '${{ github.workspace }}')"
           cd "$REPO"
-          ./build.sh Release
+          dos2unix ./build.sh || true
+          bash ./build.sh Release
 
       # Step 4: Run tests
       - name: Launch Pogosim
@@ -172,6 +174,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: wsl-bash {0}
         run: |
+          set -euxo pipefail
           REPO="$(wslpath -u '${{ github.workspace }}')"
           cd "$REPO"
           ./examples/hanabi/hanabi -c conf/pair.yaml -g -nr
