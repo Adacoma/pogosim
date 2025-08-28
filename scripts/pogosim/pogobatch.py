@@ -23,6 +23,8 @@ from pogosim import __version__
 # Import Pool from multiprocessing for the default backend.
 from multiprocessing import Pool
 
+logger = logging.getLogger("pogobatch")
+
 
 def set_in_dict(d: Dict[str, Any], dotted_key: str, value: Any, sep: str = ".") -> None:
     """
@@ -115,7 +117,7 @@ class PogobotLauncher:
     def launch_simulator_static(config_path, simulator_binary):
         # Build the simulator command and run it.
         command = [simulator_binary, "-c", config_path, "-nr", "-g", "-q"]
-        logging.debug(f"Executing command: {' '.join(command)}")
+        logger.debug(f"Executing command: {' '.join(command)}")
         subprocess.run(command, check=True)
 
     @staticmethod
@@ -133,13 +135,13 @@ class PogobotLauncher:
                 PogobotLauncher.launch_simulator_static(cfg_path, sim_bin)
                 break                       # success
             except subprocess.CalledProcessError as exc:
-                logging.warning(
+                logger.warning(
                     "Instance %d – crash on attempt %d/%d: %s",
                     i, attempt + 1, max_retries, exc)
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 attempt += 1
                 if attempt > max_retries:
-                    logging.error("Instance %d – gave up after %d retries",
+                    logger.error("Instance %d – gave up after %d retries",
                                   i, max_retries)
                     return (None, None)     # hard failure
                 continue                    # retry
@@ -152,25 +154,25 @@ class PogobotLauncher:
                 df = pd.read_feather(feather_path)
                 # Add a column "run" corresponding to the instance number.
                 df['run'] = i
-                logging.debug(f"Instance {i}: Loaded data from {feather_path}")
+                logger.debug(f"Instance {i}: Loaded data from {feather_path}")
             except Exception as e:
-                logging.error(f"Instance {i}: Error reading feather file {feather_path}: {e}")
+                logger.error(f"Instance {i}: Error reading feather file {feather_path}: {e}")
         else:
-            logging.warning(f"Instance {i}: Feather file not found: {feather_path}")
+            logger.warning(f"Instance {i}: Feather file not found: {feather_path}")
         return (temp_dir, df)
 
     def combine_feather_files(self, dataframes):
         if dataframes:
             combined_df = pd.concat(dataframes, ignore_index=True)
             combined_df.to_feather(self.combined_output_path)
-            logging.info(f"Combined data saved to {self.combined_output_path}")
+            logger.info(f"Combined data saved to {self.combined_output_path}")
         else:
-            logging.error("No dataframes were loaded to combine.")
+            logger.error("No dataframes were loaded to combine.")
 
     def clean_temp_dirs(self):
         for d in self.temp_dirs:
             shutil.rmtree(d)
-            logging.debug(f"Cleaned up temporary directory: {d}")
+            logger.debug(f"Cleaned up temporary directory: {d}")
 
     def launch_all(self):
         # Prepare the arguments for each simulation instance.
@@ -187,7 +189,7 @@ class PogobotLauncher:
             try:
                 import ray
             except ImportError:
-                logging.error("Ray is not installed. Please install ray to use the 'ray' backend.")
+                logger.error("Ray is not installed. Please install ray to use the 'ray' backend.")
                 sys.exit(1)
             # Initialize ray.
             ray.init(ignore_reinit_error=True)
@@ -197,7 +199,7 @@ class PogobotLauncher:
             results = ray.get(futures)
             ray.shutdown()
         else:
-            logging.error(f"Unknown backend: {self.backend}")
+            logger.error(f"Unknown backend: {self.backend}")
             sys.exit(1)
 
         # Separate the temporary directories and the loaded DataFrames.
@@ -216,9 +218,10 @@ class PogobotLauncher:
         if not self.keep_temp:
             self.clean_temp_dirs()
         else:
-            logging.info("Keeping temporary directories:")
+            logger.info("Keeping temporary directories:")
             for d in self.temp_dirs:
-                logging.info(d)
+                logger.info(d)
+
 
 class PogobotBatchRunner:
     """
@@ -298,7 +301,7 @@ class PogobotBatchRunner:
         )
         yaml.safe_dump(comb_config, tmp_file)
         tmp_file.close()
-        logging.debug(f"Wrote temporary YAML config: {tmp_file.name}")
+        logger.debug(f"Wrote temporary YAML config: {tmp_file.name}")
         return tmp_file.name
 
 
@@ -328,10 +331,10 @@ class PogobotBatchRunner:
         try:
             filename = fmt.format_map(dot_cfg)
         except KeyError as exc:
-            logging.error("Error formatting result filename: missing key %s", exc)
+            logger.error("Error formatting result filename: missing key %s", exc)
             filename = "result.feather"
         except Exception as exc:                    # noqa: BLE001
-            logging.error("Error formatting result filename: %s", exc)
+            logger.error("Error formatting result filename: %s", exc)
             filename = "result.feather"
 
         # ── 4. anchor in output directory if relative ────────────────────────
@@ -353,13 +356,13 @@ class PogobotBatchRunner:
                     raw = os.path.splitext(os.path.basename(raw))[0]
                 extra_columns[path] = raw
             except KeyError:
-                logging.error("result_new_columns: path '%s' not found", path)
+                logger.error("result_new_columns: path '%s' not found", path)
 
         # ── 1. Choose a *temporary* output Feather for this run ────────────────
         tmp_output = os.path.join(self.temp_base,
                                   f"run_{uuid.uuid4().hex}.feather")
 
-        logging.info("Launch → tmp %s  (will merge into %s)",
+        logger.info("Launch → tmp %s  (will merge into %s)",
                      tmp_output, final_output)
 
         # ── 2. Run the simulator ------------------------------------------------
@@ -403,7 +406,7 @@ class PogobotBatchRunner:
             table = table.replace_schema_metadata(merged_meta)
             paw.write_feather(table, final_output)  # version=2 by default
 
-            logging.info(
+            logger.info(
                 ("%s with %d rows" % ("Appended to" if os.path.exists(final_output) else "Created", len(new_df)))
                 + f" → {final_output}"
             )
@@ -420,10 +423,10 @@ class PogobotBatchRunner:
         # Ensure the temporary base and output directories exist.
         if not os.path.exists(self.temp_base):
             os.makedirs(self.temp_base, exist_ok=True)
-            logging.info(f"Created temporary base directory: {self.temp_base}")
+            logger.info(f"Created temporary base directory: {self.temp_base}")
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir, exist_ok=True)
-            logging.info(f"Created output directory: {self.output_dir}")
+            logger.info(f"Created output directory: {self.output_dir}")
 
         # Load the multi-value configuration.
         with open(self.multi_config_file, "r") as f:
@@ -431,31 +434,31 @@ class PogobotBatchRunner:
 
         combinations = self.get_combinations(multi_config)
         if not combinations:
-            logging.error("No combinations found in the configuration.")
+            logger.error("No combinations found in the configuration.")
             sys.exit(1)
-        logging.info(f"Found {len(combinations)} combination(s) to run.")
+        logger.info(f"Found {len(combinations)} combination(s) to run.")
 
         tasks = []
         for comb in combinations:
             temp_yaml = self.write_temp_yaml(comb)
             output_file = self.compute_output_filename(comb)
             tasks.append((temp_yaml, output_file, comb))
-            logging.info(f"Task: Config file {temp_yaml} -> Output: {output_file}")
+            logger.info(f"Task: Config file {temp_yaml} -> Output: {output_file}")
 
         # Remove any pre-existing result_*.feather before first append
         for outfile in {t[1] for t in tasks}:                   # unique names
             if os.path.exists(outfile):
                 os.remove(outfile)
-                logging.info("Removed stale result file: %s", outfile)
+                logger.info("Removed stale result file: %s", outfile)
 
         results = []
         for temp_yaml, output_file, comb in tasks:
             result = self.run_launcher_for_combination(temp_yaml, output_file, comb)
             results.append(result)
 
-        logging.info("Batch run completed. Generated output files:")
+        logger.info("Batch run completed. Generated output files:")
         for output_file in results:
-            logging.info(f" - {output_file}")
+            logger.info(f" - {output_file}")
         return results
 
 def main():
