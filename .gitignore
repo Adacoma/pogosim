@@ -63,6 +63,8 @@ TODO
 tmp/
 results/
 *.old
+opt_out/
+tmp_opt/
 
 # Output data files
 *.feather
