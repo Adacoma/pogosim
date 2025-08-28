@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import multiprocessing as mp
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, Tuple
 
 import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
@@ -18,6 +18,70 @@ import pandas as pd
 
 from pogosim import utils
 from pogosim import __version__
+
+
+############### MSD ############### {{{1
+
+def compute_msd_per_agent(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute per-agent Mean Squared Displacement (MSD) within each group.
+    MSD is the mean over time of ||r(t) - r(t0)||^2, where r(t0) is the first
+    recorded position (x0, y0) for the agent within that group.
+
+    Required columns: ['time','robot_category','robot_id','x','y','run'].
+    Optional column:  ['arena_file'] — if present, it is included in grouping/output.
+    Uses 'pogobot_ticks' to determine the first sample if available (ties broken by 'time').
+
+    Returns a DataFrame with columns:
+        If 'arena_file' present:
+            ['arena_file','run','robot_category','robot_id','MSD']
+        Otherwise:
+            ['run','robot_category','robot_id','MSD']
+    """
+    # Validate required columns (arena_file is optional)
+    required = ['time', 'robot_category', 'robot_id', 'x', 'y', 'run']
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"Input dataframe missing required columns: {missing}")
+
+    has_arena = 'arena_file' in df.columns
+
+    # Keep only rows with finite positions
+    work = df.loc[np.isfinite(df['x']) & np.isfinite(df['y'])].copy()
+
+    # Sort so groupby('first') is well-defined: prefer ticks if present, then time
+    sort_cols = (['arena_file'] if has_arena else []) + ['run', 'robot_category', 'robot_id']
+    if 'pogobot_ticks' in work.columns:
+        sort_cols += ['pogobot_ticks', 'time']
+    else:
+        sort_cols += ['time']
+    work = work.sort_values(sort_cols, kind='mergesort')  # stable
+
+    # Grouping keys
+    group_keys = (['arena_file'] if has_arena else []) + ['run', 'robot_category', 'robot_id']
+
+    # First position per agent group (after sorting)
+    x0 = work.groupby(group_keys, sort=False)['x'].transform('first')
+    y0 = work.groupby(group_keys, sort=False)['y'].transform('first')
+
+    # Instantaneous squared displacement relative to first sample
+    dx = work['x'] - x0
+    dy = work['y'] - y0
+    work['__msd__'] = dx * dx + dy * dy
+
+    # Mean over time within each group
+    out = (
+        work.groupby(group_keys, sort=False)['__msd__']
+            .mean()
+            .reset_index()
+            .rename(columns={'__msd__': 'MSD'})
+    )
+
+    # Order columns nicely
+    ordered_cols = group_keys + ['MSD']
+    out = out[ordered_cols]
+
+    return out
 
 
 ############### HEATMAP ############### {{{1
