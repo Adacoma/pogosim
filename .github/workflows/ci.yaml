@@ -79,7 +79,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install cmake boost sdl2 sdl2_image sdl2_gfx sdl2_ttf yaml-cpp spdlog apache-arrow pkg-config fmt
+          brew install boost sdl2 sdl2_image sdl2_gfx sdl2_ttf yaml-cpp spdlog apache-arrow pkg-config fmt
 
           # Install Box2D
           git clone https://github.com/erincatto/box2d.git
