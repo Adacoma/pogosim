@@ -1,0 +1,124 @@
+---
+
+## Batch configuration use the key "batch_options" to specify configuration values options for a given key.
+##  The key "result_filename_format" contains the format of the exported feather files, depending on selected batch values.
+#
+## Format of the generated dataframes, one for each configuration
+#result_filename_format: "result_{objects.robots.nb}_{arena_file}.feather"
+
+optimization:
+    algorithm: mapelites         # "cmaes" | "random" | "mapelites"
+    seed: 42
+    budget: 1                  # total evaluations
+    runs: 2                      # runs per batch combo
+    retries: 5
+    backend: multiprocessing     # for PogobotBatchRunner
+
+    output_dir: opt_out          # where to write artifacts
+
+#    objective:
+#        path: scripts/my_objective.py
+#        func: compute_objective     # def compute_objective(df): ...
+
+    cmaes:
+        sigma0: 0.25
+        popsize: 24
+
+    qd:
+        shape: [48, 48]            # or "48,48"
+        init_samples: 1
+        batch: 32
+        parallel: none # concurrent       # ← enables parallel QD (uses ProcessPool)
+        sel_pb: 0.9
+        init_pb: 0.1
+        mut_pb: 0.4
+        eta: 20.0
+
+window_width: 600       # In pixels
+window_height: 600      # In pixels
+
+arena_file:        # Test the results on two arenas
+    default_option: arenas/disk.csv
+    batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
+arena_surface: 1.0e6    # In mm²
+
+delete_old_files: true
+enable_data_logging: true
+data_filename: "frames/data.feather"
+enable_console_logging: true
+console_filename: "frames/console.txt"
+save_data_period: 5.0       # In s
+save_video_period: -1.0     # In s
+frames_name: "frames/f{:010.4f}.png"
+
+seed: 0
+show_communication_channels: false  # In the GUI, can enabled/disabled using F5
+show_lateral_LEDs: false            # In the GUI, can enabled/disabled using F6
+show_light_levels: false            # In the GUI, can enabled/disabled using F6
+GUI: true
+
+# Time
+simulation_time: 50.0     # In s
+time_step: 0.01            # In s
+GUI_speed_up: 10.0         # How much the visualisation in the GUI should be sped up
+
+initial_formation: random # Can be "random" (all robots are placed randomly in the arena), or "disk" (robots are placed uniformly in a disk shape at the center of the arena)
+
+
+# List of objects created in the simulation, by category
+objects:
+    # An object category containing a single light spot encompassing the entire simulation
+    global_light:
+        type: static_light  # The light is not active (does not move and does not have a controller)
+        light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+        geometry: global    # The light involve the entire simulation
+        value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+        photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
+                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
+                            # start their user program in a synchronous manner.
+        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
+        photo_start_value: 32767    # Light value during the photo start period (between 0 and 32767). Should be very different from the normal value of the light
+
+    # An object category containing the Pogobot robots
+    robots:
+        type: pogobot       # Category type pertaining to Pogobots
+        nb: 50                # Number of objects (Pogobots) in this category
+        geometry: disk                  # Pogobots are always disk-shaped
+        radius: 26.5                    # In mm
+
+        # Physical properties
+        body_linear_damping: 0.3
+        body_angular_damping: 0.3
+        body_density: 10.0
+        body_friction: 0.3
+        body_restitution: 0.5
+
+        max_linear_speed: 100.0
+        max_angular_speed: 1.0
+        linear_noise_stddev: 0.5
+        angular_noise_stddev: 2.0
+
+        # Communication propeties
+        communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)
+        msg_success_rate:
+            #type: static # Fixed msg success rate -- do not depend on the density, or message size
+            #rate: 0.9
+            type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
+            alpha: 0.000004
+            beta: 2.8096
+            gamma: 2.3807
+            delta: 1.2457
+
+
+########### Parameters used to directly initialize variables from the C code of the robots ###########
+parameters:
+    # Configuration parameters for the run_and_tumble example
+    run_duration_min: 0
+    run_duration_max:
+        optimization_domain: {type: int, min: 10, max: 1000, init: 50}
+    tumble_duration_min: 100
+    tumble_duration_max: 1100
+
+# MODELINE "{{{1
+# vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
+# vim:foldmethod=marker
