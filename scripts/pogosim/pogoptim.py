@@ -18,6 +18,7 @@ Changes vs previous version:
 
 from __future__ import annotations
 
+from multiprocessing import current_process
 import argparse
 import copy
 import importlib.util
@@ -36,6 +37,7 @@ from typing import Any, Dict, List, Optional, Tuple, Sequence
 import traceback
 
 logger = logging.getLogger("pogoptim")
+_worker_logging_inited = False  # module-level flag
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -143,6 +145,29 @@ def init_logging(verbose: bool) -> logging.Logger:
     warnings.filterwarnings("ignore", message=r".*Optimization in 1-D is poorly tested.*")
     return logger
 
+def _init_worker_logging_quiet():
+    """Ensure child processes don't chat unless asked."""
+    global _worker_logging_inited
+    if _worker_logging_inited:
+        return
+    from multiprocessing import current_process
+    if current_process().name != "MainProcess":
+        # Our logger
+        logger.setLevel(logging.WARNING)
+        logger.propagate = False
+        for h in list(logger.handlers):
+            logger.removeHandler(h)
+        h = logging.StreamHandler(sys.stdout)
+        h.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', '%H:%M:%S'))
+        h.setLevel(logging.WARNING)
+        logger.addHandler(h)
+        # Third-party loggers that sometimes get chatty in workers
+        logging.getLogger("pogobatch").setLevel(logging.WARNING)
+        logging.getLogger("pyarrow").setLevel(logging.ERROR)
+        logging.getLogger("matplotlib").setLevel(logging.WARNING)
+        logging.getLogger("PIL").setLevel(logging.WARNING)
+    _worker_logging_inited = True
+
 
 # ----------------------------------------------------------------------------
 # Config utilities
@@ -161,7 +186,9 @@ def _find_dotted_paths_for_key(node: Any, key: str, prefix: str = "") -> List[st
 
 def load_objective(path: Optional[str], func_name: str = "compute_objective"):
     if path is None or str(path).strip() == "":
-        logger.warning("No objective script provided; DEFAULT fitness = mean MSD (features default to [polar order, straightness]).")
+        # Warn ONLY from the main process to avoid duplicates with workers
+        if current_process().name == "MainProcess":
+            logger.warning("No objective script provided; DEFAULT fitness = mean MSD (features default to [polar order, straightness]).")
         return default_objective_mean_msd
     spec = importlib.util.spec_from_file_location("pogoptim_user_objective", path)
     if spec is None or spec.loader is None:
@@ -601,33 +628,27 @@ def run_qdpy_map_elites(
     sigma0: float,
     seed: int,
     out_dir: str,
+    qd_algo_kwargs: Optional[Dict[str, Any]] = None,   # <<< NEW
 ) -> Dict[str, Any]:
     from qdpy import algorithms, containers, plots, base
     rng = np.random.default_rng(seed)
     max_evals = int(max_evals)
 
     def evaluate_one(u_vec: np.ndarray):
-        # Decode u∈[0,1]^d → config, run simulator, compute (fitness, features)
         f, feats, df, _values = eval_fitness_and_features(
             u_internal=u_vec, specs=specs, base_cfg=base_cfg, simulator_binary=simulator_binary,
             runs=runs, temp_base=temp_base, backend=backend, keep_temp=keep_temp, retries=retries,
             objective_fn=objective_fn, objective_returns_features=True, default_features_fn=default_qd_features_unit
         )
-        # QDpy expects tuples: ((fitness,), (f0,f1,...))
         if isinstance(feats, (list, tuple, np.ndarray)):
             feats = tuple(map(float, np.asarray(feats, float).ravel()))
         else:
             feats = (float(feats),)
-        #print(f"DEBUG evaluate_one: {u_vec} {float(f)} {feats}")
         return (float(f),), feats
 
-    # Force FD domain, for now (TODO)
     features_domain = ((0.0, 1.0), (0.0, 1.0))
-
-    # Fitness domain must be finite; pick a wide box
     fitness_domain = ((-np.inf, np.inf),)
 
-    # ---- (B) Build container and algorithm (QDpy official pattern)
     grid = containers.Grid(
         shape=tuple(int(x) for x in qd_shape),
         max_items_per_bin=1,
@@ -635,7 +656,11 @@ def run_qdpy_map_elites(
         features_domain=features_domain
     )
 
-    # Mutation/poly bounded RS in [0,1]^d; tell it our dimension & batch
+    # Defaults (preserve current behavior) + override from YAML kwargs
+    algo_hparams = {"mut_pb": 0.2, "eta": 20.0}
+    if qd_algo_kwargs:
+        algo_hparams.update(qd_algo_kwargs)
+
     algo = algorithms.RandomSearchMutPolyBounded(
         grid,
         budget=max_evals,
@@ -643,22 +668,14 @@ def run_qdpy_map_elites(
         dimension=len(specs),
         optimisation_task="maximisation",
         ind_domain=(0., 1.),
-        mut_pb=0.2,
-        eta=20.
+        **algo_hparams,                     # <<< pass sel_pb, init_pb, mut_pb, eta, etc.
     )
 
-    # ---- (C) Define eval_fn exactly as QDpy expects: eval_fn(ind) -> ((fit,), (feat...))
-    def eval_fn(ind: np.ndarray):
-        # clamp to [0,1] just in case:
-        ind = np.clip(np.asarray(ind, float), 0.0, 1.0)
-        return evaluate_one(ind)
-
-    # ---- (D) Run illumination
     qdlogger = algorithms.TQDMAlgorithmLogger(algo, log_base_path=out_dir)
     with base.ParallelismManager("none") as pMgr:
-        best = algo.optimise(eval_fn, executor=pMgr.executor, batch_mode=True)
+        _ = algo.optimise(lambda ind: evaluate_one(np.clip(np.asarray(ind, float), 0.0, 1.0)),
+                          executor=pMgr.executor, batch_mode=True)
 
-    # ---- (E) Export archive (fitness, features) and pickle container
     rows = []
     for elite in grid:
         if elite is None:
@@ -667,33 +684,16 @@ def run_qdpy_map_elites(
         fs = float(f[0]) if isinstance(f, (list, tuple)) else float(f.values[0])
         desc = getattr(elite, "features", ())
         desc = tuple(map(float, np.asarray(desc, float).ravel()))
-        row = {"fitness": fs}
+        r = {"fitness": fs}
         for i, v in enumerate(desc):
-            row[f"feat_{i}"] = v
-        rows.append(row)
+            r[f"feat_{i}"] = v
+        rows.append(r)
 
-#    arch_df = pd.DataFrame(rows)
-#    arch_csv = os.path.join(out_dir, "qd_archive.csv")
-#    arch_df.to_csv(arch_csv, index=False)
-#
-#    # Also pickle the container itself for reuse
-#    grid_pkl = os.path.join(out_dir, "qd_container.pkl")
-#    with open(grid_pkl, "wb") as f:
-#        pickle.dump({"container": grid}, f)
-
-    # Print results info
     print("\n" + algo.summary())
-
-    # Plot the results
     plots.default_plots_grid(qdlogger, output_dir=out_dir)
 
-    return {
-#        "qd_container_pkl": grid_pkl,
-#        "qd_archive_csv": arch_csv,
-        "qd_shape": list(qd_shape),
-        "features_domain": features_domain,
-        "budget": max_evals,
-    }
+    return {"qd_shape": list(qd_shape), "features_domain": features_domain, "budget": max_evals}
+
 
 
 
@@ -727,6 +727,16 @@ def optimize(
         full_cfg = yaml.safe_load(f)
     specs = discover_optimization_domains(full_cfg)
     base_cfg = strip_optimization_domains(full_cfg)
+
+    # Collect QD kwargs from YAML (either nested or flat)
+    qd_algo_kwargs = {}
+    opt_cfg = (full_cfg.get("optimization") or {})
+    qd_cfg = (opt_cfg.get("qd") or {})
+    if isinstance(qd_cfg.get("algo_kwargs"), dict):
+        qd_algo_kwargs.update(qd_cfg["algo_kwargs"])
+    for k in ("sel_pb", "init_pb", "mut_pb", "eta"):
+        if k in qd_cfg:
+            qd_algo_kwargs[k] = qd_cfg[k]
 
     objective_fn = load_objective(objective_path, objective_func_name)
     u0 = encode_x0_unit(specs)
@@ -788,6 +798,7 @@ def optimize(
             sigma0=sigma0,
             seed=seed,
             out_dir=out_dir,
+            qd_algo_kwargs=qd_algo_kwargs,
         )
         # Persist a short summary JSON; return the QD artifacts instead of best config
         summary = {
