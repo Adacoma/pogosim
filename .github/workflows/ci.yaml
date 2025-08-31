@@ -57,11 +57,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y build-essential cmake git libboost-system-dev libsdl2-dev libsdl2-image-dev libsdl2-gfx-dev libsdl2-ttf-dev libyaml-cpp-dev libspdlog-dev wget unzip ca-certificates lsb-release
 
-          # Python3 + pip3
-          sudo apt-get install -y python3 python3-pip
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r scripts/requirements.txt
-
           # Install Apache Arrow
           wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
           sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
@@ -79,17 +74,19 @@ jobs:
           sudo make install
           cd ../..
 
+          # Python3 + pip3
+          sudo apt-get install -y python3 python3-pip
+          python3 -m pip install --upgrade pip
+          cd scripts
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install .
+
       # Step 2: Install dependencies (macOS)
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
           brew install boost sdl2 sdl2_image sdl2_gfx sdl2_ttf yaml-cpp spdlog apache-arrow pkg-config fmt
-
-          # Python 3 + pip3 (Homebrew)
-          brew install python || brew upgrade python
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r scripts/requirements.txt
 
           # Install Box2D
           git clone https://github.com/erincatto/box2d.git
@@ -101,6 +98,14 @@ jobs:
           cmake --build .
           sudo make install
           cd ../..
+
+          # Python 3 + pip3 (Homebrew)
+          brew install python || brew upgrade python
+          python3 -m pip install --upgrade pip
+          cd scripts
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install .
+
 
 #      # Step 2: Install dependencies (Windows)
 #      - name: Install dependencies (Windows)
@@ -146,11 +151,6 @@ jobs:
           sudo apt update
           sudo apt install -y -V libarrow-dev dos2unix
 
-          # Python 3 + pip3 in WSL
-          sudo apt install -y python3 python3-pip
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r scripts/requirements.txt
-
           # Install Box2D
           git clone https://github.com/erincatto/box2d.git
           cd box2d
@@ -161,6 +161,13 @@ jobs:
           cmake --build .
           sudo make install
           cd ../..
+
+          # Python 3 + pip3 in WSL
+          sudo apt install -y python3 python3-pip
+          python3 -m pip install --upgrade pip
+          cd scripts
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install .
 
       # Step 3: Build the project
       - name: Build
