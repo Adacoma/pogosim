@@ -18,6 +18,8 @@ save_video_period: 1.0      # In s, or -1 to disable frame export
 frames_name: "frames/f{:010.4f}.png"
 
 seed: 0
+show_time: true                     # In the GUI, show the current simulated time in the top right corner
+show_scale_bar: true                # In the GUI, show a scale bar in the bottom left corner
 show_communication_channels: false  # In the GUI, can enabled/disabled using F5
 show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
 show_lateral_LEDs: true             # In the GUI, can enabled/disabled using F6

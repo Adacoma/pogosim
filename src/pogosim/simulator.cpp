@@ -401,6 +401,8 @@ void Simulation::init_config() {
 
     mm_to_pixels = 0.0f;
     adjust_mm_to_pixels(config["mm_to_pixels"].get(1.0f));
+    show_time = config["show_time"].get(true);
+    show_scale_bar = config["show_scale_bar"].get(true);
     show_comm = config["show_communication_channels"].get(false);
     show_comm_above_all = config["show_communication_channels_above_all"].get(false);
     show_lateral_leds = config["show_lateral_LEDs"].get(true);
@@ -547,6 +549,7 @@ void Simulation::help_message() {
     glogger->info(" - F5: Show/Hide the communication channels, below/above the other objects");
     glogger->info(" - F6: Show/Hide the lateral LEDs");
     glogger->info(" - F7: Show/Hide the light level");
+    glogger->info(" - F8: Show/Hide the current time and scale bar");
     glogger->info(" - ESC: quit the simulation");
     glogger->info(" - SPACE: pause the simulation");
     glogger->info(" - DOWN, UP, LEFT, RIGHT: move the visualisation coordinates");
@@ -588,6 +591,10 @@ void Simulation::handle_SDL_events() {
                     break;
                 case SDLK_F7:
                     show_light_levels = !show_light_levels;
+                    break;
+                case SDLK_F8:
+                    show_time = !show_time;
+                    show_scale_bar = !show_scale_bar;
                     break;
                 case SDLK_ESCAPE:
                     running = false;
@@ -810,11 +817,15 @@ void Simulation::render_all() {
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
     // Render the current time
-    std::string formatted_time  = fmt::format("{:.4f}s", t);
-    FC_Draw(font, renderer, windowWidth - 120, 10, "t=%s", formatted_time.c_str()); 
+    if (show_time) {
+        std::string formatted_time  = fmt::format("{:.4f}s", t);
+        FC_Draw(font, renderer, windowWidth - 120, 10, "t=%s", formatted_time.c_str()); 
+    }
 
     // Render the scale bar
-    draw_scale_bar();
+    if (show_scale_bar) {
+        draw_scale_bar();
+    }
 }
 
 void Simulation::export_frames() {
