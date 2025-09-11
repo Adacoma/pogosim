@@ -208,10 +208,10 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: wsl-bash {0}
         run: |
-          source .venv/bin/activate
           set -euxo pipefail
           REPO="$(wslpath -u '${{ github.workspace }}')"
           cd "$REPO"
+          source .venv/bin/activate
           ./examples/hanabi/hanabi -c conf/pair.yaml -g -nr
           ./examples/IMU/IMU -c conf/pair.yaml -g -nr
           ./examples/neighbor_counter/neighbor_counter -c conf/pair.yaml -g -nr
