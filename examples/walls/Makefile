@@ -27,6 +27,8 @@ BUILD_DIR?=./build
 POGO_SDK?=../../pogobot-sdk
 POGOSIM_INCLUDE_DIR?=../../src/
 POGOSIM_SRC_DIR?=$(POGOSIM_INCLUDE_DIR)/pogosim/
+POGOBIN_CFLAGS = -flto -ffunction-sections -fdata-sections -finline-small-functions -finline-functions-called-once # -ffast-math #-fno-math-errno -fno-trapping-math 
+POGOBIN_LDFLAGS = -flto -Wl,--gc-sections
 
 POGO_SDK_TOOLS=$(POGO_SDK)/tools
 POGO_SDK_INCS=$(POGO_SDK)/includes
@@ -93,27 +95,27 @@ bin: directories $(BUILD_DIR)/bin/firmware.bin
 INCLUDES+=-I. -I$(POGO_SDK_INCS) -I$(POGOSIM_INCLUDE_DIR)
 
 # pull in dependency info for *existing* .o files
--include $(OBJECTS_BUILD:.o=.d) $(SIM_OBJECTS:.o=.d) $(DEP_FILES)
+-include $(OBJECTS_BUILD:.o=.d) ${SIM_OBJECTS:.o=.d} $(DEP_FILES)
 
 $(BUILD_DIR)/bin/%.bin: $(BUILD_DIR)/bin/%.elf
 	$(OBJCOPY) -O binary $< $@
 	chmod -x $@
 
 $(BUILD_DIR)/bin/firmware.elf: $(OBJECTS_BUILD)
-	$(CC) $(LDFLAGS) \
+	$(CC) $(LDFLAGS) $(POGOBIN_LDFLAGS) \
 		-T $(POGO_SDK_TOOLS)/linker.ld \
 		-N -o $@ \
 		$(OBJECTS_BUILD) \
-		$(WHOLE_ARCHIVE_FLAG) \
+		-Wl,--whole-archive \
 		-Wl,--gc-sections \
 		-L$(POGO_SDK_LIBS) -lcompiler_rt -lc -lpogobot
 	chmod -x $@
 
 $(BUILD_DIR)/bin/%.o: %.c | $(BUILD_DIR)/bin
-	$(compile) -DREAL_ROBOT -DROBOT_CATEGORY=$(ROBOT_CATEGORY)
+	$(compile) $(POGOBIN_CFLAGS) -DREAL_ROBOT -DREAL_ROBOT -DROBOT_CATEGORY=$(ROBOT_CATEGORY)
 
 $(BUILD_DIR)/bin/%.o: $(POGOSIM_SRC_DIR)/%.c | $(BUILD_DIR)/bin
-	$(compile) -DREAL_ROBOT -DROBOT_CATEGORY=$(ROBOT_CATEGORY)
+	$(compile) $(POGOBIN_CFLAGS) -DREAL_ROBOT -DROBOT_CATEGORY=$(ROBOT_CATEGORY)
 
 clean:
 	$(RM) -r $(BUILD_DIR) .*~ *~
