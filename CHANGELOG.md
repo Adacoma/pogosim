@@ -1,6 +1,46 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.7] - 2025-09-11
+
+### Added
+ - README: add a mandatory export for WSL users
+ - add example 'moving\_oscillators' (Kuramono-style)
+ - add example 'push\_sum' (canonical gossip algorithm)
+ - add example 'active\_brownian\_particles' that implements ABP + wall avoidance
+ - add example 'lighthouse\_localization' (robots detect their X,Y position using 2 beams of light)
+ - add a new object: rotating ray of light (lighthouse style, useful for localization), and object 'alternating\_rays\_of\_light' for lighthouse localization
+ - possible to set the number of light map bins in the configuration files
+ - colormaps: add an hsv\_to\_rgb function
+ - neighbors.py: add kNN stats, degree histograms, fano wrt time
+ - parameter 'photosensors\_systematic\_bias\_domain' to simulate real-robot photosensor biases
+ - parameter 'photosensors\_noise\_stddev' to simulate gaussian noise over the detected light levels
+ - add 'arenas.py' and 'coverage.py' (voronoi plots). Add mean CV across arenas computation and plots
+ - CI: add WSL2 test build + launch hanabi to test if headless mode works in CI + test pogobatch
+ - locomotion.py: add MSD computation
+ - add the pogoptim script, used to optimize parameters of a Pogosim simulation, with 3 optimizers: random search. CMA-ES (from pyCMA), MAP-Elites (from QDpy)
+ - add example configurations for pogoptim
+ - GUI: new options to show/hide current time and the scale bar
+
+### Changed
+ - geometry: reduce min gap between objects in random formation
+ - changed GUI window title to Pogosim + version
+ - reduce simulation\_time in conf/mini.yaml and conf/pair.yaml to allow super fast computation by default
+
+### Fixed
+ - MAJOR FIX: fix bug in Makefiles: GCC could sometimes delete used code (e.g. communication routines) if FLTO was not enabled
+ - fix photosensors: return different values depending on the sensor\_number instead of a single value
+ - fix photosensors position: 180, 320, 40 degrees
+ - fix colormaps to use the [0,25] domain instead of the [0,255] domain
+ - update requirements.txt of pogosim python scripts
+ - fix physical objects: only compute acceleration/velocity stats if the object allows it (e.g. not membranes)
+ - script utils.py: fix metadata import from feather, configuration is now always a dict (never a string)
+ - pogobatch: correctly save original configuration in file dataframe metadata
+ - Disable some free/destroy/quit functions, as they can crash with older versions of SDL2
+ - fix Boost-related CMake errors on MacOSX
+ - CI: remove brew install cmake, to avoid fatal errors in recent github MacOSX images
+
+
 ## [0.10.6] - 2025-07-17
 
 ### Added
