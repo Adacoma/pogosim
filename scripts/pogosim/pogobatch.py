@@ -69,7 +69,7 @@ def get_by_dotted_path(node: dict, dotted: str, sep: str = "."):
 
 
 class PogobotLauncher:
-    def __init__(self, num_instances, base_config_path, combined_output_path, simulator_binary, temp_base_path, backend="multiprocessing", keep_temp=False, extra_columns=None, max_retries: int=5):
+    def __init__(self, num_instances, base_config_path, combined_output_path, simulator_binary, temp_base_path, backend="multiprocessing", keep_temp=False, extra_columns=None, max_retries: int=5, gui: bool=False):
         self.num_instances = num_instances
         self.base_config_path = base_config_path
         self.combined_output_path = combined_output_path
@@ -81,6 +81,7 @@ class PogobotLauncher:
         self.dataframes = []  # Will hold DataFrames loaded from each run
         self.extra_columns = extra_columns or {}
         self.max_retries = max_retries
+        self.gui = gui
 
     @staticmethod
     def modify_config_static(base_config_path, output_dir, seed):
@@ -114,15 +115,17 @@ class PogobotLauncher:
         return new_config_path
 
     @staticmethod
-    def launch_simulator_static(config_path, simulator_binary):
+    def launch_simulator_static(config_path, simulator_binary, gui: bool = False):
         # Build the simulator command and run it.
-        command = [simulator_binary, "-c", config_path, "-nr", "-g", "-q"]
+        command = [simulator_binary, "-c", config_path, "-nr", "-q"]
+        if not gui:
+            command.append("-g")   # headless
         logger.debug(f"Executing command: {' '.join(command)}")
         subprocess.run(command, check=True)
 
     @staticmethod
     def worker(args):
-        (i, base_cfg, sim_bin, tmp_base, max_retries) = args
+        (i, base_cfg, sim_bin, tmp_base, max_retries, gui) = args
         attempt = 0
         while True:
             # create a fresh sub-directory for every attempt
@@ -132,7 +135,7 @@ class PogobotLauncher:
             try:
                 cfg_path = PogobotLauncher.modify_config_static(
                     base_cfg, temp_dir, seed=i)
-                PogobotLauncher.launch_simulator_static(cfg_path, sim_bin)
+                PogobotLauncher.launch_simulator_static(cfg_path, sim_bin, gui)
                 break                       # success
             except subprocess.CalledProcessError as exc:
                 logger.warning(
@@ -177,7 +180,7 @@ class PogobotLauncher:
     def launch_all(self):
         # Prepare the arguments for each simulation instance.
         args_list = [
-            (i, self.base_config_path, self.simulator_binary, self.temp_base_path, self.max_retries)
+            (i, self.base_config_path, self.simulator_binary, self.temp_base_path, self.max_retries, self.gui)
             for i in range(self.num_instances)
         ]
 
@@ -185,6 +188,7 @@ class PogobotLauncher:
             # Use a multiprocessing Pool.
             with Pool(processes=self.num_instances) as pool:
                 results = pool.map(PogobotLauncher.worker, args_list)
+
         elif self.backend == "ray":
             try:
                 import ray
@@ -198,6 +202,11 @@ class PogobotLauncher:
             futures = [ray_worker.remote(args) for args in args_list]
             results = ray.get(futures)
             ray.shutdown()
+
+        elif self.backend == "sequential":
+            logger.info("Running in 'sequential' backend (no parallelisation).")
+            results = [PogobotLauncher.worker(args) for args in args_list]
+
         else:
             logger.error(f"Unknown backend: {self.backend}")
             sys.exit(1)
@@ -232,7 +241,8 @@ class PogobotBatchRunner:
     a PogobotLauncher for each combination.
     """
     def __init__(self, multi_config_file, runs, simulator_binary, temp_base, output_dir,
-                 backend="multiprocessing", keep_temp=False, verbose=False, retries: int = 5):
+                 backend="multiprocessing", keep_temp=False, verbose=False, retries: int = 5,
+                 gui: bool = False):
         self.multi_config_file = multi_config_file
         self.runs = runs
         self.simulator_binary = simulator_binary
@@ -242,6 +252,7 @@ class PogobotBatchRunner:
         self.keep_temp = keep_temp
         self.verbose = verbose
         self.retries = retries
+        self.gui = gui
 
         # Initialize logging via utils.
         utils.init_logging(self.verbose)
@@ -375,7 +386,8 @@ class PogobotBatchRunner:
             backend              = self.backend,
             keep_temp            = self.keep_temp,
             extra_columns        = extra_columns,
-            max_retries          = self.retries
+            max_retries          = self.retries,
+            gui                  = self.gui,
         )
         launcher.launch_all()
         os.remove(temp_config_path)
@@ -475,10 +487,12 @@ def main():
                         help="Base directory for temporary directories and YAML config files used by PogobotLauncher (default: 'tmp').")
     parser.add_argument("-o", "--output-dir", type=str, default=".",
                         help="Directory where the combined output Feather files will be saved (default: current directory).")
-    parser.add_argument("--backend", choices=["multiprocessing", "ray"], default="multiprocessing",
-                        help="Parallelism backend to use for launching PogobotLauncher instances (default: multiprocessing).")
+    parser.add_argument("--backend", choices=["multiprocessing", "ray", "sequential"], default="multiprocessing",
+                        help="Parallelism backend to use for launching PogobotLauncher instances (default: multiprocessing). Use 'sequential' to disable parallelism.")
     parser.add_argument("--keep-temp", action="store_true",
                         help="Keep temporary directories after simulation runs.")
+    parser.add_argument("--gui", action="store_true",
+                        help="Enable simulator GUI (omit '-g' headless flag when launching the simulator).")
     parser.add_argument("-v", "--verbose", default=False, action="store_true", help="Verbose mode")
     parser.add_argument("-V", "--version", default=False, action="store_true", help="Return version")
     parser.add_argument("-R", "--retries", type=int, default=5, help="How many times to relaunch a run when the simulator crashes (default: 5).")
@@ -501,7 +515,8 @@ def main():
         backend=args.backend,
         keep_temp=args.keep_temp,
         verbose=args.verbose,
-        retries=args.retries
+        retries=args.retries,
+        gui=args.gui
     )
     runner.run_all()
 
