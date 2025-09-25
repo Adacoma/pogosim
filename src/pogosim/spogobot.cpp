@@ -243,6 +243,15 @@ uint32_t pogobot_infrared_sendShortMessage_omni( uint8_t *message, uint16_t mess
     return pogobot_infrared_sendRawShortMessage( ir_all, &m );
 }
 
+
+slip_error_counter_s _slip_error_counter = {0, 0, 0};
+
+
+void pogobot_infrared_get_receiver_error_counter( slip_error_counter_s *error_counter, uint8_t ir_index ) {
+    *error_counter = _slip_error_counter;
+}
+
+
 void pogobot_infrared_reset_receiver_error_counter( void ) {
     // Do nothing ...
 }

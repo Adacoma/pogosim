@@ -153,6 +153,17 @@ typedef enum
     ir_all = 4
 } ir_direction;
 
+
+// From pogolib/slip.h in pogobot repository
+typedef struct 
+{
+    uint32_t overflow_counter;
+    uint32_t unknown_escaped_byte_counter;
+    uint32_t crc_mismatch_counter;
+} slip_error_counter_s;
+
+
+
 /* ******************************** ******************************** */
 
 /**
