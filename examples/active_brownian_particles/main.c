@@ -118,7 +118,8 @@ void user_init(void){
     msg_tx_fn = NULL;
     error_codes_led_idx = 3;
 
-    uint8_t dir_mem[3]; pogobot_motor_dir_mem_get(dir_mem);
+    uint8_t dir_mem[3];
+    pogobot_motor_dir_mem_get(dir_mem);
     mydata->motor_dir_left  = dir_mem[1];
     mydata->motor_dir_right = dir_mem[0];
 
@@ -155,6 +156,7 @@ void user_step(void){
     // --- Enter escape if not moving for a few ticks
     if(!mydata->in_escape){
         if(!moving){
+            //printf("Not moving! %f, %f, %f \n", fabsf(gyro[2]), fabsf(acc[0]), fabsf(acc[2]));
             if(++mydata->still_ticks >= stuck_ticks_to_trigger && enable_backward_dir){
                 mydata->still_ticks = 0;
                 mydata->in_escape = true;
@@ -164,6 +166,7 @@ void user_step(void){
                 pogobot_led_setColor(255,0,0);              // red while escaping
             }
         }else{
+            //printf("Moving! %f, %f, %f \n", fabsf(gyro[2]), fabsf(acc[0]), fabsf(acc[2]));
             mydata->still_ticks = 0;
         }
     }
