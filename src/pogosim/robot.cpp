@@ -604,12 +604,12 @@ void PogobotObject::receive_message(message_t *const message, PogobotObject* sou
         possible_directions.push_back(contains(neighbors[dir], source));
     }
 
-    // Check whether all directions are possible
-    if (all_true(possible_directions)) {
-        // Yes. Change _receiver_ir_index to ir_all, and add the message
-        m.header._receiver_ir_index = ir_all;
-        messages.push(m);
-    } else {
+//    // Check whether all directions are possible
+//    if (all_true(possible_directions)) {
+//        // Yes. Change _receiver_ir_index to ir_all, and add the message
+//        m.header._receiver_ir_index = ir_all;
+//        messages.push(m);
+//    } else {
         // No, create a new received message for each possible directions
         for (uint8_t dir = ir_front; dir < ir_all; dir++) {
             if (!possible_directions[dir])
@@ -618,7 +618,7 @@ void PogobotObject::receive_message(message_t *const message, PogobotObject* sou
             m.header._receiver_ir_index = dir;
             messages.push(m);
         }
-    }
+//    }
 }
 
 
