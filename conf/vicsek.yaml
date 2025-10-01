@@ -6,7 +6,7 @@ window_height: 600      # In pixels
 arena_file: arenas/disk.csv
 #arena_file: arenas/square.csv
 #arena_file: arenas/arena8.csv
-arena_surface: 2.0e6    # In mm²
+arena_surface: 1.0e6    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
@@ -101,7 +101,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 50             # Number of objects (Pogobots) in this category
+        nb: 40             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -169,7 +169,7 @@ parameters:
     noise_eta_rad: 0.0
     align_gain: 1.0
     include_self_in_avg: true
-    broadcast_angle_when_avoiding_walls: false
+    broadcast_angle_when_avoiding_walls: true
     vicsek_turn_gain: 0.8
     alpha_deg: 40.0
     robot_radius: 0.0265
