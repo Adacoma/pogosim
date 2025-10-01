@@ -115,6 +115,45 @@ void pogo_main_loop_step(void (*user_step)(void)) {
     pogobot_ticks++;
 }
 
+
+/********************** Default functions for walls **********************/
+
+
+/**
+ * @brief Function called each time the walls send a message
+ *
+ * This function is called continuously at the frequency defined in walls_user_init().
+ */
+static bool ping_walls(void) {
+    uint8_t msg[5] = {"wall"};
+    return pogobot_infrared_sendLongMessage_omniSpe(msg, sizeof(msg));
+}
+
+
+void default_walls_user_init(void) {
+#ifndef SIMULATOR
+    printf("Wall initialized\n");
+#endif
+    // Initialize the random number generator
+    srand(pogobot_helper_getRandSeed());
+    pogobot_infrared_set_power(2); // Set the power level used to send all the next messages.
+
+    // Set the main loop frequency to 10 Hz (i.e., walls_user_step() is called 10 times per second).
+    main_loop_hz = 10;
+
+    // Disable message reception, but enable message send by the pogowalls.
+    max_nb_processed_msg_per_tick = 0;
+    percent_msgs_sent_per_ticks = 75; // 75% of chance each step to send a message.
+    msg_rx_fn = NULL;
+    msg_tx_fn = ping_walls;
+    // Specify LED index for error codes (negative values disable this feature).
+    error_codes_led_idx = -1;
+}
+
+void default_walls_user_step(void) {
+    // ...
+}
+
 // MODELINE "{{{1
 // vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
 // vim:foldmethod=marker

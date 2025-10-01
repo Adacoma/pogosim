@@ -143,6 +143,9 @@ void pogo_main_loop_step(void (*user_step)(void));
 uint32_t current_time_milliseconds(void);
 void display_led_error_code(error_code_t const c);
 
+void default_walls_user_init(void);
+void default_walls_user_step(void);
+
 #ifdef __cplusplus
 }
 #endif

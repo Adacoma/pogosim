@@ -65,10 +65,6 @@ REGISTER_USERDATA(USERDATA);
 //  On real robots, the compiler will automatically optimize the code to access member variables as if they were true globals.
 
 /* ------------------------- Utilities ------------------------------- */
-static inline uint32_t now_ms(void) {
-    return current_time_milliseconds();
-}
-
 static inline bool face_active(uint8_t face, uint32_t tnow) {
     uint32_t t = mydata->last_wall_seen_ms[face];
     return (t != 0) && (tnow - t <= wall_memory_ms);
@@ -119,7 +115,7 @@ static inline void spin_right(void) {
 static void process_message(message_t *mr) {
     if (!is_wall_payload(mr))
         return;
-    uint32_t t = now_ms();
+    uint32_t t = current_time_milliseconds();
 
     int face = mr->header._receiver_ir_index; // 0..3 for directional faces
     if (face >= 0 && face < 4) {
@@ -131,7 +127,7 @@ static void process_message(message_t *mr) {
 
 /* ------------------------- Simple reactive behavior ------------------------------- */
 static void decide_action(void) {
-    uint32_t tnow = now_ms();
+    uint32_t tnow = current_time_milliseconds();
 
     // If currently executing a turn, keep turning until duration expires
     if ((mydata->current_action == ACTION_TURN_LEFT || mydata->current_action == ACTION_TURN_RIGHT)
@@ -222,18 +218,15 @@ static void decide_action(void) {
             }
             mydata->action_until_ms = tnow + turn_duration_ms;
         }
-    }
-    else if (left && !right) {
+    } else if (left && !right) {
         // Wall only on left: turn right
         mydata->current_action = ACTION_TURN_RIGHT;
         mydata->action_until_ms = tnow + turn_duration_ms;
-    }
-    else if (right && !left) {
+    } else if (right && !left) {
         // Wall only on right: turn left
         mydata->current_action = ACTION_TURN_LEFT;
         mydata->action_until_ms = tnow + turn_duration_ms;
-    }
-    else {
+    } else {
         // No problematic walls (corridor, back only, or clear): go forward
         mydata->current_action = ACTION_FORWARD;
     }
@@ -311,58 +304,12 @@ static void user_init(void) {
  * This function is called continuously at the frequency defined in user_init().
  */
 static void user_step(void) {
-    uint32_t tnow = now_ms();
+    uint32_t tnow = current_time_milliseconds();
     update_lateral_leds(tnow);
     decide_action();
     execute_action();
 }
 
-/* ------------------------- Wall functions ------------------------------- */
-
-/**
- * @brief Function called each time the walls send a message
- *
- * This function is called continuously at the frequency defined in walls_user_init().
- */
-static bool ping_walls(void) {
-    uint8_t msg[5] = {"wall"};
-    return pogobot_infrared_sendLongMessage_omniSpe(msg, sizeof(msg));
-}
-
-
-/**
- * @brief Initialization function for the pogowalls.
- *
- * This function is executed once at startup (cf 'pogobot_start' call in main()).
- */
-static void walls_user_init(void) {
-#ifndef SIMULATOR
-    printf("Wall initialized\n");
-#endif
-    // Initialize the random number generator
-    srand(pogobot_helper_getRandSeed());
-    pogobot_infrared_set_power(2); // Set the power level used to send all the next messages.
-
-    // Set the main loop frequency to 10 Hz (i.e., walls_user_step() is called 10 times per second).
-    main_loop_hz = 10;
-
-    // Disable message reception, but enable message send by the pogowalls.
-    max_nb_processed_msg_per_tick = 0;
-    percent_msgs_sent_per_ticks = 75; // 75% of chance each step to send a message.
-    msg_rx_fn = NULL;
-    msg_tx_fn = ping_walls;
-    // Specify LED index for error codes (negative values disable this feature).
-    error_codes_led_idx = -1;
-}
-
-/**
- * @brief Main control loop for the Pogowalls
- *
- * This function is called continuously at the frequency defined in walls_user_init().
- */
-static void walls_user_step(void) {
-    // ...
-}
 
 /* ------------------------- Main ------------------------------- */
 
@@ -401,7 +348,8 @@ int main(void) {
     //   --> Make sure that the category "robots" is used to declare the pogobots in your configuration file. Cf conf/test.yaml
 
     // Init and main loop functions for the walls (pogowalls). Ignored by the robots.
-    pogobot_start(walls_user_init, walls_user_step, "walls");
+    // Use the default functions provided by Pogosim. Cf examples 'walls' to see how to declare custom wall user code functions.
+    pogobot_start(default_walls_user_init, default_walls_user_step, "walls");
 
     // Specify the callback functions. Only called by the simulator.
     SET_CALLBACK(callback_global_setup, global_setup);
