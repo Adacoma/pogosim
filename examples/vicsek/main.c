@@ -2,8 +2,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <strings.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // Wall avoidance routines
 #include "pogo-utils/wall_avoidance.h"
@@ -34,6 +36,7 @@ double   align_gain          = 1.0;
 
 // should the robot’s own measured heading (from photodiodes) be included in the shared average?
 bool     include_self_in_avg = true;
+bool     broadcast_angle_when_avoiding_walls = true;
 
 // conversion gain 
 double   vicsek_turn_gain    = 0.8;          /* typically 0.6–1.0 */
@@ -41,6 +44,13 @@ double   vicsek_turn_gain    = 0.8;          /* typically 0.6–1.0 */
 // geometrical parameters of pogobots
 double alpha_deg    = 40.0;
 double robot_radius = 0.0265;  /* default 26.5 mm */
+
+// What main LEDs show
+typedef enum {
+    SHOW_STATE,
+    SHOW_ANGLE
+} main_led_display_type_t;
+main_led_display_type_t main_led_display_enum = SHOW_STATE;
 
 
 // compact vicsek message to broadcast
@@ -131,7 +141,7 @@ bool send_message(void){
     uint32_t now=current_time_milliseconds();
     if (now - mydata->last_beacon_ms < BEACON_PERIOD_MS) return false; // to not talk too much...
                                                                       // structure defined above
-    if (mydata->doing_wall_avoidance) return false; // Don't communicate if current doing wall avoidance
+    if (!broadcast_angle_when_avoiding_walls && mydata->doing_wall_avoidance) return false; // Don't communicate if current doing wall avoidance
 
     vicsek_msg_t m={
         .sender_id = pogobot_helper_getid(),
@@ -231,6 +241,48 @@ static void vicsek_update_and_build_diff(void){
 }
 
 
+#define SCALE_0_255_TO_0_25(x)   (uint8_t)((x) * (25.0f / 255.0f) + 0.5f)
+
+void update_main_led(void) {
+    if (main_led_display_enum == SHOW_STATE) {
+        if (mydata->doing_wall_avoidance) {
+            pogobot_led_setColor(255,0,0); // red, doing wall avoidance
+        } else if (mydata->nb_neighbors == 0) {
+            pogobot_led_setColor(0,0,255); // blue, alone
+        } else {
+            pogobot_led_setColor(0,255,0); // green, in group
+        }
+
+    } else if (main_led_display_enum == SHOW_ANGLE) {
+        float angle = mydata->photo_heading_rad;
+        if (angle < 0.0f) { angle += 2.0f * M_PI; }
+        //printf("DEBUG angle=%f\n", angle);
+
+        /** HSV ➜ RGB conversion
+         *  h : 0-360°, s,v : 0-1
+         *  We keep s = v = 1 for maximum chroma; only afterwards we down-scale to
+         *  the 0-25 range expected by the simulator.
+         */
+        float hue_deg = angle * 180.0f / (float)M_PI;   // 0-360
+        uint8_t r8, g8, b8;
+        hsv_to_rgb(hue_deg, 1.0f, 1.0f, &r8, &g8, &b8);
+
+        // --- compress to 0-25 so adjust_color() does NOT clip --------------------
+        r8 = SCALE_0_255_TO_0_25(r8);
+        g8 = SCALE_0_255_TO_0_25(g8);
+        b8 = SCALE_0_255_TO_0_25(b8);
+
+        // guarantee at least one channel is non-zero for visibility
+        if (r8 == 0 && g8 == 0 && b8 == 0) { r8 = 1; }
+
+        pogobot_led_setColor(r8, g8, b8);
+
+    } else {
+        // ...
+    }
+}
+
+
 void user_init(void){
     // not sure if I needed that !
     srand(pogobot_helper_getRandSeed());
@@ -286,7 +338,6 @@ void user_init(void){
     pogobot_led_setColor(0,0,255); // blue
 }
 
-
 void user_step(void){
     uint32_t now = current_time_milliseconds();
     // Wall avoidance takes control if needed (with LED updates)
@@ -307,13 +358,7 @@ void user_step(void){
     }
 
     // Update LED
-    if (mydata->doing_wall_avoidance) {
-        pogobot_led_setColor(255,0,0); // red, doing wall avoidance
-    } else if (mydata->nb_neighbors == 0) {
-        pogobot_led_setColor(0,0,255); // blue, alone
-    } else {
-        pogobot_led_setColor(0,255,0); // green, in group
-    }
+    update_main_led();
 }
 
 
@@ -337,6 +382,7 @@ static void global_setup(void){
 
     init_from_configuration(noise_eta_rad);
     init_from_configuration(include_self_in_avg);
+    init_from_configuration(broadcast_angle_when_avoiding_walls);
     init_from_configuration(align_gain);
     init_from_configuration(vicsek_turn_gain);
 
@@ -347,6 +393,18 @@ static void global_setup(void){
     /* Optional:
        init_from_configuration(forward_speed);
        */
+
+
+    char main_led_display[128] = "state"; // Initialized with default value
+    init_array_from_configuration(main_led_display);
+    if (strcasecmp(main_led_display, "state") == 0) {
+        main_led_display_enum = SHOW_STATE;
+    } else if (strcasecmp(main_led_display, "angle") == 0) {
+        main_led_display_enum = SHOW_ANGLE;
+    } else {
+        printf("ERROR: unknown main_led_display parameter value: '%s', use either 'state' or 'angle'.\n", main_led_display);
+        exit(1);
+    }
 }
 #endif
 
