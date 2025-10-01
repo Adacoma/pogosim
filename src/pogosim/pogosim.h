@@ -143,7 +143,17 @@ void pogo_main_loop_step(void (*user_step)(void));
 uint32_t current_time_milliseconds(void);
 void display_led_error_code(error_code_t const c);
 
+/**
+ * @brief Initialization function for the pogowalls.
+ *
+ * This function is executed once at startup (cf 'pogobot_start' call in main()).
+ */
 void default_walls_user_init(void);
+/**
+ * @brief Main control loop for the Pogowalls
+ *
+ * This function is called continuously at the frequency defined in walls_user_init().
+ */
 void default_walls_user_step(void);
 
 #ifdef __cplusplus
