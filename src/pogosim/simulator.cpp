@@ -500,6 +500,12 @@ void Simulation::init_SDL() {
 
 
 void Simulation::create_robots() {
+    // Check if there are no robots declared
+    if (robots.size() == 0) {
+        glogger->warn("No robots specified in the configuration.");
+        return;
+    }
+
     current_robot = robots.front().get();
 
     glogger->info("Initializing all robots...");
