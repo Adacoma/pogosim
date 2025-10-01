@@ -15,35 +15,36 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define MAX_NEIGHBORS      20u // limitation coming from neighbour counter program, to be adapted?
-#define BEACON_HZ          10u // frequency of beacon transmission
-#define BEACON_PERIOD_MS  (1000u / BEACON_HZ) // converted into period
+#define MAX_NEIGHBORS      20u
+#define BEACON_HZ          10u
+#define BEACON_PERIOD_MS  (1000u / BEACON_HZ)
 
-// main motor speed (can be exposed as parameter if needed), 1023 is max (cf the API)
+// main motor speed (1023 is max)
 static int forward_speed = motorHalf;
-//static int forward_speed = motorFull;
 
-// parameters, can be defined in the YAML, inspired by neighbour counter 
-uint32_t max_age             = 600;          /* ms: neighbor considered expired beyond this */
+// parameters (configurable in YAML)
+uint32_t max_age             = 600;          /* ms: neighbor expiration */
 uint32_t vicsek_period_ms    = 17;           /* ms: Vicsek update period */
-// not useful I think : uint8_t  vicsek_ir_power     = 5;           
 
 // vicsek noise
 double   noise_eta_rad       = 1.5;          /* rad */
 
-// alignment gain, should be in [0..1], 
+// alignment gain [0..1]
 double   align_gain          = 1.0;
 
-// should the robot’s own measured heading (from photodiodes) be included in the shared average?
+// include self heading in average?
 bool     include_self_in_avg = true;
 bool     broadcast_angle_when_avoiding_walls = true;
 
-// conversion gain 
+// conversion gain
 double   vicsek_turn_gain    = 0.8;          /* typically 0.6–1.0 */
 
-// geometrical parameters of pogobots
+// geometry
 double alpha_deg    = 40.0;
-double robot_radius = 0.0265;  /* default 26.5 mm */
+double robot_radius = 0.0265;  /* 26.5 mm */
+
+// === CLUSTER U-TURN: configurable duration window (ms) ===
+uint32_t cluster_u_turn_duration_ms = 1500;
 
 // What main LEDs show
 typedef enum {
@@ -52,11 +53,19 @@ typedef enum {
 } main_led_display_type_t;
 main_led_display_type_t main_led_display_enum = SHOW_STATE;
 
+// === CLUSTER U-TURN message flag ===
+enum : uint8_t {
+    VMSGF_CLUSTER_UTURN = 0x01
+};
 
-// compact vicsek message to broadcast
+// Extended Vicsek message (packed).
 typedef struct __attribute__((__packed__)) {
     uint16_t sender_id;
-    int16_t  theta_mrad;  // ! i choose to diffuse the direction commanded by the robot, to have a more stable behavior!!
+    int16_t  theta_mrad;            // commanded direction of sender
+    uint8_t  flags;                 // bit0: cluster U-turn active
+    int16_t  cluster_target_mrad;   // valid if flags & VMSGF_CLUSTER_UTURN
+    uint32_t cluster_wall_t0_ms;    // first wall time at the originator
+    uint16_t cluster_msg_uid;       // de-dup / freshness id
 } vicsek_msg_t;
 
 #define MSG_SIZE ((uint16_t)sizeof(vicsek_msg_t))
@@ -64,59 +73,63 @@ typedef struct __attribute__((__packed__)) {
 // neighbor structure
 typedef struct {
     uint16_t id;
-    uint32_t last_seen_ms; // timestamp of last reception, can be removed because more useful if we want to display the neighbors
-    int16_t  theta_mrad;   
+    uint32_t last_seen_ms;
+    int16_t  theta_mrad;
 } neighbor_t;
 
-// intern state of each pogobot
+// internal state
 typedef struct {
     // timing
     float dt_s;
 
     neighbor_t neighbors[MAX_NEIGHBORS];
     uint8_t    nb_neighbors;
-    uint32_t   last_beacon_ms; // last time we difused our message
+    uint32_t   last_beacon_ms;
 
     // vicsek internal state
-    double     theta_cmd_rad;         
+    double     theta_cmd_rad;
     uint32_t   last_vicsek_update_ms;
 
-    // current heading
+    // current heading (photos)
     double     photo_heading_rad;
 
     // memorized direction
     int        diff_cmd;
-    // motor direction as memorized by the firmware
     uint8_t    motor_dir_left_fwd;
     uint8_t    motor_dir_right_fwd;
 
     // Wall avoidance
     wall_avoidance_state_t wall_avoidance;
     bool doing_wall_avoidance;
+    bool prev_doing_wall_avoidance;        // === CLUSTER U-TURN: rising-edge detection
+
+    // === CLUSTER U-TURN: cluster override state ===
+    bool     cluster_turn_active;
+    double   cluster_target_rad;
+    uint32_t cluster_wall_t0_ms;           // t0 at originator
+    uint32_t cluster_active_until_ms;      // t0 + duration
+    uint16_t cluster_msg_uid;              // uid that we originated (if any)
+    uint16_t last_seen_cluster_uid;        // last uid we accepted
+    bool     have_seen_cluster_uid;
 } USERDATA;
 
 DECLARE_USERDATA(USERDATA);
 REGISTER_USERDATA(USERDATA);
 
-// some one liners that are useful !! WARNING : they have been written by my best friend ChatGPT and they are working
-//  however, maybe not the most efficient possible (or have some cases not handled)
+// helpers
 static inline double wrap_pi(double a){ while(a> M_PI)a-=2.0*M_PI; while(a<-M_PI)a+=2.0*M_PI; return a; }
 static inline int16_t rad_to_mrad(double a){ a=wrap_pi(a); long v=lround(a*1000.0); if(v>32767)v=32767; if(v<-32768)v=-32768; return (int16_t)v; }
 static inline double  mrad_to_rad(int16_t m){ return ((double)m)/1000.0; }
 static inline double noise_uniform(double eta){ double u=(double)rand()/(double)RAND_MAX; return (u-0.5)*eta; }
 
-
-// to transform a signed speed into a motor command, using the memorized forward direction
 static inline void motor_set_signed(motor_id id, int spd_signed, uint8_t fwd_dir_mem){
-    int mag = spd_signed >= 0 ? spd_signed : -spd_signed; // absolute value
-    if(mag > motorFull) mag = motorFull; // saturation if needed
-    uint8_t dir = (spd_signed >= 0) ? fwd_dir_mem : ((fwd_dir_mem==0)?1:0); // direction
+    int mag = spd_signed >= 0 ? spd_signed : -spd_signed;
+    if(mag > motorFull) mag = motorFull;
+    uint8_t dir = (spd_signed >= 0) ? fwd_dir_mem : ((fwd_dir_mem==0)?1:0);
     pogobot_motor_dir_set(id, dir);
     pogobot_motor_set(id, mag);
 }
 
-// !! important (the old version was not working precisely because we did not use this function in the main loop)
-//  entirely inspired by neighbor counter program
 static void purge_old_neighbors(void){
     uint32_t now=current_time_milliseconds();
     for(int i=(int)mydata->nb_neighbors-1;i>=0;--i){
@@ -127,56 +140,97 @@ static void purge_old_neighbors(void){
     }
 }
 
-// insert or update a neighbor in the list,
 static neighbor_t* upsert_neighbor(uint16_t id){
-    // run through the list to find it
     for(uint8_t i=0;i<mydata->nb_neighbors;++i)
         if(mydata->neighbors[i].id==id) return &mydata->neighbors[i];
-    if(mydata->nb_neighbors>=MAX_NEIGHBORS) return NULL; // not sure if this limit is useful, to see with material limitations
-    neighbor_t* n=&mydata->neighbors[mydata->nb_neighbors++]; 
+    if(mydata->nb_neighbors>=MAX_NEIGHBORS) return NULL;
+    neighbor_t* n=&mydata->neighbors[mydata->nb_neighbors++];
     n->id=id; n->theta_mrad=0; n->last_seen_ms=0; return n;
 }
 
+// === CLUSTER U-TURN: are we currently in the active window?
+static inline bool cluster_window_active(uint32_t now){
+    return mydata->cluster_turn_active && (now < mydata->cluster_active_until_ms);
+}
+
+// === CLUSTER U-TURN: adopt a new cluster instruction if "newer"
+static void cluster_adopt_and_activate(int16_t tgt_mrad, uint32_t t0_ms, uint16_t uid){
+    //uint32_t now = current_time_milliseconds();
+    bool newer = (!mydata->cluster_turn_active) ||
+                 (t0_ms > mydata->cluster_wall_t0_ms) ||
+                 (!mydata->have_seen_cluster_uid) ||
+                 (uid != mydata->last_seen_cluster_uid);
+
+    if(newer){
+        mydata->cluster_target_rad      = mrad_to_rad(tgt_mrad);
+        mydata->cluster_wall_t0_ms      = t0_ms;
+        mydata->cluster_active_until_ms = t0_ms + cluster_u_turn_duration_ms;
+        mydata->cluster_turn_active     = true;
+        mydata->last_seen_cluster_uid   = uid;
+        mydata->have_seen_cluster_uid   = true;
+    }
+}
+
+// === CLUSTER U-TURN: compose and send a beacon (with cluster flag if active)
 bool send_message(void){
     uint32_t now=current_time_milliseconds();
-    if (now - mydata->last_beacon_ms < BEACON_PERIOD_MS) return false; // to not talk too much...
-                                                                      // structure defined above
-    if (!broadcast_angle_when_avoiding_walls && mydata->doing_wall_avoidance) return false; // Don't communicate if current doing wall avoidance
+    if (now - mydata->last_beacon_ms < BEACON_PERIOD_MS) return false;
 
-    vicsek_msg_t m={
+    // Determine whether we advertise the cluster U-turn in this beacon
+    bool advertise_cluster = cluster_window_active(now);
+
+    // Respect "mute on wall-avoidance" *unless* we must advertise a cluster event.
+    if (!advertise_cluster && !broadcast_angle_when_avoiding_walls && mydata->doing_wall_avoidance) {
+        return false;
+    }
+
+    vicsek_msg_t m = {
         .sender_id = pogobot_helper_getid(),
-        .theta_mrad= rad_to_mrad(mydata->theta_cmd_rad)  
+        .theta_mrad= rad_to_mrad(mydata->theta_cmd_rad),
+        .flags     = 0u,
+        .cluster_target_mrad = 0,
+        .cluster_wall_t0_ms  = 0u,
+        .cluster_msg_uid     = 0u
     };
-    // send it
-    mydata->last_beacon_ms=now;
+
+    if (advertise_cluster) {
+        m.flags               |= VMSGF_CLUSTER_UTURN;
+        m.cluster_target_mrad  = rad_to_mrad(mydata->cluster_target_rad);
+        m.cluster_wall_t0_ms   = mydata->cluster_wall_t0_ms;
+        m.cluster_msg_uid      = mydata->cluster_msg_uid;  // 0 if we’re a relay, which is fine
+    }
+
+    mydata->last_beacon_ms = now;
     return pogobot_infrared_sendShortMessage_omni((uint8_t*)&m, MSG_SIZE);
 }
 
-
 /**
  * @brief Handle an incoming packet.
- *
- * @param[in] mr Pointer to the message wrapper provided by the firmware.
  */
 void process_message(message_t* mr){
-    // Process wall message and return if it was one
+    // Let the wall-avoidance module eat its own messages first.
     if (wall_avoidance_process_message(&mydata->wall_avoidance, mr)) {
         return;
     }
-    // Not a wall message, handle other message types below
 
-    // verify if the size is correct 
     if(mr->header.payload_length < MSG_SIZE) return;
     vicsek_msg_t const* m=(vicsek_msg_t const*)mr->payload;
     if(m->sender_id==pogobot_helper_getid()) return;
 
+    // Neighbor update (for Vicsek averaging)
     neighbor_t* n=upsert_neighbor(m->sender_id);
     if(!n) return;
     n->theta_mrad=m->theta_mrad;
     n->last_seen_ms=current_time_milliseconds();
+
+    // === CLUSTER U-TURN: accept cluster instruction and re-flood
+    if (m->flags & VMSGF_CLUSTER_UTURN) {
+        cluster_adopt_and_activate(m->cluster_target_mrad, m->cluster_wall_t0_ms, m->cluster_msg_uid);
+        // We don't need to queue a special immediate send; our periodic beacon will
+        // include the flag for as long as the window is active, achieving a flood.
+    }
 }
 
-// classic désormais, I do not have to explain, n'est ce pas Léo ? 
 static inline double estimate_heading_from_photos(void){
     int16_t pA_raw = pogobot_photosensors_read(0);
     int16_t pB_raw = pogobot_photosensors_read(1);
@@ -195,41 +249,46 @@ static inline double estimate_heading_from_photos(void){
 
     double angle_rel = atan2(gx, gy);
     double photo_heading = -angle_rel;
-    return wrap_pi(photo_heading); // le one liner définit plus haut, pratique
+    return wrap_pi(photo_heading);
 }
 
-// le coeur de la bête!
+// Build diff for motors (Vicsek + optional cluster override)
 static void vicsek_update_and_build_diff(void){
     purge_old_neighbors();
 
+    uint32_t now = current_time_milliseconds();
     double heading = mydata->photo_heading_rad;
+    double theta_cmd;
 
-    double sx = 0.0, sy = 0.0;
-    if (include_self_in_avg){
-        sx += cos(heading);
-        sy += sin(heading);
+    if (cluster_window_active(now)) {
+        // === CLUSTER U-TURN override ===
+        theta_cmd = mydata->cluster_target_rad;
+    } else {
+        // Normal Vicsek
+        double sx = 0.0, sy = 0.0;
+        if (include_self_in_avg){
+            sx += cos(heading);
+            sy += sin(heading);
+        }
+        for (uint8_t i=0; i<mydata->nb_neighbors; ++i){
+            double th = mrad_to_rad(mydata->neighbors[i].theta_mrad);
+            sx += cos(th);
+            sy += sin(th);
+        }
+
+        double theta_mean = heading;
+        if (!(sx == 0.0 && sy == 0.0)){
+            theta_mean = atan2(sy, sx);
+        }
+
+        double theta_blend = wrap_pi((1.0 - align_gain) * heading
+                                   +  align_gain        * theta_mean);
+
+        theta_cmd = wrap_pi(theta_blend + noise_uniform(noise_eta_rad));
+        mydata->cluster_turn_active = false; // ensure flag goes low if window elapsed
     }
-    for (uint8_t i=0; i<mydata->nb_neighbors; ++i){
-        double th = mrad_to_rad(mydata->neighbors[i].theta_mrad);
-        sx += cos(th);
-        sy += sin(th);
-    }
 
-    double theta_mean = heading;
-    if (!(sx == 0.0 && sy == 0.0)){
-        theta_mean = atan2(sy, sx);
-    }
-
-    // relaxation avec align_gain
-    double theta_blend = wrap_pi((1.0 - align_gain) * heading
-            +  align_gain        * theta_mean);
-
-    double theta_cmd = wrap_pi(theta_blend + noise_uniform(noise_eta_rad));
-
-    // erreur instantanée
     double err = wrap_pi(theta_cmd - heading);
-
-    // normalisation à 30°
     const double err_norm = err / (30.0 * M_PI / 180.0);
 
     int diff = (int)lround(vicsek_turn_gain * err_norm * (double)forward_speed);
@@ -240,57 +299,40 @@ static void vicsek_update_and_build_diff(void){
     mydata->diff_cmd      = diff;
 }
 
-
 #define SCALE_0_255_TO_0_25(x)   (uint8_t)((x) * (25.0f / 255.0f) + 0.5f)
 
 void update_main_led(void) {
     if (main_led_display_enum == SHOW_STATE) {
         if (mydata->doing_wall_avoidance) {
-            pogobot_led_setColor(255,0,0); // red, doing wall avoidance
+            pogobot_led_setColor(255,0,0); // red: wall avoidance
         } else if (mydata->nb_neighbors == 0) {
-            pogobot_led_setColor(0,0,255); // blue, alone
+            pogobot_led_setColor(0,0,255); // blue: alone
+        } else if (cluster_window_active(current_time_milliseconds())) {
+            pogobot_led_setColor(0,255,255); // cyan: cluster U-turn active
         } else {
-            pogobot_led_setColor(0,255,0); // green, in group
+            pogobot_led_setColor(0,255,0); // green: normal group
         }
-
     } else if (main_led_display_enum == SHOW_ANGLE) {
         float angle = mydata->photo_heading_rad;
         if (angle < 0.0f) { angle += 2.0f * M_PI; }
-        //printf("DEBUG angle=%f\n", angle);
 
-        /** HSV ➜ RGB conversion
-         *  h : 0-360°, s,v : 0-1
-         *  We keep s = v = 1 for maximum chroma; only afterwards we down-scale to
-         *  the 0-25 range expected by the simulator.
-         */
         float hue_deg = angle * 180.0f / (float)M_PI;   // 0-360
         uint8_t r8, g8, b8;
         hsv_to_rgb(hue_deg, 1.0f, 1.0f, &r8, &g8, &b8);
-
-        // --- compress to 0-25 so adjust_color() does NOT clip --------------------
         r8 = SCALE_0_255_TO_0_25(r8);
         g8 = SCALE_0_255_TO_0_25(g8);
         b8 = SCALE_0_255_TO_0_25(b8);
-
-        // guarantee at least one channel is non-zero for visibility
         if (r8 == 0 && g8 == 0 && b8 == 0) { r8 = 1; }
-
         pogobot_led_setColor(r8, g8, b8);
-
     } else {
         // ...
     }
 }
 
-
 void user_init(void){
-    // not sure if I needed that !
     srand(pogobot_helper_getRandSeed());
-
-    // maybe done by default by the API, but we better be sure
     memset(mydata,0,sizeof(*mydata));
 
-    // from neighbor counter program
     main_loop_hz=10;
     mydata->dt_s = (main_loop_hz>0)? (1.f/(float)main_loop_hz) : (1.f/60.f);
     max_nb_processed_msg_per_tick=3;
@@ -299,10 +341,8 @@ void user_init(void){
     msg_tx_fn=send_message;
     error_codes_led_idx=3;
 
-
     uint8_t dir_mem[3]={0,0,0};
     pogobot_motor_dir_mem_get(dir_mem);
-    // convention
     mydata->motor_dir_right_fwd = dir_mem[0];
     mydata->motor_dir_left_fwd  = dir_mem[1];
 
@@ -313,24 +353,35 @@ void user_init(void){
         .motor_right = motorFull,
         .dir_right = mydata->motor_dir_right_fwd
     };
-    wall_avoidance_init_default(&mydata->wall_avoidance, &motors);
-    // Wall avoidance: work at half speed
+    wall_avoidance_config_t default_config = {
+        .wall_memory_ms = 900,
+        .turn_duration_ms = 300,
+        .forward_commit_ms = 600,
+        .forward_speed_ratio = 0.8f
+    };
+    wall_avoidance_init(&mydata->wall_avoidance, &default_config, &motors);
     wall_avoidance_set_forward_speed(&mydata->wall_avoidance, 0.5f);
-    mydata->doing_wall_avoidance = false;
+    mydata->doing_wall_avoidance    = false;
+    mydata->prev_doing_wall_avoidance = false;
 
-    /// first heading
+    // Cluster U-turn defaults
+    mydata->cluster_turn_active     = false;
+    mydata->cluster_target_rad      = 0.0;
+    mydata->cluster_wall_t0_ms      = 0u;
+    mydata->cluster_active_until_ms = 0u;
+    mydata->cluster_msg_uid         = 0u;
+    mydata->have_seen_cluster_uid   = false;
+
     mydata->photo_heading_rad = estimate_heading_from_photos();
-
-    // initial direction = measured heading + noise
-    mydata->theta_cmd_rad = wrap_pi(mydata->photo_heading_rad + noise_uniform(noise_eta_rad));
-    mydata->diff_cmd      = 0;
+    mydata->theta_cmd_rad     = wrap_pi(mydata->photo_heading_rad + noise_uniform(noise_eta_rad));
+    mydata->diff_cmd          = 0;
 
     mydata->last_vicsek_update_ms=current_time_milliseconds();
     mydata->last_beacon_ms=0;
-    // some debug info, not everytime useful, can be deleted!
+
 #ifdef SIMULATOR
-    printf("Discrete Vicsek (arc-drive): eta=%.1f deg, T=%ums, gain_align=%.2f\n",
-            noise_eta_rad*180.0/M_PI, vicsek_period_ms, align_gain);
+    printf("Vicsek+ClusterUturn: eta=%.1f deg, T=%ums, align=%.2f, window=%ums\n",
+            noise_eta_rad*180.0/M_PI, vicsek_period_ms, align_gain, cluster_u_turn_duration_ms);
     printf("Motor dir fwd: L=%u R=%u, alpha=%.1f deg, r=%.1f mm\n",
             (unsigned)mydata->motor_dir_left_fwd, (unsigned)mydata->motor_dir_right_fwd,
             alpha_deg, robot_radius*1000.0);
@@ -340,41 +391,63 @@ void user_init(void){
 
 void user_step(void){
     uint32_t now = current_time_milliseconds();
-    // Wall avoidance takes control if needed (with LED updates)
-    mydata->doing_wall_avoidance = wall_avoidance_step(&mydata->wall_avoidance, true);
+
+    // Run wall-avoidance controller (handles its own LEDs for wall beacons)
+    bool wa = wall_avoidance_step(&mydata->wall_avoidance, true);
+    mydata->prev_doing_wall_avoidance = mydata->doing_wall_avoidance;
+    mydata->doing_wall_avoidance = wa;
 
     mydata->photo_heading_rad = estimate_heading_from_photos();
 
-    if(now - mydata->last_vicsek_update_ms >= vicsek_period_ms){
-        vicsek_update_and_build_diff();
-        mydata->last_vicsek_update_ms=now;  
+    // === CLUSTER U-TURN: rising edge => originate a cluster instruction
+    if (!mydata->prev_doing_wall_avoidance && mydata->doing_wall_avoidance) {
+        // Set cluster target = current heading + π (U-turn)
+        double target = wrap_pi(mydata->photo_heading_rad + M_PI);
+        mydata->cluster_target_rad      = target;
+        mydata->cluster_wall_t0_ms      = now;
+        mydata->cluster_active_until_ms = now + cluster_u_turn_duration_ms;
+        mydata->cluster_turn_active     = true;
+        mydata->cluster_msg_uid         = (uint16_t)(rand() & 0xFFFF); // new uid
+        mydata->last_seen_cluster_uid   = mydata->cluster_msg_uid;
+        mydata->have_seen_cluster_uid   = true;
     }
 
-    /* Motor application: */
-    if (!mydata->doing_wall_avoidance) { // Don't change motor commands if we are avoiding walls
-        /* Normal mode: constant forward + frozen differential */
+    if(now - mydata->last_vicsek_update_ms >= vicsek_period_ms){
+        vicsek_update_and_build_diff();
+        mydata->last_vicsek_update_ms=now;
+    }
+
+    // Apply motors unless wall-avoidance temporarily owns them
+    if (!mydata->doing_wall_avoidance) {
         motor_set_signed(motorL, forward_speed - mydata->diff_cmd, mydata->motor_dir_left_fwd);
         motor_set_signed(motorR, forward_speed + mydata->diff_cmd, mydata->motor_dir_right_fwd);
     }
 
-    // Update LED
     update_main_led();
 }
 
-
-/* Simulator hooks => GENERES AUTOMATIQUEMENT PAR COPILOT, donc hésite pas à vérifier si ça a un sens Léo*/
 #ifdef SIMULATOR
 static void create_data_schema(void){
     data_add_column_int8("nb_neighbors");
     data_add_column_double("theta_photo_rad");
     data_add_column_double("theta_cmd_rad");
     data_add_column_int16("diff_cmd");
+    // === CLUSTER U-TURN telemetry ===
+    data_add_column_int8("cluster_active");
+    data_add_column_double("cluster_target_rad");
+    data_add_column_int32("cluster_t0_ms");
+    data_add_column_int32("cluster_until_ms");
 }
 static void export_data(void){
     data_set_value_int8("nb_neighbors", (int8_t)mydata->nb_neighbors);
     data_set_value_double("theta_photo_rad", mydata->photo_heading_rad);
     data_set_value_double("theta_cmd_rad", mydata->theta_cmd_rad);
     data_set_value_int16("diff_cmd", (int16_t)mydata->diff_cmd);
+    // === CLUSTER U-TURN telemetry ===
+    data_set_value_int8("cluster_active", (int8_t)(mydata->cluster_turn_active ? 1 : 0));
+    data_set_value_double("cluster_target_rad", mydata->cluster_target_rad);
+    data_set_value_int32("cluster_t0_ms", mydata->cluster_wall_t0_ms);
+    data_set_value_int32("cluster_until_ms", mydata->cluster_active_until_ms);
 }
 static void global_setup(void){
     init_from_configuration(max_age);
@@ -386,23 +459,23 @@ static void global_setup(void){
     init_from_configuration(align_gain);
     init_from_configuration(vicsek_turn_gain);
 
-    /* Orientation photos: configurable parameters */
     init_from_configuration(alpha_deg);
     init_from_configuration(robot_radius);
 
-    /* Optional:
-       init_from_configuration(forward_speed);
-       */
+    // Optional:
+    // init_from_configuration(forward_speed);
 
+    // === CLUSTER U-TURN param ===
+    init_from_configuration(cluster_u_turn_duration_ms);
 
-    char main_led_display[128] = "state"; // Initialized with default value
+    char main_led_display[128] = "state";
     init_array_from_configuration(main_led_display);
     if (strcasecmp(main_led_display, "state") == 0) {
         main_led_display_enum = SHOW_STATE;
     } else if (strcasecmp(main_led_display, "angle") == 0) {
         main_led_display_enum = SHOW_ANGLE;
     } else {
-        printf("ERROR: unknown main_led_display parameter value: '%s', use either 'state' or 'angle'.\n", main_led_display);
+        printf("ERROR: unknown main_led_display: '%s' (use 'state' or 'angle')\n", main_led_display);
         exit(1);
     }
 }
@@ -410,23 +483,11 @@ static void global_setup(void){
 
 int main(void){
     pogobot_init();
-
-    // Start the robot's main loop with the defined user_init and user_step functions. Ignored by the pogowalls.
     pogobot_start(user_init, user_step);
-    // Use robots category "robots" by default. Same behavior as: pogobot_start(user_init, user_step, "robots");
-    //   --> Make sure that the category "robots" is used to declare the pogobots in your configuration file. Cf conf/test.yaml
-
-    // Init and main loop functions for the walls (pogowalls). Ignored by the robots.
-    // Use the default functions provided by Pogosim. Cf examples 'walls' to see how to declare custom wall user code functions.
     pogobot_start(default_walls_user_init, default_walls_user_step, "walls");
-
-    // Specify the callback functions. Only called by the simulator.
     SET_CALLBACK(callback_global_setup,       global_setup);
     SET_CALLBACK(callback_create_data_schema, create_data_schema);
     SET_CALLBACK(callback_export_data,        export_data);
     return 0;
 }
 
-// MODELINE "{{{1
-// vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
-// vim:foldmethod=marker

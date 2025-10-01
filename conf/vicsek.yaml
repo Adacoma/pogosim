@@ -6,6 +6,7 @@ window_height: 600      # In pixels
 arena_file: arenas/disk.csv
 #arena_file: arenas/square.csv
 #arena_file: arenas/arena8.csv
+#arena_file: arenas/star.csv
 arena_surface: 1.0e6    # In mm²
 
 delete_old_files: true
@@ -25,7 +26,7 @@ show_light_levels: true             # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 500.0     # In s
+simulation_time: 300.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 30.0         # How much the visualisation in the GUI should be sped up
 
@@ -101,7 +102,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 40             # Number of objects (Pogobots) in this category
+        nb: 50             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -166,19 +167,20 @@ objects:
 parameters:
     max_age: 600
     vicsek_period_ms: 17
-    noise_eta_rad: 0.0
+    noise_eta_rad: 0.1
     align_gain: 1.0
     include_self_in_avg: true
-    broadcast_angle_when_avoiding_walls: true
+    broadcast_angle_when_avoiding_walls: false
     vicsek_turn_gain: 0.8
     alpha_deg: 40.0
     robot_radius: 0.0265
-    main_led_display: angle # state   # state, or angle
+    main_led_display:  angle # state   # state, or angle
 
-    forward_speed_ratio: 0.2
+    forward_speed_ratio: 0.1
     wall_memory_ms: 300
     turn_duration_ms: 300
     forward_commit_ms: 300
+    cluster_u_turn_duration_ms: 600
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
