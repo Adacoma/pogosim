@@ -101,7 +101,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 20             # Number of objects (Pogobots) in this category
+        nb: 40             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -137,7 +137,7 @@ objects:
     walls:
         type: pogowall      # Category type for Pogowalls
         geometry: arena     # Shape of the object. "Arena" means it will use the walls of the entire arena specified by "arena_file" (cf top of config file)
-        communication_radius: 100  # The communication ratius of the Pogowalls, in mm
+        communication_radius: 40  # The communication ratius of the Pogowalls, in mm
         msg_success_rate:
             type: static # Fixed msg success rate -- do not depend on the density, or message size
             rate: 1.0
@@ -155,12 +155,12 @@ objects:
         geometry: rectangle   # Shape of the light. Can be 'disk', 'rectangle' or 'global'
         x: 0                # Center of the light spot, X coordinate, in mm
         y: 0                # Center of the light spot, Y coordinate, in mm
-        body_width: 2000       # Width of the rectangle geometry, in mm
-        body_height: 2000      # Height of the rectangle geometry, in mm
+        body_width: 4000       # Width of the rectangle geometry, in mm
+        body_height: 4000      # Height of the rectangle geometry, in mm
         value: 30000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
         edge_value: 5000      # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
         plane_angle: 0.785398 # Angle orientating the planar gradient, in rad
-        plane_half_span: 1500  # Half span of the planar gradient from ``value`` to ``edge_value``, in mm
+        plane_half_span: 2000  # Half span of the planar gradient from ``value`` to ``edge_value``, in mm
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
 parameters:

@@ -86,6 +86,7 @@ examples/lighthouse_localization/lighthouse_localization
 examples/push_sum/push_sum
 examples/active_brownian_particles/active_brownian_particles
 examples/avoid_walls/avoid_walls
+examples/vicsek/vicsek
 
 # Apptainer
 *.sif
