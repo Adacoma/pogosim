@@ -1011,6 +1011,9 @@ def create_all_locomotion_plots(input_file, output_dir,
     df, meta = utils.load_dataframe(input_file)
     config = meta.get("configuration", {})
 
+    # Remove raws with NaN poses
+    df = df.dropna(subset=["x", "y", "angle"]).reset_index(drop=True)
+
     # Insert a run column, might be needed for some plotting functions
     if "run" not in df.columns:
         df["run"] = 0

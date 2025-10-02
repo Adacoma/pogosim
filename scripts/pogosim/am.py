@@ -556,6 +556,9 @@ def main(argv=None):
 
     df, rc_neighbor, meta = load_df_and_config(args.input_file)
 
+    # Remove raws with NaN poses
+    df = df.dropna(subset=["x", "y", "angle"]).reset_index(drop=True)
+
     # Compute metrics (non-periodic)
     results = compute_all_metrics(
         df,
