@@ -154,6 +154,97 @@ def vicsek_polar_order(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=cols)
 
 
+def vicsek_local_polar_order_snapshot(
+    pts: np.ndarray,
+    vel: np.ndarray,
+    rc: float,
+    box: Optional[Box] = None
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Return per-agent local Vicsek order magnitudes P_i and neighbor counts n_i
+    for a single snapshot, using a distance cutoff rc.
+
+    P_i = || (1/|N_i|) sum_{j in N_i} vhat_j ||, where vhat_j are unit velocities.
+    Agents with n_i == 0 -> P_i = np.nan (tracked via fraction_isolated later).
+    """
+    if box is None:
+        box = infer_box(pd.DataFrame({'x': pts[:,0], 'y': pts[:,1]}))
+    speeds = np.linalg.norm(vel, axis=1)
+    vhat = np.zeros_like(vel, dtype=float)
+    nonzero = speeds > 1e-12
+    vhat[nonzero] = vel[nonzero] / speeds[nonzero, None]
+
+    neighs = _kdtree_neighbors(pts, rc, box)
+    N = len(pts)
+    P_local = np.full(N, np.nan, dtype=float)
+    n_nbrs = np.zeros(N, dtype=int)
+
+    for i, nbrs in enumerate(neighs):
+        # exclude self from the set; you can include it by not filtering (tiny effect)
+        nbrs = [j for j in nbrs if j != i]
+        n = len(nbrs)
+        n_nbrs[i] = n
+        if n == 0:
+            continue
+        m = np.nanmean(vhat[nbrs], axis=0)
+        P_local[i] = float(np.linalg.norm(m))
+    return P_local, n_nbrs
+
+
+def vicsek_local_polar_order(
+    df: pd.DataFrame,
+    rc: float
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Returns:
+      summary_df: per-snapshot stats (mean, std, median, q25, q75, frac_isolated, mean_n)
+      dist_df:    per-agent values (one row per agent per snapshot) with P_local and n_nbrs
+    """
+    work = df.copy()
+    if not {'vx','vy'}.issubset(work.columns):
+        work = estimate_velocities(work)
+
+    keys = snapshot_key_columns(work)
+    id_cols = [c for c in ['robot_category','robot_id'] if c in work.columns]
+
+    sum_rows = []
+    dist_rows = []
+    for key, snap in snapshot_groups(work):
+        pts = snap[['x','y']].to_numpy()
+        vel = snap[['vx','vy']].to_numpy()
+        box = infer_box(snap)
+        P_local, n_nbrs = vicsek_local_polar_order_snapshot(pts, vel, rc=rc, box=box)
+
+        # per-agent distribution rows
+        base_key = list(key)
+        rep = len(snap)
+        for (idx, (p, n)), (_, agent_row) in zip(enumerate(zip(P_local, n_nbrs)), snap.iterrows()):
+            dist_rows.append(tuple(base_key + [*(agent_row[c] for c in id_cols), float(p), int(n)]))
+
+        # per-snapshot summary (ignore NaNs for agents with no neighbors)
+        finite = np.isfinite(P_local)
+        vals = P_local[finite]
+        frac_isolated = 1.0 - (np.count_nonzero(finite) / max(len(P_local), 1))
+        mean_n = float(np.mean(n_nbrs)) if len(n_nbrs) else np.nan
+        if vals.size == 0:
+            stats = dict(mean=np.nan, std=np.nan, median=np.nan, q25=np.nan, q75=np.nan)
+        else:
+            stats = dict(
+                mean=float(np.mean(vals)),
+                std=float(np.std(vals)),
+                median=float(np.median(vals)),
+                q25=float(np.quantile(vals, 0.25)),
+                q75=float(np.quantile(vals, 0.75)),
+            )
+        sum_rows.append(tuple(list(key) + [
+            stats['mean'], stats['std'], stats['median'], stats['q25'], stats['q75'],
+            frac_isolated, mean_n
+        ]))
+
+    summary_cols = keys + ['P_local_mean','P_local_std','P_local_median','P_local_q25','P_local_q75','frac_isolated','mean_n_neighbors']
+    dist_cols    = keys + id_cols + ['P_local','n_neighbors']
+    return pd.DataFrame(sum_rows, columns=summary_cols), pd.DataFrame(dist_rows, columns=dist_cols)
+
 
 def bond_orientational_order_snapshot(pts: np.ndarray, rc: float, k: int = 6, box: Optional[Box] = None) -> float:
     if box is None:
@@ -394,6 +485,12 @@ def compute_all_metrics(
 ) -> Dict[str, pd.DataFrame]:
     out: Dict[str, pd.DataFrame] = {}
     out['polar_order']    = vicsek_polar_order(df)
+
+    # Local Vicsek order (summary + per-agent distribution)
+    local_sum, local_dist = vicsek_local_polar_order(df, rc=rc_cluster)
+    out['local_polar'] = local_sum
+    out['local_polar_dist'] = local_dist
+
     out['psi_k']          = bond_orientational_order(df, rc=rc_bond, k=psi_k)
     out['largest_cluster']= largest_cluster_fraction(df, rc=rc_cluster)
     out['g_r']            = radial_distribution_function(df, r_max=gr_rmax, dr=gr_dr)
@@ -415,6 +512,10 @@ def write_global_summary(output_dir: str, results: Dict[str, pd.DataFrame]) -> N
     P = results.get('polar_order', pd.DataFrame())
     if not P.empty:
         add_line("Polar order ⟨P⟩ over time", _fmt(P['P_polar'].mean()))
+    LP = results.get('local_polar', pd.DataFrame())
+    if not LP.empty:
+        add_line("Local polar order ⟨P_local⟩ over time", _fmt(LP['P_local_mean'].mean()))
+        add_line("Mean fraction isolated (no neighbors)", _fmt(LP['frac_isolated'].mean()))
     psi_any = [k for k in results if k == 'psi_k']
     if psi_any:
         psi_df = results['psi_k']
@@ -458,6 +559,27 @@ def _save_pdf(fig, path: str) -> None:
     fig.savefig(path, format="pdf")
     plt.close(fig)
 
+def plot_time_series_with_band(df: pd.DataFrame, y_mean: str, y_std: str, ylabel: str, title: str, out_pdf: str) -> None:
+    fig = plt.figure(figsize=(7, 4.2))
+    ax = fig.add_subplot(111)
+    if df.empty:
+        ax.text(0.5, 0.5, "No data", ha='center', va='center')
+    else:
+        if 'run' in df.columns:
+            # faint per-run mean if available
+            for r, g in df.groupby('run', sort=False):
+                if {y_mean}.issubset(g.columns):
+                    ax.plot(g['time'], g[y_mean], alpha=0.25, linewidth=1)
+        agg = df.groupby('time', as_index=False).agg(mu=(y_mean,'mean'), sig=(y_std,'mean'))
+        ax.plot(agg['time'], agg['mu'], linewidth=2.2)
+        if np.isfinite(agg['sig']).any():
+            ax.fill_between(agg['time'], agg['mu']-agg['sig'], agg['mu']+agg['sig'], alpha=0.2, linewidth=0)
+        ax.set_xlabel("time [s]")
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+    _save_pdf(fig, out_pdf)
+
+
 def plot_time_series(df: pd.DataFrame, y_col: str, ylabel: str, title: str, out_pdf: str) -> None:
     fig = plt.figure(figsize=(7, 4.2))
     ax = fig.add_subplot(111)
@@ -475,6 +597,23 @@ def plot_time_series(df: pd.DataFrame, y_col: str, ylabel: str, title: str, out_
         ax.set_xlabel("time [s]")
         ax.set_ylabel(ylabel)
         ax.set_title(title)
+    _save_pdf(fig, out_pdf)
+
+def plot_histogram(df: pd.DataFrame, col: str, bins: int, title: str, out_pdf: str) -> None:
+    fig = plt.figure(figsize=(6.2, 4.2))
+    ax = fig.add_subplot(111)
+    if df.empty or col not in df.columns:
+        ax.text(0.5, 0.5, "No data", ha='center', va='center')
+    else:
+        vals = df[col].to_numpy()
+        vals = vals[np.isfinite(vals)]
+        if vals.size == 0:
+            ax.text(0.5, 0.5, "No finite values", ha='center', va='center')
+        else:
+            ax.hist(vals, bins=bins, density=True)
+            ax.set_xlabel(col)
+            ax.set_ylabel("PDF")
+            ax.set_title(title)
     _save_pdf(fig, out_pdf)
 
 def plot_gr(gr_df: pd.DataFrame, out_pdf: str) -> None:
@@ -584,6 +723,22 @@ def main(argv=None):
         plot_time_series(
             results['polar_order'], 'P_polar', "Polar order P", "Vicsek polar order vs time",
             os.path.join(args.output_dir, "polar_order_time.pdf")
+        )
+    if 'local_polar' in results:
+        plot_time_series_with_band(
+            results['local_polar'],
+            'P_local_mean', 'P_local_std',
+            "Local polar order ⟨P_local⟩",
+            "Local Vicsek order (mean ± std) vs time",
+            os.path.join(args.output_dir, "local_polar_time.pdf")
+        )
+    if 'local_polar_dist' in results:
+        # pooled histogram across all times/runs/agents (quick diagnostic)
+        plot_histogram(
+            results['local_polar_dist'],
+            'P_local', 40,
+            "Distribution of local Vicsek order P_local",
+            os.path.join(args.output_dir, "local_polar_hist.pdf")
         )
     if 'psi_k' in results and not results['psi_k'].empty:
         psi_col = [c for c in results['psi_k'].columns if c.startswith('psi_')][0]
