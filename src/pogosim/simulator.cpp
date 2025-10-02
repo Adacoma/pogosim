@@ -867,9 +867,15 @@ void Simulation::export_data() {
         data_logger->set_value("robot_category", obj->category);
         data_logger->set_value("robot_id", (int32_t) obj->id);
         auto const pos = obj->get_position();
-        data_logger->set_value("x", pos.x * VISUALIZATION_SCALE);
-        data_logger->set_value("y", pos.y * VISUALIZATION_SCALE);
-        data_logger->set_value("angle", obj->get_angle());
+        if (obj->is_tangible()) {
+            data_logger->set_value("x", pos.x * VISUALIZATION_SCALE);
+            data_logger->set_value("y", pos.y * VISUALIZATION_SCALE);
+            data_logger->set_value("angle", obj->get_angle());
+        } else {
+            data_logger->set_value("x", NAN);
+            data_logger->set_value("y", NAN);
+            data_logger->set_value("angle", NAN);
+        }
 
         data_logger->save_row();
     }
