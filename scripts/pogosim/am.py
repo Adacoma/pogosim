@@ -24,6 +24,7 @@ import argparse
 import pickle
 from dataclasses import dataclass
 from typing import Iterable, Tuple, Optional, Dict, List
+from scipy.ndimage import gaussian_filter
 
 import numpy as np
 import pandas as pd
@@ -122,6 +123,16 @@ def _kdtree_neighbors(pts: np.ndarray, rc: float, box: Box) -> List[List[int]]:
         raise ImportError("scipy is required for neighbor queries (scipy.spatial.cKDTree).")
     tree = cKDTree(pts)
     return tree.query_ball_point(pts, rc)
+
+
+def nan_gaussian_smooth(A, sigma=1.2):
+    mask = np.isfinite(A).astype(float)
+    A0 = np.nan_to_num(A, nan=0.0)
+    num = gaussian_filter(A0, sigma=sigma, mode='nearest')
+    den = gaussian_filter(mask, sigma=sigma, mode='nearest') + 1e-12
+    out = num / den
+    return out
+
 
 # --------------------------------------------------------------------------- #
 #                                  Metrics                                    #
@@ -578,6 +589,253 @@ def effective_temperature_ratio(df: pd.DataFrame, v2_ref: float) -> pd.DataFrame
     return pd.DataFrame(rows, columns=cols)
 
 
+def grid_velocity_field_snapshot(
+    pts: np.ndarray,
+    vel: np.ndarray,
+    box: Box,
+    nx: int = 64,
+    ny: int = 64,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Bin particle velocities onto a regular grid (PIV-like).
+    Returns:
+      X, Y : (ny,nx) meshgrid of cell centers
+      U, V : (ny,nx) mean velocity per cell (np.nan where empty)
+      C    : (ny,nx) counts per cell
+    """
+    # Grid edges and centers
+    x_edges = np.linspace(box.x0, box.x1, nx+1)
+    y_edges = np.linspace(box.y0, box.y1, ny+1)
+    x_cent = 0.5 * (x_edges[:-1] + x_edges[1:])
+    y_cent = 0.5 * (y_edges[:-1] + y_edges[1:])
+    X, Y = np.meshgrid(x_cent, y_cent)
+
+    # Digitize points
+    ix = np.digitize(pts[:,0], x_edges) - 1
+    iy = np.digitize(pts[:,1], y_edges) - 1
+    valid = (ix >= 0) & (ix < nx) & (iy >= 0) & (iy < ny)
+
+    U = np.full((ny, nx), np.nan, dtype=float)
+    V = np.full((ny, nx), np.nan, dtype=float)
+    C = np.zeros((ny, nx), dtype=int)
+
+    if np.any(valid):
+        # accumulate sums and counts
+        sumU = np.zeros((ny, nx), dtype=float)
+        sumV = np.zeros((ny, nx), dtype=float)
+        for i in np.where(valid)[0]:
+            C[iy[i], ix[i]] += 1
+            sumU[iy[i], ix[i]] += vel[i,0]
+            sumV[iy[i], ix[i]] += vel[i,1]
+        nz = C > 0
+        U[nz] = sumU[nz] / C[nz]
+        V[nz] = sumV[nz] / C[nz]
+
+    U = nan_gaussian_smooth(U, sigma=1.2)
+    V = nan_gaussian_smooth(V, sigma=1.2)
+
+    return X, Y, U, V, C
+
+
+def vorticity_enstrophy_snapshot(
+    U: np.ndarray, V: np.ndarray, box: Box
+) -> Tuple[np.ndarray, float, float]:
+    """
+    Compute scalar vorticity ω = ∂v/∂x - ∂u/∂y on the grid and enstrophy ⟨ω^2⟩.
+    Returns:
+      omega_grid, enstrophy (mean ω^2 over finite cells), mean_abs_omega
+    """
+    ny, nx = U.shape
+    if nx < 2 or ny < 2:
+        return np.full_like(U, np.nan), np.nan, np.nan
+
+    dx = (box.Lx) / nx
+    dy = (box.Ly) / ny
+
+    # np.gradient returns derivatives along axis with given spacing
+    dVdx = np.gradient(V, dx, axis=1)
+    dUdy = np.gradient(U, dy, axis=0)
+
+    omega = dVdx - dUdy  # shape (ny,nx)
+    finite = np.isfinite(omega)
+    if not np.any(finite):
+        return omega, np.nan, np.nan
+    enst = float(np.nanmean(omega[finite]**2))
+    mean_abs = float(np.nanmean(np.abs(omega[finite])))
+    return omega, enst, mean_abs
+
+
+def swirling_strength_okubo_weiss_snapshot(
+    U: np.ndarray, V: np.ndarray, box: Box
+) -> Tuple[np.ndarray, np.ndarray, float, float]:
+    """
+    Compute swirling strength λ_ci and Okubo–Weiss Q on the grid.
+    λ_ci = sqrt(max(0, -Δ)) / 2 where Δ is the eigen discriminant of ∇u.
+    Q = s_n^2 + s_s^2 - ω^2 (vortex-dominated regions have Q < 0).
+    Returns:
+      lambda_ci_grid, Q_grid, mean_lambda_ci, frac_Q_negative
+    """
+    ny, nx = U.shape
+    if nx < 2 or ny < 2:
+        shp = U.shape
+        return (np.full(shp, np.nan), np.full(shp, np.nan), np.nan, np.nan)
+
+    dx = (box.Lx) / nx
+    dy = (box.Ly) / ny
+
+    dudx = np.gradient(U, dx, axis=1)
+    dudy = np.gradient(U, dy, axis=0)
+    dvdx = np.gradient(V, dx, axis=1)
+    dvdy = np.gradient(V, dy, axis=0)
+
+    # Vorticity and strain (2D)
+    omega = dvdx - dudy
+    s_n = dudx - dvdy            # normal strain
+    s_s = dudy + dvdx            # shear strain
+
+    # Okubo–Weiss parameter
+    Q = s_n**2 + s_s**2 - omega**2
+
+    # Swirling strength λ_ci = Im(λ) for complex eigenvalues of J
+    # discriminant Δ of 2x2 Jacobian eigenvalues:
+    tr = dudx + dvdy
+    det = dudx*dvdy - dudy*dvdx
+    # eigenvalues: (tr ± sqrt(tr^2 - 4 det))/2
+    disc = tr**2 - 4.0*det
+    lambda_ci = np.sqrt(np.maximum(0.0, -disc)) / 2.0  # non-zero where disc < 0
+
+    finite_ci = np.isfinite(lambda_ci)
+    mean_ci = float(np.nanmean(lambda_ci[finite_ci])) if np.any(finite_ci) else np.nan
+    frac_Q_neg = float(np.nanmean(Q < 0)) if np.isfinite(Q).any() else np.nan
+
+    return lambda_ci, Q, mean_ci, frac_Q_neg
+
+
+def milling_order_snapshot(
+    pts: np.ndarray, vel: np.ndarray, center: Optional[Tuple[float,float]] = None
+) -> Dict[str, float]:
+    """
+    Global milling/vortex order parameters based on angular momentum and tangential alignment.
+
+    Returns dict with:
+      Lz          : mean angular momentum z-component per agent
+      Lz_norm     : |Lz| normalized by (mean r * mean speed) for scale invariance
+      tau_mean    : ⟨t̂·v̂⟩ signed tangential alignment (CCW positive)
+      tau_abs     : ⟨|t̂·v̂|⟩ milling index (near 1 if all move tangentially)
+      radial_mean : ⟨r̂·v̂⟩ (radial motion; ~0 in a mill)
+    """
+    # center of rotation: center-of-mass by default
+    if center is None:
+        c = pts.mean(axis=0)
+    else:
+        c = np.array(center, dtype=float)
+
+    r = pts - c[None, :]
+    v = vel.copy()
+
+    r_norm = np.linalg.norm(r, axis=1)
+    v_norm = np.linalg.norm(v, axis=1)
+    vhat = np.zeros_like(v)
+    nzv = v_norm > 1e-12
+    vhat[nzv] = v[nzv] / v_norm[nzv, None]
+
+    # tangential and radial unit vectors
+    rhat = np.zeros_like(r)
+    nzr = r_norm > 1e-12
+    rhat[nzr] = r[nzr] / r_norm[nzr, None]
+    that = np.zeros_like(r)
+    # ẑ × r̂ = (-r_y, r_x) for 2D tangential (CCW)
+    that[nzr, 0] = -rhat[nzr, 1]
+    that[nzr, 1] =  rhat[nzr, 0]
+
+    # angular momentum per agent (scalar z-component): Lz_i = (r_i × v_i)_z = x_i*v_y - y_i*v_x
+    Lz_i = r[:,0]*v[:,1] - r[:,1]*v[:,0]
+    Lz = float(np.nanmean(Lz_i))
+
+    # normalized by typical scales
+    mean_r = float(np.nanmean(r_norm))
+    mean_v = float(np.nanmean(v_norm))
+    Lz_norm = Lz / ((mean_r*mean_v) + 1e-12)
+
+    # tangential and radial alignment (using unit velocity)
+    tau = np.sum(that * vhat, axis=1)       # t̂·v̂
+    rho = np.sum(rhat * vhat, axis=1)       # r̂·v̂
+    finite = nzv & nzr
+    tau_mean = float(np.nanmean(tau[finite])) if np.any(finite) else np.nan
+    tau_abs  = float(np.nanmean(np.abs(tau[finite]))) if np.any(finite) else np.nan
+    radial_mean = float(np.nanmean(rho[finite])) if np.any(finite) else np.nan
+
+    return dict(Lz=Lz, Lz_norm=Lz_norm, tau_mean=tau_mean, tau_abs=tau_abs, radial_mean=radial_mean)
+
+
+def vortex_field_metrics(
+    df: pd.DataFrame, nx: int = 64, ny: int = 64
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Builds grid velocity fields per snapshot, then computes:
+      - enstrophy: mean(ω^2)
+      - mean_abs_vorticity: mean(|ω|)
+      - mean_lambda_ci: mean swirling strength
+      - frac_Q_negative: fraction of grid cells with Q < 0 (vorticity dominated)
+    Returns:
+      summary_df (per snapshot)
+      dist_df    (optional per-cell distributions; here we store ω and λ_ci)
+    """
+    work = df.copy()
+    if not {'vx','vy'}.issubset(work.columns):
+        work = estimate_velocities(work)
+
+    keys = snapshot_key_columns(work)
+    sum_rows = []
+    dist_rows = []
+    for key, snap in snapshot_groups(work):
+        box = infer_box(snap)
+        pts = snap[['x','y']].to_numpy()
+        vel = snap[['vx','vy']].to_numpy()
+        _, _, U, V, C = grid_velocity_field_snapshot(pts, vel, box, nx=nx, ny=ny)
+
+        omega, enst, mean_abs = vorticity_enstrophy_snapshot(U, V, box)
+        lam_ci, Q, mean_ci, frac_Q_neg = swirling_strength_okubo_weiss_snapshot(U, V, box)
+
+        sum_rows.append(tuple(list(key) + [enst, mean_abs, mean_ci, frac_Q_neg]))
+
+        # optional: store per-cell values for diagnostics
+        for j in range(omega.shape[0]):
+            for i in range(omega.shape[1]):
+                if np.isfinite(omega[j,i]) or np.isfinite(lam_ci[j,i]):
+                    dist_rows.append(tuple(list(key) + [float(omega[j,i]), float(lam_ci[j,i]), int(C[j,i])]))
+
+    summary_cols = keys + ['enstrophy', 'mean_abs_vorticity', 'mean_lambda_ci', 'frac_Q_negative']
+    dist_cols    = keys + ['omega', 'lambda_ci', 'cell_count']
+    return pd.DataFrame(sum_rows, columns=summary_cols), pd.DataFrame(dist_rows, columns=dist_cols)
+
+
+def milling_metrics(
+    df: pd.DataFrame, *, center_mode: str = "cm", arena_center: Optional[Tuple[float,float]] = None
+) -> pd.DataFrame:
+    """
+    Global, center-based milling/vortex order parameters per snapshot.
+    center_mode: "cm" (center-of-mass) or "arena"
+    """
+    work = df.copy()
+    if not {'vx','vy'}.issubset(work.columns):
+        work = estimate_velocities(work)
+
+    keys = snapshot_key_columns(work)
+    rows = []
+    for key, snap in snapshot_groups(work):
+        pts = snap[['x','y']].to_numpy()
+        vel = snap[['vx','vy']].to_numpy()
+        if center_mode == "arena" and arena_center is not None:
+            center = arena_center
+        else:
+            center = None
+        stats = milling_order_snapshot(pts, vel, center=center)
+        rows.append(tuple(list(key) + [stats['Lz'], stats['Lz_norm'], stats['tau_mean'], stats['tau_abs'], stats['radial_mean']]))
+    cols = keys + ['Lz', 'Lz_norm', 'tau_mean', 'tau_abs', 'radial_mean']
+    return pd.DataFrame(rows, columns=cols)
+
+
 # --------------------------------------------------------------------------- #
 #                            Convenience + Summary                            #
 # --------------------------------------------------------------------------- #
@@ -593,6 +851,9 @@ def compute_all_metrics(
     S_grid_ny: int,
     v2_ref: Optional[float] = None,
     psi_k: int = 6,
+    vort_nx: int = 64,
+    vort_ny: int = 64,
+    milling_center: str = "cm",
 ) -> Dict[str, pd.DataFrame]:
     out: Dict[str, pd.DataFrame] = {}
     out['polar_order']    = vicsek_polar_order(df)
@@ -605,6 +866,8 @@ def compute_all_metrics(
     out['number_fluct']   = number_fluctuation_exponent(df)
     if v2_ref is not None:
         out['Teff_ratio'] = effective_temperature_ratio(df, v2_ref=v2_ref)
+    out['vortex_summary'], out['vortex_field_dist'] = vortex_field_metrics(df, nx=vort_nx, ny=vort_ny)
+    out['milling'] = milling_metrics(df, center_mode=milling_center)
     return out
 
 
@@ -651,6 +914,20 @@ def write_global_summary(output_dir: str, results: Dict[str, pd.DataFrame]) -> N
     TE = results.get('Teff_ratio', pd.DataFrame())
     if TE is not None and not TE.empty:
         add_line("⟨T_eff/T_ref⟩", _fmt(TE['Teff_over_Tref'].mean()))
+
+    VOR = results.get('vortex_summary', pd.DataFrame())
+    if not VOR.empty:
+        add_line("Mean enstrophy ⟨ω²⟩", _fmt(VOR['enstrophy'].mean()))
+        add_line("Mean |ω|", _fmt(VOR['mean_abs_vorticity'].mean()))
+        add_line("Mean swirling strength ⟨λ_ci⟩", _fmt(VOR['mean_lambda_ci'].mean()))
+        add_line("Okubo–Weiss vortex area ⟨Frac(Q<0)⟩", _fmt(VOR['frac_Q_negative'].mean()))
+
+    MIL = results.get('milling', pd.DataFrame())
+    if not MIL.empty:
+        add_line("Milling index ⟨|t̂·v̂|⟩", _fmt(MIL['tau_abs'].mean()))
+        add_line("Signed tangential ⟨t̂·v̂⟩", _fmt(MIL['tau_mean'].mean()))
+        add_line("Normalized angular momentum ⟨Lz_norm⟩", _fmt(MIL['Lz_norm'].mean()))
+
 
     text = "\n".join(lines) + "\n"
     with open(os.path.join(output_dir, "SUMMARY_global.txt"), "w", encoding="utf-8") as f:
@@ -757,6 +1034,15 @@ def plot_sk(sk_df: pd.DataFrame, out_pdf: str) -> None:
         ax.set_title("Static structure factor")
     _save_pdf(fig, out_pdf)
 
+def plot_vorticity_heatmap(omega: np.ndarray, out_pdf: str, title: str = "Vorticity field"):
+    fig = plt.figure(figsize=(6.0, 5.2))
+    ax = fig.add_subplot(111)
+    im = ax.imshow(omega, origin='lower', aspect='auto')
+    fig.colorbar(im, ax=ax, label='ω')
+    ax.set_title(title)
+    _save_pdf(fig, out_pdf)
+
+
 # --------------------------------------------------------------------------- #
 #                                    Main                                     #
 # --------------------------------------------------------------------------- #
@@ -776,6 +1062,11 @@ def parse_args(argv=None):
     p.add_argument("--sk-ny", type=int, default=128, help="S(k) grid size Ny (default: 128)")
     p.add_argument("--v2-ref", type=float, default=None, help="Reference <v^2> for T_eff/T_ref (optional)")
     p.add_argument("--no-csv", action="store_true", help="Skip CSV export (PDF+pickle+summary only)")
+    p.add_argument("--vort-nx", type=int, default=64, help="Grid Nx for vorticity/swirling metrics")
+    p.add_argument("--vort-ny", type=int, default=64, help="Grid Ny for vorticity/swirling metrics")
+    p.add_argument("--milling-center", type=str, default="cm", choices=["cm","arena"],
+                   help="Center for milling order parameters: center-of-mass or arena center")
+
     return p.parse_args(argv)
 
 
@@ -819,6 +1110,9 @@ def main(argv=None):
         S_grid_ny=args.sk_ny,
         v2_ref=args.v2_ref,
         psi_k=args.psi_k,
+        vort_nx=args.vort_nx,
+        vort_ny=args.vort_ny,
+        milling_center=args.milling_center,
     )
 
     # Optional CSV export
@@ -894,6 +1188,104 @@ def main(argv=None):
             "Effective temperature ratio vs time",
             os.path.join(args.output_dir, "teff_ratio_time.pdf")
         )
+
+    if 'vortex_summary' in results:
+        plot_time_series(
+            results['vortex_summary'], 'enstrophy', "Enstrophy ⟨ω²⟩",
+            "Enstrophy vs time",
+            os.path.join(args.output_dir, "enstrophy_time.pdf")
+        )
+        plot_time_series(
+            results['vortex_summary'], 'mean_abs_vorticity', "Mean |ω|",
+            "Mean absolute vorticity vs time",
+            os.path.join(args.output_dir, "vorticity_abs_time.pdf")
+        )
+        plot_time_series(
+            results['vortex_summary'], 'mean_lambda_ci', "⟨λ_ci⟩",
+            "Swirling strength (mean λ_ci) vs time",
+            os.path.join(args.output_dir, "swirling_strength_time.pdf")
+        )
+        plot_time_series(
+            results['vortex_summary'], 'frac_Q_negative', "Frac(Q<0)",
+            "Okubo–Weiss vortex area fraction vs time",
+            os.path.join(args.output_dir, "okubo_weiss_frac_time.pdf")
+        )
+
+    if 'vortex_field_dist' in results and not results['vortex_field_dist'].empty:
+        plot_histogram(
+            results['vortex_field_dist'], 'omega', 60,
+            "Distribution of grid vorticity ω",
+            os.path.join(args.output_dir, "omega_hist.pdf")
+        )
+        plot_histogram(
+            results['vortex_field_dist'], 'lambda_ci', 60,
+            "Distribution of swirling strength λ_ci",
+            os.path.join(args.output_dir, "lambda_ci_hist.pdf")
+        )
+
+    if 'milling' in results:
+        plot_time_series(
+            results['milling'], 'tau_abs', "Milling index ⟨|t̂·v̂|⟩",
+            "Global milling index vs time",
+            os.path.join(args.output_dir, "milling_index_time.pdf")
+        )
+        plot_time_series(
+            results['milling'], 'tau_mean', "Signed tangential ⟨t̂·v̂⟩",
+            "Signed tangential alignment vs time",
+            os.path.join(args.output_dir, "milling_signed_time.pdf")
+        )
+        plot_time_series(
+            results['milling'], 'Lz_norm', "Normalized Lz",
+            "Normalized angular momentum vs time",
+            os.path.join(args.output_dir, "angular_momentum_time.pdf")
+        )
+
+    # --- Vorticity heatmap (robust selection) ---
+    if 'vortex_summary' in results and not results['vortex_summary'].empty:
+        vor = results['vortex_summary']
+        key_cols = [c for c in vor.columns
+                    if c not in ('enstrophy','mean_abs_vorticity','mean_lambda_ci','frac_Q_negative')]
+
+        # 1) Prefer snapshot with max finite enstrophy
+        cand = vor[np.isfinite(vor.get('enstrophy'))]
+        metric_used = 'enstrophy'
+
+        # 2) Fallbacks if needed
+        if cand.empty and 'mean_lambda_ci' in vor:
+            cand = vor[np.isfinite(vor['mean_lambda_ci'])]
+            metric_used = 'mean_lambda_ci'
+        if cand.empty and 'mean_abs_vorticity' in vor:
+            cand = vor[np.isfinite(vor['mean_abs_vorticity'])]
+            metric_used = 'mean_abs_vorticity'
+
+        if cand.empty:
+            print("[vorticity heatmap] No finite vorticity/swirling metrics; skipping heatmap.")
+        else:
+            imax = cand[metric_used].idxmax()
+            key_vals = vor.loc[imax, key_cols].to_dict()
+
+            # Isolate that snapshot in the original df
+            snap = df.copy()
+            for k, v in key_vals.items():
+                snap = snap[snap[k] == v]
+
+            if not {'vx','vy'}.issubset(snap.columns):
+                snap = estimate_velocities(snap)  # uses your helper
+
+            box = infer_box(snap)
+            pts = snap[['x','y']].to_numpy()
+            vel = snap[['vx','vy']].to_numpy()
+
+            _, _, U, V, _ = grid_velocity_field_snapshot(
+                pts, vel, box, nx=getattr(args, 'vort_nx', 64), ny=getattr(args, 'vort_ny', 64)
+            )
+            omega, _, _ = vorticity_enstrophy_snapshot(U, V, box)
+
+            nice_keys = ", ".join(f"{k}={key_vals[k]}" for k in key_cols)
+            out_pdf = os.path.join(args.output_dir, f"vorticity_heatmap_{metric_used}.pdf")
+            plot_vorticity_heatmap(omega, out_pdf, title=f"Vorticity field ({metric_used}; {nice_keys})")
+
+
 
     # Text summary (printed + file)
     write_global_summary(args.output_dir, results)
