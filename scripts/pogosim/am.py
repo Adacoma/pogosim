@@ -154,19 +154,7 @@ def vicsek_polar_order(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=cols)
 
 
-def vicsek_local_polar_order_snapshot(
-    pts: np.ndarray,
-    vel: np.ndarray,
-    rc: float,
-    box: Optional[Box] = None
-) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Return per-agent local Vicsek order magnitudes P_i and neighbor counts n_i
-    for a single snapshot, using a distance cutoff rc.
-
-    P_i = || (1/|N_i|) sum_{j in N_i} vhat_j ||, where vhat_j are unit velocities.
-    Agents with n_i == 0 -> P_i = np.nan (tracked via fraction_isolated later).
-    """
+def vicsek_local_polar_order_snapshot(pts, vel, rc, box=None):
     if box is None:
         box = infer_box(pd.DataFrame({'x': pts[:,0], 'y': pts[:,1]}))
     speeds = np.linalg.norm(vel, axis=1)
@@ -180,15 +168,16 @@ def vicsek_local_polar_order_snapshot(
     n_nbrs = np.zeros(N, dtype=int)
 
     for i, nbrs in enumerate(neighs):
-        # exclude self from the set; you can include it by not filtering (tiny effect)
-        nbrs = [j for j in nbrs if j != i]
-        n = len(nbrs)
-        n_nbrs[i] = n
-        if n == 0:
+        # KEEP self in the set (KDTree already includes i)
+        # Filter to neighbors (including self) with non-zero speed
+        valid = [j for j in nbrs if nonzero[j]]
+        n_nbrs[i] = max(0, len(valid) - 1)  # if you still want “neighbors (excl. self)” count
+        if len(valid) == 0:
             continue
-        m = np.nanmean(vhat[nbrs], axis=0)
+        m = np.mean(vhat[valid], axis=0)
         P_local[i] = float(np.linalg.norm(m))
     return P_local, n_nbrs
+
 
 
 def vicsek_local_polar_order(
@@ -224,18 +213,22 @@ def vicsek_local_polar_order(
         # per-snapshot summary (ignore NaNs for agents with no neighbors)
         finite = np.isfinite(P_local)
         vals = P_local[finite]
-        frac_isolated = 1.0 - (np.count_nonzero(finite) / max(len(P_local), 1))
-        mean_n = float(np.mean(n_nbrs)) if len(n_nbrs) else np.nan
+        # weights: valid neighbor count + 1 (self). If you didn't keep it, re-query here as shown.
+        w = (n_nbrs[finite] + 1).astype(float)
         if vals.size == 0:
             stats = dict(mean=np.nan, std=np.nan, median=np.nan, q25=np.nan, q75=np.nan)
         else:
+            wsum = np.sum(w)
+            wmean = float(np.sum(w * vals) / (wsum + 1e-12))
             stats = dict(
-                mean=float(np.mean(vals)),
-                std=float(np.std(vals)),
+                mean=wmean,
+                std=float(np.std(vals)),       # leave unweighted for spread, or make it w-std
                 median=float(np.median(vals)),
                 q25=float(np.quantile(vals, 0.25)),
                 q75=float(np.quantile(vals, 0.75)),
             )
+        frac_isolated = 1.0 - (np.count_nonzero(finite) / max(len(P_local), 1))
+        mean_n = float(np.mean(n_nbrs)) if len(n_nbrs) else np.nan
         sum_rows.append(tuple(list(key) + [
             stats['mean'], stats['std'], stats['median'], stats['q25'], stats['q75'],
             frac_isolated, mean_n
@@ -244,6 +237,124 @@ def vicsek_local_polar_order(
     summary_cols = keys + ['P_local_mean','P_local_std','P_local_median','P_local_q25','P_local_q75','frac_isolated','mean_n_neighbors']
     dist_cols    = keys + id_cols + ['P_local','n_neighbors']
     return pd.DataFrame(sum_rows, columns=summary_cols), pd.DataFrame(dist_rows, columns=dist_cols)
+
+
+def local_pairwise_alignment_snapshot(
+    vel: np.ndarray,
+    neighs: List[List[int]],
+    *,
+    exclude_zero_speed: bool = True,
+) -> Tuple[np.ndarray, float, int, np.ndarray]:
+    """
+    Compute node-wise pairwise alignment A_i and edge-weighted mean per snapshot.
+
+    For agent i with neighbors N_i (excluding self), define:
+        A_i = (1/|N_i|) * sum_{j in N_i} cos(theta_i - theta_j).
+    Random headings -> E[A_i] = 0. Perfect local alignment -> A_i = 1.
+
+    Returns:
+      A_local : (N,) array with A_i (NaN if no valid neighbors)
+      A_edge_mean : scalar, edge-weighted mean across all pairs (i,j)
+      num_edges : total number of directed edges counted (sum_i |N_i|)
+      n_nbrs : (N,) neighbor counts used for A_i
+    """
+    N = vel.shape[0]
+    th = np.arctan2(vel[:, 1], vel[:, 0])
+    speed = np.hypot(vel[:, 0], vel[:, 1])
+    nonzero = (speed > 1e-12) if exclude_zero_speed else np.ones(N, dtype=bool)
+
+    A_local = np.full(N, np.nan, dtype=float)
+    n_nbrs = np.zeros(N, dtype=int)
+    sum_cos = 0.0
+    num_edges = 0
+
+    for i, nbrs in enumerate(neighs):
+        # exclude self (KDTree includes it)
+        nbrs = [j for j in nbrs if j != i]
+        if not nonzero[i]:
+            continue
+        # keep neighbors with nonzero speed if requested
+        nbrs = [j for j in nbrs if nonzero[j]]
+        n = len(nbrs)
+        n_nbrs[i] = n
+        if n == 0:
+            continue
+        dth = th[i] - th[np.array(nbrs)]
+        ci = np.cos(dth)
+        A_local[i] = float(np.mean(ci))
+        sum_cos += float(np.sum(ci))
+        num_edges += n
+
+    A_edge_mean = (sum_cos / num_edges) if num_edges > 0 else np.nan
+    return A_local, A_edge_mean, num_edges, n_nbrs
+
+
+def local_pairwise_alignment(
+    df: pd.DataFrame,
+    rc: float
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Returns:
+      summary_df: per-snapshot stats with:
+          - A_edge_mean (edge-weighted mean of cos differences; zero baseline)
+          - A_node_mean, A_node_std, A_node_median, A_node_q25, A_node_q75
+          - frac_isolated (fraction with n_nbrs == 0 w.r.t. valid-speed filter)
+          - mean_n_neighbors
+      dist_df: per-agent rows with A_local and n_neighbors (one row per agent per snapshot)
+    """
+    work = df.copy()
+    if not {'vx','vy'}.issubset(work.columns):
+        work = estimate_velocities(work)
+
+    keys = snapshot_key_columns(work)
+    id_cols = [c for c in ['robot_category','robot_id'] if c in work.columns]
+
+    sum_rows = []
+    dist_rows = []
+
+    for key, snap in snapshot_groups(work):
+        pts = snap[['x','y']].to_numpy()
+        vel = snap[['vx','vy']].to_numpy()
+        box = infer_box(snap)
+        neighs = _kdtree_neighbors(pts, rc, box)
+
+        A_local, A_edge_mean, num_edges, n_nbrs = local_pairwise_alignment_snapshot(vel, neighs)
+
+        # per-agent distribution rows
+        base_key = list(key)
+        for (Ai, n_i), (_, agent_row) in zip(zip(A_local, n_nbrs), snap.iterrows()):
+            dist_rows.append(tuple(base_key + [*(agent_row[c] for c in id_cols), float(Ai), int(n_i)]))
+
+        # per-snapshot summary (ignore NaNs from isolated/invalid)
+        finite = np.isfinite(A_local)
+        vals = A_local[finite]
+        frac_isolated = 1.0 - (np.count_nonzero(finite) / max(len(A_local), 1))
+        mean_n = float(np.mean(n_nbrs)) if len(n_nbrs) else np.nan
+        if vals.size == 0:
+            stats = dict(A_node_mean=np.nan, A_node_std=np.nan, A_node_median=np.nan, A_node_q25=np.nan, A_node_q75=np.nan)
+        else:
+            stats = dict(
+                A_node_mean=float(np.mean(vals)),
+                A_node_std=float(np.std(vals)),
+                A_node_median=float(np.median(vals)),
+                A_node_q25=float(np.quantile(vals, 0.25)),
+                A_node_q75=float(np.quantile(vals, 0.75)),
+            )
+
+        sum_rows.append(tuple(list(key) + [
+            float(A_edge_mean),               # edge-weighted mean (zero baseline)
+            stats['A_node_mean'], stats['A_node_std'], stats['A_node_median'], stats['A_node_q25'], stats['A_node_q75'],
+            frac_isolated, mean_n
+        ]))
+
+    summary_cols = keys + [
+        'A_edge_mean',
+        'A_node_mean','A_node_std','A_node_median','A_node_q25','A_node_q75',
+        'frac_isolated','mean_n_neighbors'
+    ]
+    dist_cols    = keys + id_cols + ['A_local','n_neighbors']
+    return pd.DataFrame(sum_rows, columns=summary_cols), pd.DataFrame(dist_rows, columns=dist_cols)
+
 
 
 def bond_orientational_order_snapshot(pts: np.ndarray, rc: float, k: int = 6, box: Optional[Box] = None) -> float:
@@ -485,12 +596,8 @@ def compute_all_metrics(
 ) -> Dict[str, pd.DataFrame]:
     out: Dict[str, pd.DataFrame] = {}
     out['polar_order']    = vicsek_polar_order(df)
-
-    # Local Vicsek order (summary + per-agent distribution)
-    local_sum, local_dist = vicsek_local_polar_order(df, rc=rc_cluster)
-    out['local_polar'] = local_sum
-    out['local_polar_dist'] = local_dist
-
+    out['local_polar'], out['local_polar_dist'] = vicsek_local_polar_order(df, rc=rc_bond)
+    out['local_pair_align'], out['local_pair_align_dist'] = local_pairwise_alignment(df, rc=rc_bond)
     out['psi_k']          = bond_orientational_order(df, rc=rc_bond, k=psi_k)
     out['largest_cluster']= largest_cluster_fraction(df, rc=rc_cluster)
     out['g_r']            = radial_distribution_function(df, r_max=gr_rmax, dr=gr_dr)
@@ -516,6 +623,9 @@ def write_global_summary(output_dir: str, results: Dict[str, pd.DataFrame]) -> N
     if not LP.empty:
         add_line("Local polar order ⟨P_local⟩ over time", _fmt(LP['P_local_mean'].mean()))
         add_line("Mean fraction isolated (no neighbors)", _fmt(LP['frac_isolated'].mean()))
+    LPA = results.get('local_pair_align', pd.DataFrame())
+    if not LPA.empty:
+        add_line("Local pairwise alignment ⟨A⟩ over time (edge-weighted)", _fmt(LPA['A_edge_mean'].mean()))
     psi_any = [k for k in results if k == 'psi_k']
     if psi_any:
         psi_df = results['psi_k']
@@ -739,6 +849,22 @@ def main(argv=None):
             'P_local', 40,
             "Distribution of local Vicsek order P_local",
             os.path.join(args.output_dir, "local_polar_hist.pdf")
+        )
+    if 'local_pair_align' in results:
+        plot_time_series(
+            results['local_pair_align'],
+            'A_edge_mean',
+            "Local pairwise alignment ⟨A⟩ (edge-weighted; zero baseline)",
+            "Local pairwise alignment vs time",
+            os.path.join(args.output_dir, "local_pair_align_time.pdf")
+        )
+    if 'local_pair_align_dist' in results:
+        plot_histogram(
+            results['local_pair_align_dist'],
+            'A_local',
+            40,
+            "Distribution of local pairwise alignment A_i",
+            os.path.join(args.output_dir, "local_pair_align_hist.pdf")
         )
     if 'psi_k' in results and not results['psi_k'].empty:
         psi_col = [c for c in results['psi_k'].columns if c.startswith('psi_')][0]
