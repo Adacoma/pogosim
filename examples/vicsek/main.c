@@ -39,6 +39,12 @@ bool     broadcast_angle_when_avoiding_walls = true;
 // conversion gain
 double   vicsek_turn_gain    = 0.8;          /* typically 0.6–1.0 */
 
+// --- Vicsek mode switch and continuous-time parameters ---
+bool   vicsek_time_continuous = false;     // false = discrete (default), true = continuous
+double vicsek_beta_rad_per_s  = 3.0;       // β in dθ/dt = β sin(θ̄ - θ) + noise
+double cont_noise_sigma_rad   = 0.0;       // σ for diffusion-like noise on θ (rad/√s)
+double cont_max_dt_s          = 0.05;      // clamp dt for stability
+
 // geometry
 double alpha_deg    = 40.0;
 double robot_radius = 0.0265;  /* 26.5 mm */
@@ -231,7 +237,7 @@ void process_message(message_t* mr){
     }
 }
 
-static inline double estimate_heading_from_photos(void){
+static inline double estimate_heading_from_photos(void) {
     int16_t pA_raw = pogobot_photosensors_read(0);
     int16_t pB_raw = pogobot_photosensors_read(1);
     int16_t pC_raw = pogobot_photosensors_read(2);
@@ -248,6 +254,7 @@ static inline double estimate_heading_from_photos(void){
     double gy = (D_CA + D_BA) / (2.0 * r * (c + 1.0));
 
     double angle_rel = atan2(gx, gy);
+    //double angle_rel = atan2(gy, gx);
     double photo_heading = -angle_rel;
     return wrap_pi(photo_heading);
 }
@@ -259,6 +266,11 @@ static void vicsek_update_and_build_diff(void){
     uint32_t now = current_time_milliseconds();
     double heading = mydata->photo_heading_rad;
     double theta_cmd;
+    // compute dt (s) and clamp for continuous-time mode
+    double dt_s = (now - mydata->last_vicsek_update_ms) * 1e-3;
+    if (dt_s < 0.0) dt_s = 0.0;
+    if (dt_s > cont_max_dt_s) dt_s = cont_max_dt_s;
+
 
     if (cluster_window_active(now)) {
         // === CLUSTER U-TURN override ===
@@ -281,11 +293,29 @@ static void vicsek_update_and_build_diff(void){
             theta_mean = atan2(sy, sx);
         }
 
-        double theta_blend = wrap_pi((1.0 - align_gain) * heading
+        
+        if (vicsek_time_continuous){
+            // Continuous-time Vicsek: dθ/dt = β sin(θ̄ - θ) + σ ξ(t)
+            //double dtheta = vicsek_beta_rad_per_s * sin(wrap_pi(theta_mean - heading)) * dt_s; // CW angle definition
+            double dtheta = vicsek_beta_rad_per_s * sin(wrap_pi(heading - theta_mean)) * dt_s; // CCW angle definition
+
+            if (cont_noise_sigma_rad > 0.0){
+                // Gaussian(0,1) via Box-Muller
+                double u1 = (rand() + 1.0) / (RAND_MAX + 2.0);
+                double u2 = (rand() + 1.0) / (RAND_MAX + 2.0);
+                double z  = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+                dtheta += cont_noise_sigma_rad * sqrt(dt_s) * z;
+            }
+            theta_cmd = wrap_pi(heading + dtheta);
+            mydata->last_vicsek_update_ms = now;
+        } else {
+double theta_blend = wrap_pi((1.0 - align_gain) * heading
                                    +  align_gain        * theta_mean);
 
         theta_cmd = wrap_pi(theta_blend + noise_uniform(noise_eta_rad));
-        mydata->cluster_turn_active = false; // ensure flag goes low if window elapsed
+        mydata->cluster_turn_active = false;
+        }
+ // ensure flag goes low if window elapsed
     }
 
     double err = wrap_pi(theta_cmd - heading);
@@ -340,6 +370,17 @@ void user_init(void){
     msg_rx_fn=process_message;
     msg_tx_fn=send_message;
     error_codes_led_idx=3;
+
+#ifdef SIMULATOR
+    printf("Vicsek mode: %s\n", vicsek_time_continuous ? "continuous (sine coupling)" : "discrete");
+    if (vicsek_time_continuous){
+        printf("  beta=%.3f rad/s, sigma=%.3f rad/sqrt(s), max_dt=%.3f s\n",
+               vicsek_beta_rad_per_s, cont_noise_sigma_rad, cont_max_dt_s);
+    } else {
+        printf("  eta=%.1f deg, T=%ums, align=%.2f\n",
+               noise_eta_rad*180.0/M_PI, vicsek_period_ms, align_gain);
+    }
+#endif
 
     uint8_t dir_mem[3]={0,0,0};
     pogobot_motor_dir_mem_get(dir_mem);
@@ -412,7 +453,9 @@ void user_step(void){
         mydata->have_seen_cluster_uid   = true;
     }
 
-    if(now - mydata->last_vicsek_update_ms >= vicsek_period_ms){
+    if (vicsek_time_continuous) {
+        vicsek_update_and_build_diff();
+    } else if(now - mydata->last_vicsek_update_ms >= vicsek_period_ms){
         vicsek_update_and_build_diff();
         mydata->last_vicsek_update_ms=now;
     }
@@ -458,6 +501,11 @@ static void global_setup(void){
     init_from_configuration(broadcast_angle_when_avoiding_walls);
     init_from_configuration(align_gain);
     init_from_configuration(vicsek_turn_gain);
+    init_from_configuration(vicsek_time_continuous);
+    init_from_configuration(vicsek_beta_rad_per_s);
+    init_from_configuration(cont_noise_sigma_rad);
+    init_from_configuration(cont_max_dt_s);
+
 
     init_from_configuration(alpha_deg);
     init_from_configuration(robot_radius);
