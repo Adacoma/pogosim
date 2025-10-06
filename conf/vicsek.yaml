@@ -178,11 +178,11 @@ parameters:
     forward_commit_ms: 300
     cluster_u_turn_duration_ms: 600
  
-    vicsek_time_continuous: false
+    vicsek_time_continuous: true
     # Continuous mode
     vicsek_beta_rad_per_s: 10.0
-    cont_noise_sigma_rad: 1.1
-    cont_max_dt_s: 0.05
+    cont_noise_sigma_rad: 0.25
+    cont_max_dt_s: 0.01
 
     # Discrete mode
     vicsek_period_ms: 17

@@ -309,13 +309,13 @@ static void vicsek_update_and_build_diff(void){
             theta_cmd = wrap_pi(heading + dtheta);
             mydata->last_vicsek_update_ms = now;
         } else {
-double theta_blend = wrap_pi((1.0 - align_gain) * heading
-                                   +  align_gain        * theta_mean);
+            double theta_blend = wrap_pi((1.0 - align_gain) * heading
+                    +  align_gain        * theta_mean);
 
-        theta_cmd = wrap_pi(theta_blend + noise_uniform(noise_eta_rad));
-        mydata->cluster_turn_active = false;
+            theta_cmd = wrap_pi(theta_blend + noise_uniform(noise_eta_rad));
+            mydata->cluster_turn_active = false;
         }
- // ensure flag goes low if window elapsed
+        // ensure flag goes low if window elapsed
     }
 
     double err = wrap_pi(theta_cmd - heading);
@@ -363,7 +363,7 @@ void user_init(void){
     srand(pogobot_helper_getRandSeed());
     memset(mydata,0,sizeof(*mydata));
 
-    main_loop_hz=10;
+    main_loop_hz=30;
     mydata->dt_s = (main_loop_hz>0)? (1.f/(float)main_loop_hz) : (1.f/60.f);
     max_nb_processed_msg_per_tick=3;
     percent_msgs_sent_per_ticks=50;
