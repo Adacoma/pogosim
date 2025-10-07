@@ -7,8 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Wall avoidance routines
+// Pogo-utils routines
 #include "pogo-utils/wall_avoidance.h"
+#include "pogo-utils/heading_detection.h"
 #include "pogo-utils/version.h"
 
 #ifndef M_PI
@@ -45,9 +46,10 @@ double vicsek_beta_rad_per_s  = 3.0;       // β in dθ/dt = β sin(θ̄ - θ) +
 double cont_noise_sigma_rad   = 0.0;       // σ for diffusion-like noise on θ (rad/√s)
 double cont_max_dt_s          = 0.05;      // clamp dt for stability
 
-// geometry
+// geometry for heading estimation
 double alpha_deg    = 40.0;
 double robot_radius = 0.0265;  /* 26.5 mm */
+heading_chirality_t  heading_chiralty_enum = HEADING_CW;
 
 // === CLUSTER U-TURN: configurable duration window (ms) ===
 uint32_t cluster_u_turn_duration_ms = 1500;
@@ -111,6 +113,10 @@ typedef struct {
     wall_avoidance_state_t wall_avoidance;
     bool doing_wall_avoidance;
     bool prev_doing_wall_avoidance;        // === CLUSTER U-TURN: rising-edge detection
+
+    // Heading detection variables
+    heading_detection_t heading_detection;
+    double current_heading_rad;
 
     // === CLUSTER U-TURN: cluster override state ===
     bool     cluster_turn_active;
@@ -240,28 +246,6 @@ void process_message(message_t* mr){
     }
 }
 
-static inline double estimate_heading_from_photos(void) {
-    int16_t pA_raw = pogobot_photosensors_read(0);
-    int16_t pB_raw = pogobot_photosensors_read(1);
-    int16_t pC_raw = pogobot_photosensors_read(2);
-
-    const double alpha = alpha_deg * M_PI / 180.0;
-    const double r     = robot_radius;
-
-    double D_BA = (double)pB_raw - (double)pA_raw;
-    double D_CA = (double)pC_raw - (double)pA_raw;
-
-    double s = sin(alpha), c = cos(alpha);
-
-    double gx = (D_CA - D_BA) / (2.0 * r * s);
-    double gy = (D_CA + D_BA) / (2.0 * r * (c + 1.0));
-
-    double angle_rel = atan2(gx, gy);
-    //double angle_rel = atan2(gy, gx);
-    double photo_heading = -angle_rel;
-    return wrap_pi(photo_heading);
-}
-
 // Build diff for motors (Vicsek + optional cluster override)
 static void vicsek_update_and_build_diff(void){
     purge_old_neighbors();
@@ -299,8 +283,8 @@ static void vicsek_update_and_build_diff(void){
         
         if (vicsek_time_continuous){
             // Continuous-time Vicsek: dθ/dt = β sin(θ̄ - θ) + σ ξ(t)
-            //double dtheta = vicsek_beta_rad_per_s * sin(wrap_pi(theta_mean - heading)) * dt_s; // CW angle definition
-            double dtheta = vicsek_beta_rad_per_s * sin(wrap_pi(heading - theta_mean)) * dt_s; // CCW angle definition
+            double dtheta = vicsek_beta_rad_per_s * sin(wrap_pi(theta_mean - heading)) * dt_s; // CW angle definition
+            //double dtheta = vicsek_beta_rad_per_s * sin(wrap_pi(heading - theta_mean)) * dt_s; // CCW angle definition
 
             if (cont_noise_sigma_rad > 0.0){
                 // Gaussian(0,1) via Box-Muller
@@ -409,6 +393,11 @@ void user_init(void){
     mydata->doing_wall_avoidance    = false;
     mydata->prev_doing_wall_avoidance = false;
 
+    // Initialize heading detection
+    heading_detection_init(&mydata->heading_detection);
+    heading_detection_set_geometry(&mydata->heading_detection, alpha_deg, robot_radius);
+    heading_detection_set_chirality(&mydata->heading_detection, heading_chiralty_enum);
+
     // Cluster U-turn defaults
     mydata->cluster_turn_active     = false;
     mydata->cluster_target_rad      = 0.0;
@@ -417,7 +406,7 @@ void user_init(void){
     mydata->cluster_msg_uid         = 0u;
     mydata->have_seen_cluster_uid   = false;
 
-    mydata->photo_heading_rad = estimate_heading_from_photos();
+    mydata->photo_heading_rad = heading_detection_estimate(&mydata->heading_detection);
     mydata->theta_cmd_rad     = wrap_pi(mydata->photo_heading_rad + noise_uniform(noise_eta_rad));
     mydata->diff_cmd          = 0;
 
@@ -442,7 +431,7 @@ void user_step(void){
     mydata->prev_doing_wall_avoidance = mydata->doing_wall_avoidance;
     mydata->doing_wall_avoidance = wa;
 
-    mydata->photo_heading_rad = estimate_heading_from_photos();
+    mydata->photo_heading_rad = heading_detection_estimate(&mydata->heading_detection);
 
     // === CLUSTER U-TURN: rising edge => originate a cluster instruction
     if (!mydata->prev_doing_wall_avoidance && mydata->doing_wall_avoidance) {
@@ -513,6 +502,17 @@ static void global_setup(void){
 
     init_from_configuration(alpha_deg);
     init_from_configuration(robot_radius);
+
+    char heading_chiralty[128] = "CW";
+    init_array_from_configuration(heading_chiralty);
+    if (strcasecmp(heading_chiralty, "cw") == 0) {
+        heading_chiralty_enum = HEADING_CW;
+    } else if (strcasecmp(heading_chiralty, "ccw") == 0) {
+        heading_chiralty_enum = HEADING_CCW;
+    } else {
+        printf("ERROR: unknown heading_chiralty value: '%s' (use 'cw' or 'ccw').\n", heading_chiralty);
+        exit(1);
+    }
 
     // Optional:
     // init_from_configuration(forward_speed);

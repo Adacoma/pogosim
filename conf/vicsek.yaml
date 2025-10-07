@@ -178,18 +178,19 @@ parameters:
     forward_commit_ms: 300
     cluster_u_turn_duration_ms: 600
  
-    wall_avoidance_policy: min_turn
+    wall_avoidance_policy: random       # cw, ccw, random, min_turn
+    heading_chiralty: cw                # cw or ccw
 
-    vicsek_time_continuous: true
+    vicsek_time_continuous: false
     # Continuous mode
-    vicsek_beta_rad_per_s: 10.0
+    vicsek_beta_rad_per_s: 10.0     # beta = -log(1 - align_gain) / dt_seconds
     cont_noise_sigma_rad: 0.25
-    cont_max_dt_s: 0.01
+    cont_max_dt_s: 0.15
 
     # Discrete mode
     vicsek_period_ms: 17
-    noise_eta_rad: 0.1
-    align_gain: 1.0
+    noise_eta_rad: 2.5
+    align_gain: 1.0             # align_gain = 1 - exp(-beta * dt_seconds)
     vicsek_turn_gain: 0.8
 
 # MODELINE "{{{1
