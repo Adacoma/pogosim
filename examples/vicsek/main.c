@@ -52,6 +52,9 @@ double robot_radius = 0.0265;  /* 26.5 mm */
 // === CLUSTER U-TURN: configurable duration window (ms) ===
 uint32_t cluster_u_turn_duration_ms = 1500;
 
+// Wall avoidance policy
+wall_chirality_t wall_avoidance_chiralty_policy = WALL_MIN_TURN;
+
 // What main LEDs show
 typedef enum {
     SHOW_STATE,
@@ -402,6 +405,7 @@ void user_init(void){
     };
     wall_avoidance_init(&mydata->wall_avoidance, &default_config, &motors);
     wall_avoidance_set_forward_speed(&mydata->wall_avoidance, 0.5f);
+    wall_avoidance_set_policy(&mydata->wall_avoidance, wall_avoidance_chiralty_policy, 0);
     mydata->doing_wall_avoidance    = false;
     mydata->prev_doing_wall_avoidance = false;
 
@@ -523,7 +527,22 @@ static void global_setup(void){
     } else if (strcasecmp(main_led_display, "angle") == 0) {
         main_led_display_enum = SHOW_ANGLE;
     } else {
-        printf("ERROR: unknown main_led_display: '%s' (use 'state' or 'angle')\n", main_led_display);
+        printf("ERROR: unknown main_led_display: '%s' (use 'state' or 'angle').\n", main_led_display);
+        exit(1);
+    }
+
+    char wall_avoidance_policy[128] = "min_turn";
+    init_array_from_configuration(wall_avoidance_policy);
+    if (strcasecmp(wall_avoidance_policy, "cw") == 0) {
+        wall_avoidance_chiralty_policy = WALL_CW;
+    } else if (strcasecmp(wall_avoidance_policy, "ccw") == 0) {
+        wall_avoidance_chiralty_policy = WALL_CCW;
+    } else if (strcasecmp(wall_avoidance_policy, "random") == 0) {
+        wall_avoidance_chiralty_policy = WALL_RANDOM;
+    } else if (strcasecmp(wall_avoidance_policy, "min_turn") == 0) {
+        wall_avoidance_chiralty_policy = WALL_MIN_TURN;
+    } else {
+        printf("ERROR: unknown main_led_display: '%s' (use 'cw', 'ccw', 'random', or 'min_turn').\n", wall_avoidance_policy);
         exit(1);
     }
 }
