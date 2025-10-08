@@ -3,14 +3,14 @@
 """
 Active-matter global metrics for Pogosim — executable script.
 
-- Non-periodic boundaries (matching your sims).
+- Non-periodic boundaries
 - All distances assumed in millimetres (mm).
 - Neighbor cutoff rc derived from config:
       rc = communication_radius_border_to_border + 2*robot_radius
       (which equals center-to-center communication radius)
 
 Outputs:
-- CSVs for each metric (optional; easy to add).
+- CSVs for each metric
 - PDFs: one plot per file.
 - SUMMARY_global.txt (human-friendly).
 - metrics.pkl (pickle dict of all DataFrames).
@@ -166,8 +166,17 @@ def vicsek_polar_order(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def vicsek_local_polar_order_snapshot(pts, vel, rc, box=None):
+    """
+    Per-snapshot local Vicsek order with Rayleigh small-sample correction.
+
+    Returns:
+      P_local : (N,) raw local mean resultant length (includes self in average)
+      n_nbrs  : (N,) neighbor count EXCLUDING self, for backward-compat
+      Also used by caller to derive bias-free and Rayleigh-Z summaries.
+    """
     if box is None:
         box = infer_box(pd.DataFrame({'x': pts[:,0], 'y': pts[:,1]}))
+
     speeds = np.linalg.norm(vel, axis=1)
     vhat = np.zeros_like(vel, dtype=float)
     nonzero = speeds > 1e-12
@@ -175,20 +184,22 @@ def vicsek_local_polar_order_snapshot(pts, vel, rc, box=None):
 
     neighs = _kdtree_neighbors(pts, rc, box)
     N = len(pts)
+
     P_local = np.full(N, np.nan, dtype=float)
-    n_nbrs = np.zeros(N, dtype=int)
+    n_nbrs  = np.zeros(N, dtype=int)  # neighbors EXCLUDING self
 
     for i, nbrs in enumerate(neighs):
-        # KEEP self in the set (KDTree already includes i)
-        # Filter to neighbors (including self) with non-zero speed
+        # keep neighbors (INCLUDING self) with nonzero speed
         valid = [j for j in nbrs if nonzero[j]]
-        n_nbrs[i] = max(0, len(valid) - 1)  # if you still want “neighbors (excl. self)” count
-        if len(valid) == 0:
-            continue
-        m = np.mean(vhat[valid], axis=0)
-        P_local[i] = float(np.linalg.norm(m))
-    return P_local, n_nbrs
+        m = len(valid)  # sample size including self (if nonzero)
+        n_nbrs[i] = max(0, m - 1)
 
+        if m == 0:
+            continue
+        mvec = np.mean(vhat[valid], axis=0)
+        P_local[i] = float(np.linalg.norm(mvec))
+
+    return P_local, n_nbrs
 
 
 def vicsek_local_polar_order(
@@ -196,9 +207,14 @@ def vicsek_local_polar_order(
     rc: float
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Returns:
-      summary_df: per-snapshot stats (mean, std, median, q25, q75, frac_isolated, mean_n)
-      dist_df:    per-agent values (one row per agent per snapshot) with P_local and n_nbrs
+    Per-snapshot summary + per-agent distribution with bias-corrected local order.
+
+    Adds:
+      - P_local_biasfree  = max(0, P_local - E0), E0 = sqrt(pi)/(2*sqrt(m))
+      - Rayleigh_Z        = 2*m*P_local^2  (NaN for m < 2)
+      - m_incl_self       = neighbor count INCLUDING self used in the average
+
+    Keeps existing columns so downstream plotting remains compatible.
     """
     work = df.copy()
     if not {'vx','vy'}.issubset(work.columns):
@@ -207,47 +223,101 @@ def vicsek_local_polar_order(
     keys = snapshot_key_columns(work)
     id_cols = [c for c in ['robot_category','robot_id'] if c in work.columns]
 
-    sum_rows = []
-    dist_rows = []
+    sum_rows: list = []
+    dist_rows: list = []
+
     for key, snap in snapshot_groups(work):
         pts = snap[['x','y']].to_numpy()
         vel = snap[['vx','vy']].to_numpy()
         box = infer_box(snap)
+
+        # raw local order + neighbor counts (excl. self)
         P_local, n_nbrs = vicsek_local_polar_order_snapshot(pts, vel, rc=rc, box=box)
 
-        # per-agent distribution rows
-        base_key = list(key)
-        rep = len(snap)
-        for (idx, (p, n)), (_, agent_row) in zip(enumerate(zip(P_local, n_nbrs)), snap.iterrows()):
-            dist_rows.append(tuple(base_key + [*(agent_row[c] for c in id_cols), float(p), int(n)]))
+        # derive m (incl. self) consistent with snapshot function
+        speeds = np.linalg.norm(vel, axis=1)
+        nonzero = speeds > 1e-12
+        neighs = _kdtree_neighbors(pts, rc, box)
+        m_incl_self = np.array([sum(nonzero[nbrs]) for nbrs in neighs], dtype=int)
 
-        # per-snapshot summary (ignore NaNs for agents with no neighbors)
-        finite = np.isfinite(P_local)
-        vals = P_local[finite]
-        # weights: valid neighbor count + 1 (self). If you didn't keep it, re-query here as shown.
-        w = (n_nbrs[finite] + 1).astype(float)
-        if vals.size == 0:
-            stats = dict(mean=np.nan, std=np.nan, median=np.nan, q25=np.nan, q75=np.nan)
-        else:
-            wsum = np.sum(w)
-            wmean = float(np.sum(w * vals) / (wsum + 1e-12))
-            stats = dict(
-                mean=wmean,
-                std=float(np.std(vals)),       # leave unweighted for spread, or make it w-std
+        # Rayleigh small-sample baseline and Z
+        # E0 = sqrt(pi)/(2*sqrt(m)) for m>=1, else 0
+        with np.errstate(divide='ignore', invalid='ignore'):
+            E0 = np.sqrt(np.pi) / (2.0 * np.sqrt(np.maximum(m_incl_self.astype(float), 1.0)))
+        E0[m_incl_self < 1] = 0.0
+
+        P_biasfree = np.maximum(0.0, P_local - E0)
+
+        Rayleigh_Z = np.full_like(P_local, np.nan, dtype=float)
+        mask_m2 = (m_incl_self >= 2) & np.isfinite(P_local)
+        Rayleigh_Z[mask_m2] = 2.0 * m_incl_self[mask_m2] * (P_local[mask_m2] ** 2)
+
+        # per-agent distribution rows (keep old cols, add new ones)
+        base_key = list(key)
+        for (p, pb, z, n, m), (_, agent_row) in zip(
+            zip(P_local, P_biasfree, Rayleigh_Z, n_nbrs, m_incl_self),
+            snap.iterrows()
+        ):
+            dist_rows.append(tuple(base_key + [
+                *(agent_row[c] for c in id_cols),
+                float(p), float(pb), float(z) if np.isfinite(z) else np.nan,
+                int(n), int(m)
+            ]))
+
+        # per-snapshot summaries
+        def _stats(vals: np.ndarray) -> dict:
+            vals = vals[np.isfinite(vals)]
+            if vals.size == 0:
+                return dict(mean=np.nan, std=np.nan, median=np.nan, q25=np.nan, q75=np.nan)
+            return dict(
+                mean=float(np.mean(vals)),
+                std=float(np.std(vals)),
                 median=float(np.median(vals)),
                 q25=float(np.quantile(vals, 0.25)),
                 q75=float(np.quantile(vals, 0.75)),
             )
-        frac_isolated = 1.0 - (np.count_nonzero(finite) / max(len(P_local), 1))
+
+        # Original weighted mean for P_local (by m = n_nbrs+1), keep for compatibility
+        finite = np.isfinite(P_local)
+        vals_P = P_local[finite]
+        w = (n_nbrs[finite] + 1).astype(float)
+        if vals_P.size == 0:
+            P_summary = dict(mean=np.nan, std=np.nan, median=np.nan, q25=np.nan, q75=np.nan)
+        else:
+            wsum = np.sum(w)
+            wmean = float(np.sum(w * vals_P) / (wsum + 1e-12))
+            P_summary = dict(
+                mean=wmean,
+                std=float(np.std(vals_P)),
+                median=float(np.median(vals_P)),
+                q25=float(np.quantile(vals_P, 0.25)),
+                q75=float(np.quantile(vals_P, 0.75)),
+            )
+
+        PB_summary = _stats(P_biasfree)
+        Z_summary  = _stats(Rayleigh_Z[np.isfinite(Rayleigh_Z)])
+
+        frac_isolated = 1.0 - (np.count_nonzero(np.isfinite(P_local)) / max(len(P_local), 1))
         mean_n = float(np.mean(n_nbrs)) if len(n_nbrs) else np.nan
+        mean_m = float(np.mean(m_incl_self)) if len(m_incl_self) else np.nan
+
         sum_rows.append(tuple(list(key) + [
-            stats['mean'], stats['std'], stats['median'], stats['q25'], stats['q75'],
-            frac_isolated, mean_n
+            P_summary['mean'], P_summary['std'], P_summary['median'], P_summary['q25'], P_summary['q75'],
+            PB_summary['mean'], PB_summary['std'], PB_summary['median'], PB_summary['q25'], PB_summary['q75'],
+            Z_summary['mean'], frac_isolated, mean_n, mean_m
         ]))
 
-    summary_cols = keys + ['P_local_mean','P_local_std','P_local_median','P_local_q25','P_local_q75','frac_isolated','mean_n_neighbors']
-    dist_cols    = keys + id_cols + ['P_local','n_neighbors']
+    summary_cols = keys + [
+        'P_local_mean','P_local_std','P_local_median','P_local_q25','P_local_q75',
+        'P_local_biasfree_mean','P_local_biasfree_std','P_local_biasfree_median', 'P_local_biasfree_q25','P_local_biasfree_q75',
+        'Rayleigh_Z_mean', 'frac_isolated','mean_n_neighbors','mean_m_incl_self'
+    ]
+    dist_cols    = keys + id_cols + [
+        'P_local','P_local_biasfree','Rayleigh_Z','n_neighbors','m_incl_self'
+    ]
+
     return pd.DataFrame(sum_rows, columns=summary_cols), pd.DataFrame(dist_rows, columns=dist_cols)
+
 
 
 def local_pairwise_alignment_snapshot(
@@ -881,11 +951,10 @@ def write_global_summary(output_dir: str, results: Dict[str, pd.DataFrame]) -> N
 
     P = results.get('polar_order', pd.DataFrame())
     if not P.empty:
-        add_line("Polar order ⟨P⟩ over time", _fmt(P['P_polar'].mean()))
+        add_line("Global Polar order ⟨P⟩ over time", _fmt(P['P_polar'].mean()))
     LP = results.get('local_polar', pd.DataFrame())
     if not LP.empty:
-        add_line("Local polar order ⟨P_local⟩ over time", _fmt(LP['P_local_mean'].mean()))
-        add_line("Mean fraction isolated (no neighbors)", _fmt(LP['frac_isolated'].mean()))
+        add_line("Local polar order ⟨P_local⟩ over time, with Rayleigh small-sample correction", _fmt(LP['P_local_biasfree_mean'].mean()))
     LPA = results.get('local_pair_align', pd.DataFrame())
     if not LPA.empty:
         add_line("Local pairwise alignment ⟨A⟩ over time (edge-weighted)", _fmt(LPA['A_edge_mean'].mean()))
@@ -894,6 +963,8 @@ def write_global_summary(output_dir: str, results: Dict[str, pd.DataFrame]) -> N
         psi_df = results['psi_k']
         psi_col = [c for c in psi_df.columns if c.startswith('psi_')][0] if not psi_df.empty else None
         add_line(f"Bond-orientational ⟨|{psi_col}|⟩", _fmt(psi_df[psi_col].mean() if psi_col else np.nan))
+    if not LP.empty:
+        add_line("Mean fraction isolated (no neighbors)", _fmt(LP['frac_isolated'].mean()))
     L = results.get('largest_cluster', pd.DataFrame())
     if not L.empty:
         add_line("Largest cluster fraction ⟨f_max⟩", _fmt(L['largest_cluster_frac'].mean()))
@@ -1131,7 +1202,7 @@ def main(argv=None):
     if 'local_polar' in results:
         plot_time_series_with_band(
             results['local_polar'],
-            'P_local_mean', 'P_local_std',
+            'P_local_biasfree_mean', 'P_local_biasfree_std',
             "Local polar order ⟨P_local⟩",
             "Local Vicsek order (mean ± std) vs time",
             os.path.join(args.output_dir, "local_polar_time.pdf")
@@ -1140,7 +1211,7 @@ def main(argv=None):
         # pooled histogram across all times/runs/agents (quick diagnostic)
         plot_histogram(
             results['local_polar_dist'],
-            'P_local', 40,
+            'P_local_biasfree', 40,
             "Distribution of local Vicsek order P_local",
             os.path.join(args.output_dir, "local_polar_hist.pdf")
         )
