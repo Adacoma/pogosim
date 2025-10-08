@@ -60,6 +60,7 @@ uint32_t wall_avoidance_turn_duration_ms = 300;
 uint32_t wall_avoidance_forward_commit_ms = 300;
 float wall_avoidance_forward_speed_ratio = 0.5f;
 wall_chirality_t wall_avoidance_chiralty_policy = WALL_MIN_TURN;
+float phi_rad = 0.2f;
 
 // What main LEDs show
 typedef enum {
@@ -440,7 +441,7 @@ void user_step(void){
     // === CLUSTER U-TURN: rising edge => originate a cluster instruction
     if (!mydata->prev_doing_wall_avoidance && mydata->doing_wall_avoidance) {
         // Set cluster target = current heading + π (U-turn)
-        double target = wrap_pi(mydata->photo_heading_rad + M_PI);
+        double target = wrap_pi(mydata->photo_heading_rad + phi_rad * M_PI);
         mydata->cluster_target_rad      = target;
         mydata->cluster_wall_t0_ms      = now;
         mydata->cluster_active_until_ms = now + cluster_u_turn_duration_ms;
@@ -553,6 +554,7 @@ static void global_setup(void){
         printf("ERROR: unknown main_led_display: '%s' (use 'cw', 'ccw', 'random', or 'min_turn').\n", wall_avoidance_policy);
         exit(1);
     }
+    init_from_configuration(phi_rad);
 }
 #endif
 
