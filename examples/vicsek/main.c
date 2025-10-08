@@ -54,7 +54,11 @@ heading_chirality_t  heading_chiralty_enum = HEADING_CW;
 // === CLUSTER U-TURN: configurable duration window (ms) ===
 uint32_t cluster_u_turn_duration_ms = 1500;
 
-// Wall avoidance policy
+// Wall avoidance
+uint32_t wall_avoidance_memory_ms = 300;
+uint32_t wall_avoidance_turn_duration_ms = 300;
+uint32_t wall_avoidance_forward_commit_ms = 300;
+float wall_avoidance_forward_speed_ratio = 0.5f;
 wall_chirality_t wall_avoidance_chiralty_policy = WALL_MIN_TURN;
 
 // What main LEDs show
@@ -382,13 +386,13 @@ void user_init(void){
         .dir_right = mydata->motor_dir_right_fwd
     };
     wall_avoidance_config_t default_config = {
-        .wall_memory_ms = 900,
-        .turn_duration_ms = 300,
-        .forward_commit_ms = 600,
-        .forward_speed_ratio = 0.8f
+        .wall_memory_ms = wall_avoidance_memory_ms,
+        .turn_duration_ms = wall_avoidance_turn_duration_ms,
+        .forward_commit_ms = wall_avoidance_forward_commit_ms,
+        .forward_speed_ratio = wall_avoidance_forward_speed_ratio
     };
     wall_avoidance_init(&mydata->wall_avoidance, &default_config, &motors);
-    wall_avoidance_set_forward_speed(&mydata->wall_avoidance, 0.5f);
+    //wall_avoidance_set_forward_speed(&mydata->wall_avoidance, 0.5f);
     wall_avoidance_set_policy(&mydata->wall_avoidance, wall_avoidance_chiralty_policy, 0);
     mydata->doing_wall_avoidance    = false;
     mydata->prev_doing_wall_avoidance = false;
@@ -531,6 +535,10 @@ static void global_setup(void){
         exit(1);
     }
 
+    init_from_configuration(wall_avoidance_memory_ms);
+    init_from_configuration(wall_avoidance_turn_duration_ms);
+    init_from_configuration(wall_avoidance_forward_commit_ms);
+    init_from_configuration(wall_avoidance_forward_speed_ratio);
     char wall_avoidance_policy[128] = "min_turn";
     init_array_from_configuration(wall_avoidance_policy);
     if (strcasecmp(wall_avoidance_policy, "cw") == 0) {
