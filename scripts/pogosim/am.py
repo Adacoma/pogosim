@@ -906,6 +906,153 @@ def milling_metrics(
     return pd.DataFrame(rows, columns=cols)
 
 
+def alignment_correlation_snapshot(
+    pts: np.ndarray,
+    vel: np.ndarray,
+    *,
+    r_max: float,
+    dr: float,
+    box: Optional[Box] = None,
+    exclude_zero_speed: bool = True,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Alignment correlation C(r) between unit velocities as a function of pair distance.
+    For each pair (i,j) with separation r_ij in bin b:
+        C(r_b) = ⟨ v̂_i · v̂_j ⟩_{|r_ij| in bin b}
+    where v̂ = v / ||v|| (pairs with zero speed can be excluded).
+
+    Returns:
+      r_centers : (B,) bin centers
+      C_r       : (B,) correlation values (NaN if no pairs in bin)
+      counts    : (B,) number of pairs in each bin
+
+    Notes:
+      - Non-periodic distances (consistent with this script).
+      - We do NOT include self pairs; only i<j unique pairs are used.
+      - Expected baseline for random headings is ~0.
+    """
+    if box is None:
+        box = infer_box(pd.DataFrame({'x': pts[:,0], 'y': pts[:,1]}))
+
+    speed = np.linalg.norm(vel, axis=1)
+    nonzero = (speed > 1e-12) if exclude_zero_speed else np.ones(len(pts), dtype=bool)
+
+    vhat = np.zeros_like(vel, dtype=float)
+    ok = nonzero
+    vhat[ok] = vel[ok] / speed[ok, None]
+
+    if cKDTree is None:
+        raise ImportError("scipy is required for C(r) (scipy.spatial.cKDTree).")
+    tree = cKDTree(pts)
+    pairs = tree.query_pairs(r_max)
+    if not pairs:
+        # set up bins anyway
+        bins = np.arange(0.0, r_max + dr, dr)
+        r = 0.5 * (bins[:-1] + bins[1:])
+        return r, np.full_like(r, np.nan, dtype=float), np.zeros_like(r, dtype=int)
+
+    # distances and dot-products for valid-speed pairs only
+    pairs = np.array(list(pairs), dtype=int)
+    i = pairs[:,0]; j = pairs[:,1]
+    # keep pairs where both speeds are valid if exclude_zero_speed
+    if exclude_zero_speed:
+        mask = ok[i] & ok[j]
+        i, j = i[mask], j[mask]
+        if i.size == 0:
+            bins = np.arange(0.0, r_max + dr, dr)
+            r = 0.5 * (bins[:-1] + bins[1:])
+            return r, np.full_like(r, np.nan, dtype=float), np.zeros_like(r, dtype=int)
+
+    dij = np.linalg.norm(pts[i] - pts[j], axis=1)
+    dot = np.sum(vhat[i] * vhat[j], axis=1)
+
+    # bin by distance
+    bins = np.arange(0.0, r_max + dr, dr)
+    r = 0.5 * (bins[:-1] + bins[1:])
+    which = np.digitize(dij, bins) - 1
+    valid = (which >= 0) & (which < r.size)
+
+    C = np.full(r.shape, np.nan, dtype=float)
+    cnt = np.zeros(r.shape, dtype=int)
+
+    if np.any(valid):
+        # accumulate sum and counts per bin
+        for b in np.unique(which[valid]):
+            sel = (which == b) & valid
+            cnt[b] = int(np.sum(sel))
+            if cnt[b] > 0:
+                C[b] = float(np.mean(dot[sel]))
+
+    return r, C, cnt
+
+
+def alignment_correlation(
+    df: pd.DataFrame,
+    *,
+    r_max: float,
+    dr: float,
+) -> pd.DataFrame:
+    """
+    Compute C(r) per snapshot and return a long DataFrame with columns:
+      keys + ['r','C_r','pair_count'].
+
+    We keep one row per (snapshot, r-bin). Aggregation (mean ± std across time)
+    is handled in the plotting function just like g(r).
+    """
+    work = df.copy()
+    if not {'vx','vy'}.issubset(work.columns):
+        work = estimate_velocities(work)
+
+    keys = snapshot_key_columns(work)
+    rows = []
+    for key, snap in snapshot_groups(work):
+        pts = snap[['x','y']].to_numpy()
+        vel = snap[['vx','vy']].to_numpy()
+        box = infer_box(snap)
+        r, C, cnt = alignment_correlation_snapshot(pts, vel, r_max=r_max, dr=dr, box=box)
+        for ri, Ci, ni in zip(r, C, cnt):
+            rows.append((*key, float(ri), float(Ci) if np.isfinite(Ci) else np.nan, int(ni)))
+    cols = keys + ['r','C_r','pair_count']
+    return pd.DataFrame(rows, columns=cols)
+
+
+def alignment_correlation_length(
+    Cr_df: pd.DataFrame,
+    *,
+    dr: float,
+    positive_only: bool = True
+) -> pd.DataFrame:
+    """
+    Derive a per-snapshot scalar correlation length ξ from C(r):
+       ξ = ∑_r max(C(r),0)*dr        (default; integral of positive lobe)
+    Other definitions (e.g., first zero-crossing) could be added later.
+
+    Returns: keys + ['xi_align']
+    """
+    if Cr_df.empty:
+        keys = [c for c in ['arena_file','run','time'] if c in Cr_df.columns]
+        return pd.DataFrame(columns=keys + ['xi_align'])
+
+    keys = snapshot_key_columns(Cr_df)
+    rows = []
+    for key, snap in Cr_df.groupby(keys, sort=False):
+        r = snap['r'].to_numpy()
+        c = snap['C_r'].to_numpy()
+        m = np.isfinite(r) & np.isfinite(c)
+        if not np.any(m):
+            xi = np.nan
+        else:
+            cc = c[m]
+            if positive_only:
+                cc = np.maximum(0.0, cc)
+            # simple Riemann sum (uniform bins)
+            xi = float(np.sum(cc) * dr)
+        # normalize by C(0)? We skip; C(0) is not defined (no self-pairs).
+        rows.append((*key, xi))
+    return pd.DataFrame(rows, columns=keys + ['xi_align'])
+
+
+
 # --------------------------------------------------------------------------- #
 #                            Convenience + Summary                            #
 # --------------------------------------------------------------------------- #
@@ -924,11 +1071,15 @@ def compute_all_metrics(
     vort_nx: int = 64,
     vort_ny: int = 64,
     milling_center: str = "cm",
+    aligncorr_rmax: float = 200.0,
+    aligncorr_dr: float = 2.0,
 ) -> Dict[str, pd.DataFrame]:
     out: Dict[str, pd.DataFrame] = {}
     out['polar_order']    = vicsek_polar_order(df)
     out['local_polar'], out['local_polar_dist'] = vicsek_local_polar_order(df, rc=rc_bond)
     out['local_pair_align'], out['local_pair_align_dist'] = local_pairwise_alignment(df, rc=rc_bond)
+    out['align_corr']     = alignment_correlation(df, r_max=aligncorr_rmax, dr=aligncorr_dr)
+    out['align_corr_len'] = alignment_correlation_length(out['align_corr'], dr=aligncorr_dr)
     out['psi_k']          = bond_orientational_order(df, rc=rc_bond, k=psi_k)
     out['largest_cluster']= largest_cluster_fraction(df, rc=rc_cluster)
     out['g_r']            = radial_distribution_function(df, r_max=gr_rmax, dr=gr_dr)
@@ -958,6 +1109,9 @@ def write_global_summary(output_dir: str, results: Dict[str, pd.DataFrame]) -> N
     LPA = results.get('local_pair_align', pd.DataFrame())
     if not LPA.empty:
         add_line("Local pairwise alignment ⟨A⟩ over time (edge-weighted)", _fmt(LPA['A_edge_mean'].mean()))
+    AC = results.get('align_corr_len', pd.DataFrame())
+    if not AC.empty:
+        add_line("Alignment correlation length ⟨ξ⟩", _fmt(AC['xi_align'].mean()))
     psi_any = [k for k in results if k == 'psi_k']
     if psi_any:
         psi_df = results['psi_k']
@@ -1074,6 +1228,21 @@ def plot_histogram(df: pd.DataFrame, col: str, bins: int, title: str, out_pdf: s
             ax.set_title(title)
     _save_pdf(fig, out_pdf)
 
+def plot_Cr(Cr_df: pd.DataFrame, out_pdf: str) -> None:
+    fig = plt.figure(figsize=(6.2, 4.2))
+    ax = fig.add_subplot(111)
+    if Cr_df.empty:
+        ax.text(0.5, 0.5, "No data", ha='center', va='center')
+    else:
+        agg = Cr_df.groupby('r', as_index=False).agg(C_mean=('C_r','mean'), C_std=('C_r','std'))
+        ax.plot(agg['r'], agg['C_mean'], linewidth=2.0)
+        if np.isfinite(agg['C_std']).any():
+            ax.fill_between(agg['r'], agg['C_mean']-agg['C_std'], agg['C_mean']+agg['C_std'], alpha=0.2, linewidth=0)
+        ax.set_xlabel("r [mm]")
+        ax.set_ylabel("C(r) = ⟨v̂ᵢ·v̂ⱼ⟩")
+        ax.set_title("Velocity alignment correlation C(r)")
+    _save_pdf(fig, out_pdf)
+
 def plot_gr(gr_df: pd.DataFrame, out_pdf: str) -> None:
     fig = plt.figure(figsize=(6.2, 4.2))
     ax = fig.add_subplot(111)
@@ -1137,6 +1306,10 @@ def parse_args(argv=None):
     p.add_argument("--vort-ny", type=int, default=64, help="Grid Ny for vorticity/swirling metrics")
     p.add_argument("--milling-center", type=str, default="cm", choices=["cm","arena"],
                    help="Center for milling order parameters: center-of-mass or arena center")
+    p.add_argument("--aligncorr-rmax", type=float, default=200.0,
+                   help="C(r) max radius in mm (default: 200)")
+    p.add_argument("--aligncorr-dr", type=float, default=2.0,
+                   help="C(r) bin width in mm (default: 2)")
 
     return p.parse_args(argv)
 
@@ -1184,6 +1357,8 @@ def main(argv=None):
         vort_nx=args.vort_nx,
         vort_ny=args.vort_ny,
         milling_center=args.milling_center,
+        aligncorr_rmax=args.aligncorr_rmax,
+        aligncorr_dr=args.aligncorr_dr,
     )
 
     # Optional CSV export
@@ -1230,6 +1405,15 @@ def main(argv=None):
             40,
             "Distribution of local pairwise alignment A_i",
             os.path.join(args.output_dir, "local_pair_align_hist.pdf")
+        )
+    if 'align_corr' in results:
+        plot_Cr(results['align_corr'], os.path.join(args.output_dir, "align_corr_Cr.pdf"))
+
+    if 'align_corr_len' in results:
+        plot_time_series(
+            results['align_corr_len'], 'xi_align', "Correlation length ξ",
+            "Velocity alignment correlation length vs time",
+            os.path.join(args.output_dir, "align_corr_xi_time.pdf")
         )
     if 'psi_k' in results and not results['psi_k'].empty:
         psi_col = [c for c in results['psi_k'].columns if c.startswith('psi_')][0]
