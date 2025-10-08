@@ -1159,6 +1159,163 @@ def write_global_summary(output_dir: str, results: Dict[str, pd.DataFrame]) -> N
         f.write(text)
     print(text)
 
+
+def write_metric_descriptions(output_dir: str, results: Dict[str, pd.DataFrame]) -> None:
+    """
+    Create a long, human-readable description of each summarized metric:
+    - What it represents + informal definition
+    - Domain and typical ranges
+    - Useful literature references (short canonical pointers)
+    - Filenames of associated plots produced by this script
+
+    The text is printed to stdout and saved to SUMMARY_metric_details.txt.
+    """
+    lines: list[str] = []
+    add = lines.append
+
+    add("# Global structure metrics — detailed descriptions\n")
+
+    # Helper: resolve psi_k column name if present
+    psi_col = None
+    if 'psi_k' in results and not results['psi_k'].empty:
+        psi_col = [c for c in results['psi_k'].columns if c.startswith('psi_')][0]
+
+    # ---- Polar order P ------------------------------------------------------
+    if 'polar_order' in results:
+        add("## Vicsek polar order ⟨P⟩")
+        add("**Meaning.** Global alignment of headings: P = ||⟨v̂_i⟩|| (1 = everyone aligned; 0 ~ random).")
+        add("**Domain.** 0 ≤ P ≤ 1.")
+        add("**Typical values.** Disordered ~0–0.2; weak order 0.2–0.6; strong flocking >0.6 (ballpark).")
+        add("**Refs.** Vicsek et al., *Phys. Rev. Lett.* 75, 1226 (1995). Toner & Tu, *Phys. Rev. Lett.* 75, 4326 (1995).")
+        add(f"**Plots.** `polar_order_time.pdf`")
+        add("")
+
+    # ---- Local polar order P_local (bias-free mean) ------------------------
+    if 'local_polar' in results:
+        add("## Local Vicsek order ⟨P_local⟩ (bias-corrected)")
+        add("**Meaning.** Local alignment inside a neighborhood of radius rc. We report a Rayleigh small-sample "
+            "bias-corrected mean of per-agent local resultants.")
+        add("**Domain.** 0 ≤ P_local ≤ 1 (mean and distribution).")
+        add("**Typical values.** Disordered ~0–0.3; mesoscopic order 0.3–0.7; strong crystalline/laned >0.7.")
+        add("**Refs.** Rayleigh resultant length bias: Berens, *CircStat* notes; Vicsek et al. 1995 (local variants).")
+        add("**Plots.** `local_polar_time.pdf`, `local_polar_hist.pdf`")
+        add("")
+
+    # ---- Local pairwise alignment A ----------------------------------------
+    if 'local_pair_align' in results:
+        add("## Local pairwise alignment ⟨A⟩ (edge-weighted)")
+        add("**Meaning.** Average cos(θ_i−θ_j) over neighbor pairs; zero for random headings, +1 for perfect local "
+            "alignment, negative when locally anti-aligned.")
+        add("**Domain.** −1 ≤ A ≤ 1 (edge-weighted mean reported).")
+        add("**Typical values.** Random ~0; locally ordered 0.3–0.9; anti-aligned patterns <0.")
+        add("**Refs.** Standard XY-like alignment statistics; used widely in active matter + flocking.")
+        add("**Plots.** `local_pair_align_time.pdf`, `local_pair_align_hist.pdf`")
+        add("")
+
+    # ---- Alignment correlation C(r) and ξ ----------------------------------
+    if 'align_corr' in results or 'align_corr_len' in results:
+        add("## Velocity alignment correlation C(r) and correlation length ξ")
+        add("**Meaning.** C(r) = ⟨v̂_i·v̂_j⟩ for pairs at separation r. Correlation length ξ is the integral of the "
+            "positive part of C(r) (Riemann sum), giving a scalar range of orientational order.")
+        add("**Domain.** −1 ≤ C(r) ≤ 1; ξ ≥ 0 (units of length, here mm).")
+        add("**Typical values.** Disordered: short-range C(r)≈0; collectively moving phases show a positive lobe and "
+            "finite ξ; near flocking/milling, ξ grows with system coherence.")
+        add("**Refs.** E.g., Cavagna et al., *PNAS* 107, 11865 (2010) on correlation in flocks; general spin/active "
+            "matter correlation formalism.")
+        add("**Plots.** `align_corr_Cr.pdf`, `align_corr_xi_time.pdf`")
+        add("")
+
+    # ---- Bond-orientational order psi_k ------------------------------------
+    if psi_col is not None:
+        add(f"## Bond-orientational order ⟨|{psi_col}|⟩")
+        add("**Meaning.** k-fold bond orientation (here typically k=6): averages e^{ikθ} over neighbor bonds; measures "
+            "local hexatic/positional order.")
+        add("**Domain.** 0 ≤ |ψ_k| ≤ 1.")
+        add("**Typical values.** Liquids ~0–0.3; hexatic/locally crystalline regions 0.3–0.8+; perfect lattice → 1.")
+        add("**Refs.** Nelson & Halperin, *Phys. Rev. B* 19, 2457 (1979); Steinhardt et al., *Phys. Rev. B* 28, 784 (1983).")
+        add(f"**Plots.** `{psi_col}_time.pdf`")
+        add("")
+
+    # ---- Largest cluster fraction ------------------------------------------
+    if 'largest_cluster' in results:
+        add("## Largest cluster fraction ⟨f_max⟩")
+        add("**Meaning.** Size of the largest connected component (rc-graph) divided by N.")
+        add("**Domain.** 0 < f_max ≤ 1.")
+        add("**Typical values.** Gas-like: 0.1–0.4; percolated/single-cluster: 0.6–1.0 (depends on density & rc).")
+        add("**Refs.** Standard connectivity/percolation diagnostics for proximity graphs.")
+        add("**Plots.** `largest_cluster_time.pdf`")
+        add("")
+
+    # ---- g(r) ---------------------------------------------------------------
+    if 'g_r' in results:
+        add("## Radial distribution function g(r)")
+        add("**Meaning.** Pair-density relative to a Poisson fluid. Peaks mark shell distances; g(r)→1 at large r.")
+        add("**Domain.** g(r) ≥ 0 (theoretically).")
+        add("**Typical values.** Liquids: pronounced first peak near typical spacing; gases: flatter near 1.")
+        add("**Refs.** Hansen & McDonald, *Theory of Simple Liquids*.")
+        add("**Plots.** `g_r.pdf`")
+        add("")
+
+    # ---- S(k) ---------------------------------------------------------------
+    if 'S_k' in results:
+        add("## Static structure factor S(k)")
+        add("**Meaning.** Power spectrum of density fluctuations; peaks signal dominant length-scales λ≈2π/k.")
+        add("**Domain.** S(k) ≥ 0.")
+        add("**Typical values.** Disordered fluids: broad low-k; emerging patterns/clusters: clear peak at k*.")
+        add("**Refs.** Chaikin & Lubensky, *Principles of Condensed Matter Physics*.")
+        add("**Plots.** `S_k.pdf`")
+        add("")
+
+    # ---- Number fluctuations alpha -----------------------------------------
+    if 'number_fluct' in results:
+        add("## Number-fluctuation exponent ⟨α⟩")
+        add("**Meaning.** From σ_N ∝ ⟨N⟩^{α}: α=0.5 is Poisson; α>0.5 indicates giant number fluctuations (active matter hallmark).")
+        add("**Domain.** Typically 0.3–1.0 in practice.")
+        add("**Typical values.** Passive-like ~0.5; active/collective >0.5; strong clustering can approach ~0.8–1.0.")
+        add("**Refs.** Ramaswamy et al., *EPL* 62, 196 (2003); Narayan et al., *Science* 317, 105 (2007).")
+        add("**Plots.** `number_fluct_alpha_time.pdf`")
+        add("")
+
+    # ---- Teff/Tref ----------------------------------------------------------
+    if 'Teff_ratio' in results:
+        add("## Effective temperature ratio ⟨T_eff/T_ref⟩")
+        add("**Meaning.** Proxy from mean squared speed ⟨v²⟩ relative to a reference; compares agitation levels.")
+        add("**Domain.** > 0 (dimensionless).")
+        add("**Typical values.** Depends on actuation; often O(0.5–5) in lab/sim settings.")
+        add("**Refs.** Effective temperature notions in athermal active systems (various reviews).")
+        add("**Plots.** `teff_ratio_time.pdf`")
+        add("")
+
+    # ---- Vorticity / Enstrophy / Swirling / Okubo–Weiss --------------------
+    if 'vortex_summary' in results:
+        add("## Vorticity & enstrophy, swirling strength λ_ci, Okubo–Weiss Q")
+        add("**Meaning.** From gridded velocity fields: ω = ∂v/∂x − ∂u/∂y; enstrophy ⟨ω²⟩ measures rotational intensity; "
+            "λ_ci measures local swirling (imaginary part of Jacobian eigenvalues); Okubo–Weiss Q<0 marks vortex-dominated regions.")
+        add("**Domain.** ⟨ω²⟩ ≥ 0; ⟨|ω|⟩ ≥ 0; ⟨λ_ci⟩ ≥ 0; 0 ≤ Frac(Q<0) ≤ 1. Units of ω, λ_ci depend on space/time units.")
+        add("**Typical values.** Depend strongly on speed scales and grid; compare runs relatively.")
+        add("**Refs.** Zhou et al., *J. Fluid Mech.* 387, 353 (1999) (swirling strength). Okubo (1970), Weiss (1991) (Q).")
+        add("**Plots.** `enstrophy_time.pdf`, `vorticity_abs_time.pdf`, `swirling_strength_time.pdf`, "
+            "`okubo_weiss_frac_time.pdf`, `omega_hist.pdf`, `lambda_ci_hist.pdf`, plus `vorticity_heatmap_*.pdf`")
+        add("")
+
+    # ---- Milling metrics ----------------------------------------------------
+    if 'milling' in results:
+        add("## Milling / vortex order parameters (τ, |τ|, Lz_norm)")
+        add("**Meaning.** Tangential alignment τ = ⟨t̂·v̂⟩ (signed), milling index |τ|, and normalized angular momentum Lz_norm; "
+            "capture global rotation/milling around a center.")
+        add("**Domain.** −1 ≤ τ ≤ 1; 0 ≤ |τ| ≤ 1; Lz_norm typically in [−1,1].")
+        add("**Typical values.** Non-milling: |τ| ≈ 0–0.3; clear mills: |τ| ≳ 0.6 with consistent τ sign and sizable Lz_norm.")
+        add("**Refs.** Vortex/milling order parameters used in swarm & collective motion literature (e.g., Couzin et al.).")
+        add("**Plots.** `milling_index_time.pdf`, `milling_signed_time.pdf`, `angular_momentum_time.pdf`")
+        add("")
+
+    text = "\n".join(lines) + "\n"
+    out_path = os.path.join(output_dir, "SUMMARY_metric_details.txt")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    print(text)
+
+
 # --------------------------------------------------------------------------- #
 #                                    Plots                                    #
 # --------------------------------------------------------------------------- #
@@ -1541,9 +1698,9 @@ def main(argv=None):
             plot_vorticity_heatmap(omega, out_pdf, title=f"Vorticity field ({metric_used}; {nice_keys})")
 
 
-
     # Text summary (printed + file)
     write_global_summary(args.output_dir, results)
+    write_metric_descriptions(args.output_dir, results)
 
     # Pickle (all metrics together)
     with open(os.path.join(args.output_dir, "metrics.pkl"), "wb") as f:
