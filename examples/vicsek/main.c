@@ -441,7 +441,8 @@ void user_step(void){
     // === CLUSTER U-TURN: rising edge => originate a cluster instruction
     if (!mydata->prev_doing_wall_avoidance && mydata->doing_wall_avoidance) {
         // Set cluster target = current heading + π (U-turn)
-        double target = wrap_pi(mydata->photo_heading_rad + phi_rad * M_PI);
+        //double target = wrap_pi(mydata->photo_heading_rad + phi_rad * M_PI);
+        double target = wrap_pi(mydata->photo_heading_rad + phi_rad);
         mydata->cluster_target_rad      = target;
         mydata->cluster_wall_t0_ms      = now;
         mydata->cluster_active_until_ms = now + cluster_u_turn_duration_ms;

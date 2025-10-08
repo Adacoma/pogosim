@@ -8,7 +8,7 @@ arena_file: arenas/disk.csv
 #arena_file: arenas/square.csv
 #arena_file: arenas/arena8.csv
 #arena_file: arenas/star.csv
-arena_surface: 1.0e6    # In mm²
+arena_surface: 2.0e6    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
@@ -103,7 +103,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 50             # Number of objects (Pogobots) in this category
+        nb: 40             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -178,15 +178,15 @@ parameters:
     wall_avoidance_forward_commit_ms: 600 # 300
     wall_avoidance_forward_speed_ratio: 0.5 # 0.1
     cluster_u_turn_duration_ms: 600
-    phi_rad: 0.2
-    wall_avoidance_policy: min_turn       # cw, ccw, random, min_turn
+    phi_rad: 3.14
+    wall_avoidance_policy: random  # cw, ccw, random, min_turn
     heading_chiralty: cw                # cw or ccw
 
     vicsek_time_continuous: true
     # Continuous mode
-    vicsek_beta_rad_per_s: 10.0     # beta = -log(1 - align_gain) / dt_seconds
-    cont_noise_sigma_rad: 2.25
-    cont_max_dt_s: 0.01
+    vicsek_beta_rad_per_s: 0.0     # beta = -log(1 - align_gain) / dt_seconds
+    cont_noise_sigma_rad: 10.0
+    cont_max_dt_s: 100.5
 
     # Discrete mode
     vicsek_period_ms: 17
