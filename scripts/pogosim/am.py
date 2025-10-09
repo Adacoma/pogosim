@@ -1467,6 +1467,7 @@ def parse_args(argv=None):
                    help="C(r) max radius in mm (default: 200)")
     p.add_argument("--aligncorr-dr", type=float, default=2.0,
                    help="C(r) bin width in mm (default: 2)")
+    p.add_argument('-N', "--no-extended-infos", action="store_true", help="Skip Extended infos on metrics, just print a summary of metric values")
 
     return p.parse_args(argv)
 
@@ -1700,7 +1701,8 @@ def main(argv=None):
 
     # Text summary (printed + file)
     write_global_summary(args.output_dir, results)
-    write_metric_descriptions(args.output_dir, results)
+    if not args.no_extended_infos:
+        write_metric_descriptions(args.output_dir, results)
 
     # Pickle (all metrics together)
     with open(os.path.join(args.output_dir, "metrics.pkl"), "wb") as f:
