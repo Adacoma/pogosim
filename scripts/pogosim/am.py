@@ -1712,3 +1712,6 @@ def main(argv=None):
 if __name__ == "__main__":
     sys.exit(main())
 
+# MODELINE "{{{1
+# vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
+# vim:foldmethod=marker
