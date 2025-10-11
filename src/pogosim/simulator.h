@@ -27,6 +27,8 @@ extern "C" int robot_main(void);
 //void set_current_robot(Robot& robot);
 void set_current_robot(PogobotObject& robot);
 
+enum class boundary_condition_t { solid, periodic };
+
 
 /**
  * @brief Class representing the simulation environment.
@@ -62,6 +64,12 @@ class Simulation {
     float arena_surface = 1e6;            ///< Arena surface area in mm².
     float max_comm_radius = 00.0f;        ///< Max communication radius across all types of objects.
     float comm_ignore_occlusions = false; ///< Whether or to ignore occlusions when computing communication channels and neighbors.
+
+    boundary_condition_t boundary_condition = boundary_condition_t::solid;
+    // domain box in Box2D units (scaled)
+    b2Vec2 domain_min{0.0f, 0.0f};
+    float domain_w = 0.0f;
+    float domain_h = 0.0f;
 
     b2WorldId worldId;                    ///< Identifier for the Box2D world.
     //std::vector<Robot> robots;          ///< Vector of robots in the simulation.
@@ -319,6 +327,12 @@ public:
      * @return Arena polygons.
      */
     arena_polygons_t const& get_arena_geometry() { return arena_polygons; };
+
+    /**
+     * @brief Wrap objects position to have period boundary conditions.
+     *
+     */
+    void apply_periodic_wrapping();
 
 };
 

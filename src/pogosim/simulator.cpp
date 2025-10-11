@@ -277,44 +277,46 @@ void Simulation::create_arena() {
 
         std::vector<b2Vec2> outer_polygon = offset_polygon(scaled_polygon, -1.0f * WALL_THICKNESS);
 
-        // Define the static body for each wall segment
-        b2BodyDef wallBodyDef = b2DefaultBodyDef();
-        wallBodyDef.type = b2_staticBody;
+        if (boundary_condition == boundary_condition_t::solid) {
+            // Define the static body for each wall segment
+            b2BodyDef wallBodyDef = b2DefaultBodyDef();
+            wallBodyDef.type = b2_staticBody;
 
-        b2Vec2 p1;
-        b2Vec2 p2;
-        for (size_t i = 0; i < outer_polygon.size(); ++i) {
-            if (i < outer_polygon.size() - 1) {
-                p1 = outer_polygon[i];
-                p2 = outer_polygon[i + 1];
-            } else {
-                p1 = outer_polygon[i];
-                p2 = outer_polygon[0];
+            b2Vec2 p1;
+            b2Vec2 p2;
+            for (size_t i = 0; i < outer_polygon.size(); ++i) {
+                if (i < outer_polygon.size() - 1) {
+                    p1 = outer_polygon[i];
+                    p2 = outer_polygon[i + 1];
+                } else {
+                    p1 = outer_polygon[i];
+                    p2 = outer_polygon[0];
+                }
+
+                // Calculate the center of the rectangle
+                //b2Vec2 center = (p1 + p2) * 0.5f * (1.0f/VISUALIZATION_SCALE);
+                b2Vec2 center = (p1 + p2) * 0.5f * (1.0f);
+
+                // Calculate the angle of the rectangle
+                float angle = atan2f(p2.y - p1.y, p2.x - p1.x);
+
+                // Calculate the length of the rectangle
+                //float length = b2Distance(p1, p2) / VISUALIZATION_SCALE;
+                float length = b2Distance(p1, p2);
+
+                // Create the wall body
+                wallBodyDef.position = center;
+                wallBodyDef.rotation = b2MakeRot(angle);
+                b2BodyId wallBody = b2CreateBody(worldId, &wallBodyDef);
+
+                // Create the rectangular shape
+                b2Polygon wallShape = b2MakeBox(length / 2, WALL_THICKNESS / 2);
+                b2ShapeDef wallShapeDef = b2DefaultShapeDef();
+                wallShapeDef.friction = friction;
+                wallShapeDef.restitution = restitution;
+
+                b2CreatePolygonShape(wallBody, &wallShapeDef, &wallShape);
             }
-
-            // Calculate the center of the rectangle
-            //b2Vec2 center = (p1 + p2) * 0.5f * (1.0f/VISUALIZATION_SCALE);
-            b2Vec2 center = (p1 + p2) * 0.5f * (1.0f);
-
-            // Calculate the angle of the rectangle
-            float angle = atan2f(p2.y - p1.y, p2.x - p1.x);
-
-            // Calculate the length of the rectangle
-            //float length = b2Distance(p1, p2) / VISUALIZATION_SCALE;
-            float length = b2Distance(p1, p2);
-
-            // Create the wall body
-            wallBodyDef.position = center;
-            wallBodyDef.rotation = b2MakeRot(angle);
-            b2BodyId wallBody = b2CreateBody(worldId, &wallBodyDef);
-
-            // Create the rectangular shape
-            b2Polygon wallShape = b2MakeBox(length / 2, WALL_THICKNESS / 2);
-            b2ShapeDef wallShapeDef = b2DefaultShapeDef();
-            wallShapeDef.friction = friction;
-            wallShapeDef.restitution = restitution;
-
-            b2CreatePolygonShape(wallBody, &wallShapeDef, &wallShape);
         }
     }
 
@@ -327,6 +329,19 @@ void Simulation::create_arena() {
     mm_to_pixels = 0.0f;
     adjust_mm_to_pixels(ratio);
     config.set("mm_to_pixels", std::to_string(mm_to_pixels));
+
+    {
+        // Use the main/first polygon as the domain
+        const auto &poly = scaled_arena_polygons.front();
+        float minx = poly[0].x, miny = poly[0].y, maxx = poly[0].x, maxy = poly[0].y;
+        for (auto const &p : poly) {
+            minx = std::min(minx, p.x); maxx = std::max(maxx, p.x);
+            miny = std::min(miny, p.y); maxy = std::max(maxy, p.y);
+        }
+        domain_min = {minx, miny};
+        domain_w = maxx - minx;
+        domain_h = maxy - miny;
+    }
 }
 
 
@@ -398,6 +413,17 @@ void Simulation::init_config() {
 
     arena_surface = config["arena_surface"].get(1e6f);
     comm_ignore_occlusions = config["communication_ignore_occlusions"].get(false);
+    std::string bc = config["boundary_condition"].get(std::string("solid"));
+    if (bc == "periodic") {
+        boundary_condition = boundary_condition_t::periodic;
+    } else if (bc == "solid") {
+        boundary_condition = boundary_condition_t::solid;
+    } else if (bc == "null") {
+        boundary_condition = boundary_condition_t::solid;
+        glogger->warn("Unspecified 'boundary_condition', using 'solid' by default.");
+    } else {
+        throw std::runtime_error("Unknown 'boundary_condition' value '" + bc + "'. Use either 'periodic' or 'solid'.");
+    }
 
     mm_to_pixels = 0.0f;
     adjust_mm_to_pixels(config["mm_to_pixels"].get(1.0f));
@@ -528,6 +554,38 @@ void Simulation::create_robots() {
             current_robot->user_init();
     }
 }
+
+
+static inline float wrap01(float x, float L) {
+    // numerically robust wrap (handles negatives and large |x|)
+    float k = std::floor((x) / L);
+    return x - k * L;
+}
+
+inline b2Vec2 wrap_point_periodic(b2Vec2 p, b2Vec2 minp, float Lx, float Ly) {
+    float x = p.x - minp.x;
+    float y = p.y - minp.y;
+    x = wrap01(x, Lx);
+    y = wrap01(y, Ly);
+    return {x + minp.x, y + minp.y};
+}
+
+void Simulation::apply_periodic_wrapping() {
+    if (domain_w <= 0.0f || domain_h <= 0.0f) return;
+
+    // Wrap all *tangible* dynamic/kinematic objects (robots, movable objects).
+    for (auto &obj : phys_objects) {
+        if (!obj->is_tangible()) continue;
+
+        b2Vec2 p = obj->get_position();                // Box2D units
+        b2Vec2 pw = wrap_point_periodic(p, domain_min, domain_w, domain_h);
+
+        if (pw.x != p.x || pw.y != p.y) {
+            obj->move(pw.x * VISUALIZATION_SCALE, pw.y * VISUALIZATION_SCALE);
+        }
+    }
+}
+
 
 
 void Simulation::speed_up() {
@@ -963,6 +1021,10 @@ void Simulation::main_loop() {
 
         // Step the Box2D world
         b2World_Step(worldId, time_step_duration, sub_step_count);
+
+        if (boundary_condition == boundary_condition_t::periodic) {
+            apply_periodic_wrapping();
+        }
 
         // Compute neighbors
         compute_neighbors();

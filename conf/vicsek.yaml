@@ -13,6 +13,7 @@ result_new_columns: ["arena_file"]
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
+boundary_condition: solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
 arena_file: 
     default_option: arenas/disk.csv
     #default_option: arenas/annulus.csv
@@ -115,7 +116,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 17             # Number of objects (Pogobots) in this category
+        nb: 50             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
