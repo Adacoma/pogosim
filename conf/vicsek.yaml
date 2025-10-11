@@ -1,13 +1,25 @@
 ---
 
+# Batch configuration use the key "batch_options" to specify configuration values options for a given key.
+#  The key "result_filename_format" contains the format of the exported feather files, depending on selected batch values.
+
+# Format of the generated dataframes, one for each configuration
+result_filename_format: "result.feather"
+
+# List of new columns to add in the generated dataframes
+result_new_columns: ["arena_file"]
+
+
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
-arena_file: arenas/disk.csv
-#arena_file: arenas/annulus.csv
-#arena_file: arenas/square.csv
-#arena_file: arenas/arena8.csv
-#arena_file: arenas/star.csv
+arena_file: 
+    default_option: arenas/disk.csv
+    #default_option: arenas/annulus.csv
+    #default_option: arenas/star.csv
+    #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv", "arenas/triangle.csv"]
+    #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv"]
+    batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
 arena_surface: 1.0e6    # In mm²
 
 delete_old_files: true
@@ -103,7 +115,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 50             # Number of objects (Pogobots) in this category
+        nb: 17             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -116,8 +128,11 @@ objects:
 
         max_linear_speed: 100.0
         max_angular_speed: 2.0
-        linear_noise_stddev: 0.0
-        angular_noise_stddev: 0.0
+        linear_noise_stddev: 0.5
+        angular_noise_stddev:
+            default_option: 1.0
+            batch_options: [0.0, 2.0]
+        angular_systematic_bias_domain: [-70, 70]
 
         #photosensors_systematic_bias_domain: [-100, 100] # Systematic bias to apply to each 3 photosensor of each robot, to simulate real-robot biases.
                                                            #  Domain pair between -32767 and 32767.
@@ -178,14 +193,20 @@ parameters:
     wall_avoidance_forward_commit_ms: 600 # 300
     wall_avoidance_forward_speed_ratio: 0.5 # 0.1
     cluster_u_turn_duration_ms: 600
-    phi_rad: 1.20
-    wall_avoidance_policy: min_turn  # cw, ccw, random, min_turn
+    phi_rad:
+        default_option: 3.2
+        batch_options: [0.2, 3.14159]
+    wall_avoidance_policy: min_turn     # cw, ccw, random, min_turn
     heading_chiralty: cw                # cw or ccw
 
     vicsek_time_continuous: true
     # Continuous mode
-    vicsek_beta_rad_per_s: 10.0     # beta = -log(1 - align_gain) / dt_seconds
-    cont_noise_sigma_rad: 0.250
+    vicsek_beta_rad_per_s:  # beta = -log(1 - align_gain) / dt_seconds
+        default_option: 10.0
+        batch_options: [-10.0, -1.0, 0.0, 1.0, 10.0]
+    cont_noise_sigma_rad:
+        default_option: 0.250
+        batch_options: [0.0, 0.250, 10.0]
     cont_max_dt_s: 0.5
 
     # Discrete mode
