@@ -178,6 +178,7 @@ public:
            float _density = 10.0f, float _friction = 0.3f, float _restitution = 0.5f,
            float _max_linear_speed = 100.0f, float _max_angular_speed = 1.0f,
            float _linear_noise_stddev = 0.0f, float _angular_noise_stddev = 0.0f,
+           std::pair<int16_t, int16_t> angular_systematic_bias_domain = {0, 0},
            std::pair<int16_t, int16_t> photosensors_systematic_bias_domain = {0, 0},
            float _photosensors_noise_stddev = 0.0f,
            std::string const& _category = "robots");
@@ -414,11 +415,18 @@ protected:
      */
     virtual void initialize_photosensors_bias(std::pair<int16_t, int16_t>& domain);
 
+    /**
+     * @brief Initialize the level of angular bias, based on provided configuration/parameters
+     */
+    virtual void initialize_angular_bias(std::pair<int16_t, int16_t>& domain);
+
+
 public:
     // Photosensors noise and biaises
     std::vector<int16_t> photosensors_biases = {0, 0, 0}; ///< Level of systematic bias to apply to each photosensor
     float photosensors_noise_stddev = 0.0f;     ///< Stddev of the Gaussian noise to apply to photosensors light levels
 
+    int16_t angular_bias = 0;
 };
 
 

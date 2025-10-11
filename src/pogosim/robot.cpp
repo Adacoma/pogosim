@@ -98,6 +98,7 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
        float _density, float _friction, float _restitution,
        float _max_linear_speed, float _max_angular_speed,
        float _linear_noise_stddev, float _angular_noise_stddev,
+       std::pair<int16_t, int16_t> angular_systematic_bias_domain,
        std::pair<int16_t, int16_t> photosensors_systematic_bias_domain,
        float _photosensors_noise_stddev,
        std::string const& _category)
@@ -113,6 +114,7 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
     initialize_time();
     create_robot_body(world_id);
     initialize_photosensors_bias(photosensors_systematic_bias_domain);
+    initialize_angular_bias(angular_systematic_bias_domain);
 }
 
 PogobotObject::PogobotObject(Simulation* simulation, uint16_t _id, float _x, float _y,
@@ -138,6 +140,9 @@ void PogobotObject::parse_configuration(Configuration const& config, Simulation*
     auto photosensors_systematic_bias_domain = config["photosensors_systematic_bias_domain"].get<std::pair<int16_t,int16_t>>({0, 0});
     initialize_photosensors_bias(photosensors_systematic_bias_domain);
     photosensors_noise_stddev  = config["photosensors_noise_stddev"].get(0.0f);
+
+    auto angular_systematic_bias_domain = config["angular_systematic_bias_domain"].get<std::pair<int16_t,int16_t>>({0, 0});
+    initialize_angular_bias(angular_systematic_bias_domain);
 }
 
 
@@ -151,6 +156,16 @@ void PogobotObject::initialize_photosensors_bias(std::pair<int16_t, int16_t>& do
         }
     }
 }
+
+void PogobotObject::initialize_angular_bias(std::pair<int16_t, int16_t>& domain) {
+    if (domain.first == 0 && domain.second == 0) {
+        angular_bias = 0;
+    } else {
+        std::uniform_int_distribution<int16_t> dis(domain.first, domain.second);
+        angular_bias = dis(rnd_gen);
+    }
+}
+
 
 
 void PogobotObject::create_robot_body([[maybe_unused]] b2WorldId world_id) {
@@ -420,9 +435,12 @@ void PogobotObject::set_motor(motor_id motor, int speed) {
     // Update motor speeds
     if (motor == motorL) {
         left_motor_speed = speed * (motor_dir[motorL] == 0 ? -1.f : 1.f);
+        left_motor_speed += angular_bias;
     } else if (motor == motorR) {
         right_motor_speed = speed * (motor_dir[motorR] == 0 ? 1.f : -1.f);
+        right_motor_speed -= angular_bias;
     }
+
     // glogger->debug("set motor: {} {}", left_motor_speed, right_motor_speed);
 
     // Set damping values using those provided during construction.
@@ -655,7 +673,7 @@ PogobjectObject::PogobjectObject(uint16_t _id, float _x, float _y,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
-      0.0f, 0.0f, 0.0f, 0.0f, {0,0}, 0.0f, _category) {
+      0.0f, 0.0f, 0.0f, 0.0f, {0,0}, {0,0}, 0.0f, _category) {
     for (size_t i = 0; i != motorB; i++)
         set_motor(static_cast<motor_id>(i), 0);
 }
@@ -753,7 +771,7 @@ Pogowall::Pogowall(uint16_t _id, float _x, float _y,
       _density, _friction, _restitution,
       _max_linear_speed, _max_angular_speed,
       _linear_noise_stddev, _angular_noise_stddev,
-      {0, 0}, 0.0f, _category) {
+      {0, 0}, {0, 0}, 0.0f, _category) {
     auto bd = geom->compute_bounding_disk();
     PhysicalObject::move(bd.center_x, bd.center_y);
 }
