@@ -212,6 +212,49 @@ compute_wall_distances(ir_direction                           dir,
  */
 void find_neighbors_to_pogowalls(std::vector<std::shared_ptr<Pogowall>>& pogowalls, ir_direction dir, std::vector<std::shared_ptr<PogobotObject>>& robots);
 
+
+
+/************************* Period boundary conditions *************************/
+  
+inline float wrap01(float x, float L) {
+    float k = std::floor(x / L);
+    return x - k * L;
+}
+
+inline float delta_periodic(float d, float L) {
+    d = std::fmod(d, L);
+    if (d >  L * 0.5f) d -= L;
+    if (d <= -L * 0.5f) d += L;
+    return d;
+}
+
+inline b2Vec2 torus_delta(b2Vec2 a, b2Vec2 b, b2Vec2 dom_min, float Lx, float Ly) {
+    float ax = a.x - dom_min.x, ay = a.y - dom_min.y;
+    float bx = b.x - dom_min.x, by = b.y - dom_min.y;
+    return { delta_periodic(bx - ax, Lx), delta_periodic(by - ay, Ly) };
+}
+
+// Periodic-boundary variant (toroidal domain).
+void find_neighbors_periodic(
+    ir_direction dir,
+    std::vector<std::shared_ptr<PogobotObject>>& robots,
+    float max_distance,
+    b2Vec2 domain_min,
+    float domain_w,
+    float domain_h,
+    bool enable_occlusion = true);
+
+
+// Build a spatial hash with ghost insertions across edges for PBC.
+std::unordered_map<GridCell,std::vector<std::size_t>,GridCellHash>
+build_spatial_hash_periodic(span_t<float> xs,
+                            span_t<float> ys,
+                            float cell_size,
+                            b2Vec2 domain_min,
+                            float domain_w,
+                            float domain_h);
+
+
 #endif // DISTANCES_H
 
 // MODELINE "{{{1

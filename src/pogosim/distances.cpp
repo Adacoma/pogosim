@@ -261,6 +261,186 @@ void find_neighbors_to_pogowalls(std::vector<std::shared_ptr<Pogowall>>& pogowal
 }
 
 
+/************************* Period boundary conditions *************************/
+
+std::unordered_map<GridCell,std::vector<std::size_t>,GridCellHash>
+build_spatial_hash_periodic(span_t<float> xs,
+                            span_t<float> ys,
+                            float cell_size,
+                            b2Vec2 domain_min,
+                            float domain_w,
+                            float domain_h) {
+    std::unordered_map<GridCell,std::vector<std::size_t>,GridCellHash> h;
+    h.reserve(xs.size() * 2);
+
+    auto cell = [&](float x, float y){
+        return get_grid_cell(x, y, cell_size);
+    };
+
+    const float x_min = domain_min.x;
+    const float y_min = domain_min.y;
+    const float x_max = domain_min.x + domain_w;
+    const float y_max = domain_min.y + domain_h;
+
+    for (std::size_t i = 0; i < xs.size(); ++i) {
+        float x = xs[i], y = ys[i];
+
+        // Primary insert (real cell)
+        GridCell c0 = cell(x, y);
+        h[c0].push_back(i);
+
+        // If near a vertical edge, also insert into the wrapped neighbor cell.
+        bool near_left  = (x - x_min) < cell_size;
+        bool near_right = (x_max - x) < cell_size;
+        bool near_bot   = (y - y_min) < cell_size;
+        bool near_top   = (y_max - y) < cell_size;
+
+        // Horizontal ghosts
+        if (near_left) {
+            GridCell cw = cell(x + domain_w, y);
+            h[cw].push_back(i);
+        }
+        if (near_right) {
+            GridCell ce = cell(x - domain_w, y);
+            h[ce].push_back(i);
+        }
+
+        // Vertical ghosts
+        if (near_bot) {
+            GridCell cs = cell(x, y + domain_h);
+            h[cs].push_back(i);
+        }
+        if (near_top) {
+            GridCell cn = cell(x, y - domain_h);
+            h[cn].push_back(i);
+        }
+
+        // Corner ghosts (up to 4)
+        if (near_left && near_bot) {
+            h[cell(x + domain_w, y + domain_h)].push_back(i);
+        }
+        if (near_left && near_top) {
+            h[cell(x + domain_w, y - domain_h)].push_back(i);
+        }
+        if (near_right && near_bot) {
+            h[cell(x - domain_w, y + domain_h)].push_back(i);
+        }
+        if (near_right && near_top) {
+            h[cell(x - domain_w, y - domain_h)].push_back(i);
+        }
+    }
+    return h;
+}
+
+std::vector<Candidate>
+collect_candidates_periodic(std::size_t   i,
+                            span_t<float> xs,
+                            span_t<float> ys,
+                            span_t<float> cx,
+                            span_t<float> cy,
+                            span_t<float> body_rad,
+                            span_t<float> comm_rad,
+                            span_t<float> led_dir,
+                            const std::unordered_map<GridCell,
+                                                     std::vector<std::size_t>,
+                                                     GridCellHash>& hash,
+                            float cell_size,
+                            bool  clip_fov,
+                            b2Vec2 domain_min,
+                            float domain_w,
+                            float domain_h) {
+    constexpr float k_led_half_fov = M_PI / 2;
+    const GridCell c0 = get_grid_cell(xs[i], ys[i], cell_size);
+
+    std::vector<Candidate> out;
+    out.reserve(16);
+
+    // Emitter position and robot center of i in Box2D units
+    const b2Vec2 emi_i{xs[i], ys[i]};
+
+    for (auto off : precomputed_neighbor_cells) {
+        auto it = hash.find({c0.x + off.x, c0.y + off.y});
+        if (it == hash.end()) continue;
+
+        for (std::size_t j : it->second) {
+            if (j == i) continue;
+
+            float comm = (comm_rad[i] + body_rad[j]);
+            float comm_sq = comm * comm;
+
+            const b2Vec2 ctr_j{cx[j], cy[j]};
+
+            // Toroidal delta from emitter(i) to center(j)
+            b2Vec2 d = torus_delta(emi_i, ctr_j, domain_min, domain_w, domain_h);
+
+            float bearing = std::atan2(d.y, d.x);
+            if (clip_fov && !angles::in_fov(bearing, led_dir[i], k_led_half_fov))
+                continue;
+
+            float d2 = d.x * d.x + d.y * d.y;
+            if (d2 > comm_sq) continue;
+
+            float dlen = std::sqrt(d2);
+            float hap  = std::asin(std::clamp(body_rad[j] / dlen, 0.0f, 1.0f));
+            out.push_back({j, d2, bearing, hap});
+        }
+    }
+    std::ranges::sort(out, [](auto const& a, auto const& b){ return a.dist_sq < b.dist_sq; });
+    return out;
+}
+
+void find_neighbors_periodic(
+    ir_direction dir,
+    std::vector<std::shared_ptr<PogobotObject>>& robots,
+    float max_distance,
+    b2Vec2 domain_min,
+    float domain_w,
+    float domain_h,
+    bool enable_occlusion) {
+
+    const std::size_t N = robots.size();
+    std::vector<float> led_dir(N);
+    std::vector<float> xs(N), ys(N), cx(N), cy(N),
+                       body_rad(N), comm_rad(N);
+
+    for (std::size_t i = 0; i < N; ++i) {
+        b2Vec2 em = robots[i]->get_IR_emitter_position(dir);
+        b2Vec2 ct = robots[i]->get_position();
+        xs[i]=em.x; ys[i]=em.y;
+        cx[i]=ct.x; cy[i]=ct.y;
+        body_rad[i] = robots[i]->radius / VISUALIZATION_SCALE;
+        comm_rad[i] = robots[i]->communication_radius / VISUALIZATION_SCALE;
+        led_dir[i]  = robots[i]->get_IR_emitter_angle(dir);
+    }
+
+    auto hash = build_spatial_hash_periodic(xs, ys, max_distance,
+                                            domain_min, domain_w, domain_h);
+
+    for (std::size_t i = 0; i < N; ++i) {
+        robots[i]->neighbors[dir].clear();
+        if (comm_rad[i] == 0.0f) continue;
+
+        auto cand = collect_candidates_periodic(i, xs, ys, cx, cy,
+                                                body_rad, comm_rad, led_dir,
+                                                hash, max_distance,
+                                                enable_occlusion,
+                                                domain_min, domain_w, domain_h);
+
+        std::vector<std::size_t> final_idxs;
+        if (enable_occlusion) {
+            final_idxs = filter_visible(cand);
+        } else {
+            final_idxs.reserve(cand.size());
+            for (auto const& c : cand) final_idxs.push_back(c.idx);
+        }
+
+        for (std::size_t j : final_idxs)
+            robots[i]->neighbors[dir].push_back(robots[j].get());
+    }
+}
+
+
+
 // MODELINE "{{{1
 // vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
 // vim:foldmethod=marker

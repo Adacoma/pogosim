@@ -556,12 +556,6 @@ void Simulation::create_robots() {
 }
 
 
-static inline float wrap01(float x, float L) {
-    // numerically robust wrap (handles negatives and large |x|)
-    float k = std::floor((x) / L);
-    return x - k * L;
-}
-
 inline b2Vec2 wrap_point_periodic(b2Vec2 p, b2Vec2 minp, float Lx, float Ly) {
     float x = p.x - minp.x;
     float y = p.y - minp.y;
@@ -738,7 +732,11 @@ void Simulation::compute_neighbors() {
     for (int i = 0; i < IR_RX_COUNT; i++ ) {
         // /!\ Cells size = (max_comm_radius + max_robot_radius). It's necessary to also take into account max_robot_radius because
         //   the communication is performed from IR emitter to neighbor center, whereas the cells work on robot center, not IR emitter/receiver position.
-        find_neighbors((ir_direction)i, robots, (max_comm_radius + max_robot_radius) / VISUALIZATION_SCALE, !comm_ignore_occlusions);
+        if (boundary_condition == boundary_condition_t::solid) {
+            find_neighbors((ir_direction)i, robots, (max_comm_radius + max_robot_radius) / VISUALIZATION_SCALE, !comm_ignore_occlusions);
+        } else if (boundary_condition == boundary_condition_t::periodic) {
+            find_neighbors_periodic((ir_direction)i, robots, (max_comm_radius + max_robot_radius) / VISUALIZATION_SCALE, domain_min, domain_w, domain_h, !comm_ignore_occlusions);
+        }
         find_neighbors_to_pogowalls(wall_objects, (ir_direction)i, robots);
     }
 
