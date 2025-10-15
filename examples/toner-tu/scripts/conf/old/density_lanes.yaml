@@ -1,0 +1,20 @@
+grid: {nx: 256, ny: 256, Lx: 16.0, Ly: 12.0}
+time: {dt: 0.02, n_steps: 10000, save_every: 20, seed: 9}
+model:
+  alpha: 0.28
+  beta: 0.55
+  lambda1: 1.3
+  lambda2: 0.0
+  lambda3: 0.0
+  cs2: 0.5       # stiffer; prevents full collapse, makes lanes crisp
+  Dv: 0.06
+  Db: 0.0
+  Drho: 0.015
+  noise_sigma: 0.01
+  cfl: 0.3
+  cfl_diff: 0.5
+  dt_min: 1e-4
+  v_cap_factor: 1.8
+initial: {rho_mean: 1.0, rho_perturb: 0.015, v0: 0.05, pattern: stripe}
+render: {field: density, dpi: 120, cmap: viridis, draw_axes: false}
+

@@ -1,0 +1,20 @@
+grid: {nx: 256, ny: 256, Lx: 16.0, Ly: 12.0}
+time: {dt: 0.02, n_steps: 10000, save_every: 20, seed: 3}
+model:
+  alpha: 0.22     # near threshold
+  beta: 0.5
+  lambda1: 0.9
+  lambda2: 0.0
+  lambda3: 0.0
+  cs2: 0.15       # softer pressure → easier density segregation
+  Dv: 0.05
+  Db: 0.0
+  Drho: 0.01
+  noise_sigma: 0.015
+  cfl: 0.3
+  cfl_diff: 0.5
+  dt_min: 1e-4
+  v_cap_factor: 2.0
+initial: {rho_mean: 1.0, rho_perturb: 0.02, v0: 0.04, pattern: stripe}
+render: {field: density, dpi: 120, cmap: viridis, draw_axes: false}
+

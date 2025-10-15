@@ -1,0 +1,42 @@
+grid:
+  nx: 128
+  ny: 128
+  Lx: 20.0
+  Ly: 20.0
+time:
+  dt: 0.03
+  n_steps: 6000
+  save_every: 20
+  seed: 6
+model:
+  alpha: 0.6
+  beta: 0.6
+  lambda1: 0.35
+  lambda2: -0.6
+  lambda3: 0.10
+  cs2: 1.2
+  Dv: 0.16
+  Db: 0.08
+  Drho: 0.03
+  noise_sigma: 0.001
+stability:
+  cfl: 0.25         # advection CFL
+  cfl_diff: 0.10    # diffusion CFL
+  max_substeps: 20  # split dt into up to this many safe substeps
+  v_clip: 5.0       # hard safety cap on |v|
+  rho_clip: [0.1, 10.0]   # clamp rho to [rho_min, rho_max]
+render:
+  cmaps:
+    rho: viridis
+    speed: plasma
+    vorticity: coolwarm
+  vmin: auto
+  vmax: auto
+  labels:
+    rho: "Density ρ"
+    speed: "Speed |v|"
+    vorticity: "Vorticity ω"
+metrics:
+  vortex_kappa: 1.0
+  spectrum_field: rho # rho | speed
+

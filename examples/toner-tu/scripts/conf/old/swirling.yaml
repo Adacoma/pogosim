@@ -1,0 +1,20 @@
+grid: {nx: 256, ny: 256, Lx: 14.0, Ly: 14.0}
+time: {dt: 0.015, n_steps: 10000, save_every: 20, seed: 7}
+model:
+  alpha: 0.30
+  beta: 0.5
+  lambda1: 1.2
+  lambda2: 0.2
+  lambda3: 0.1       # |v|^2-pressure-like term promotes shear/defects
+  cs2: 0.25
+  Dv: 0.04
+  Db: 0.0
+  Drho: 0.01
+  noise_sigma: 0.02
+  cfl: 0.25
+  cfl_diff: 0.5
+  dt_min: 1e-4
+  v_cap_factor: 1.8
+initial: {rho_mean: 1.0, rho_perturb: 0.01, v0: 0.05, pattern: random}
+render: {field: speed, dpi: 120, cmap: viridis, draw_axes: false}
+

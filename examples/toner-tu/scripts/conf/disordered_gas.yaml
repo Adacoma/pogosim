@@ -1,0 +1,18 @@
+grid: {nx: 256, ny: 256, Lx: 20.0, Ly: 20.0}
+time: {dt: 0.02, n_steps: 8000, save_every: 25, seed: 1}
+ref_grid: {nx: 256, ny: 256}
+model:
+  alpha: 0.40        # weaker propulsion
+  beta: 0.60
+  lambda1: 0.20
+  lambda2: -0.30
+  lambda3: 0.05
+  cs2: 1.6
+  Dv: 0.22
+  Db: 0.08
+  Drho: 0.05
+  noise_sigma: 0.004 # strong noise → decorrelate headings
+render: {cmaps: {rho: viridis, speed: viridis, vorticity: coolwarm}}
+metrics: {spectrum_field: speed, vortex_kappa: 1.0}
+stability: {cfl: 0.25, cfl_diff: 0.10, max_substeps: 20, v_clip: 5.0, rho_clip: [0.2, 5.0]}
+

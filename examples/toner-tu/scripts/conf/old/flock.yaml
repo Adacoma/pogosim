@@ -1,0 +1,20 @@
+grid: {nx: 128, ny: 128, Lx: 20.0, Ly: 20.0}
+time: {dt: 0.01, n_steps: 10000, save_every: 5, seed: 3}
+model:
+  alpha: 0.50
+  beta: 0.60          # v* ≈ 0.913
+  lambda1: 0.45
+  lambda2: -0.30
+  lambda3: 0.05
+  cs2: 0.80           # ↓ softer pressure → allows mild ρ ripples
+  Dv: 0.10            # ↓ less viscous than before
+  Db: 0.03
+  Drho: 0.020
+  noise_sigma: 0.003  # tiny noise helps avoid crystal
+  cfl: 0.25
+  cfl_diff: 0.5
+  dt_min: 1e-4
+  v_cap_factor: 1.6   # a touch looser
+initial: {rho_mean: 1.0, rho_perturb: 0.005, v0: 0.10, pattern: random}
+render: {field: speed, dpi: 120, cmap: viridis, draw_axes: false}
+

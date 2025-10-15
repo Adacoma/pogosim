@@ -65,6 +65,7 @@ results/
 *.old
 opt_out/
 tmp_opt/
+*.bak
 
 # Output data files
 *.feather
@@ -87,6 +88,7 @@ examples/push_sum/push_sum
 examples/active_brownian_particles/active_brownian_particles
 examples/avoid_walls/avoid_walls
 examples/vicsek/vicsek
+examples/toner-tu/toner-tu
 
 # Apptainer
 *.sif

@@ -1,0 +1,19 @@
+grid: {nx: 192, ny: 192, Lx: 12.0, Ly: 12.0}
+time: {dt: 0.02, n_steps: 4000, save_every: 20, seed: 2}
+model:
+  alpha: 0.05   # weak drive
+  beta: 0.6
+  lambda1: 0.6
+  lambda2: 0.0
+  lambda3: 0.0
+  cs2: 0.4
+  Dv: 0.08
+  Db: 0.0
+  Drho: 0.02
+  noise_sigma: 0.08
+  cfl: 0.3
+  cfl_diff: 0.5
+  dt_min: 1e-4
+  v_cap_factor: 2.0
+initial: {rho_mean: 1.0, rho_perturb: 0.01, v0: 0.02, pattern: random}
+render: {field: speed, dpi: 120, cmap: viridis, draw_axes: false}
