@@ -60,10 +60,22 @@ double cont_max_dt_s          = 0.05;
 // ===== TT pressure (speed vs density) =====
 double tt_alpha = 1.5;
 double tt_beta  = 1.5;
-double press_kappa = 0.8;
-double rho_smooth_tau_s = 0.5;
 double v_min = 0.25;
 double v_max = 1.00;
+
+// ==== Pressure modes ====
+typedef enum { PRESS_MONOTONIC = 0, PRESS_TARGET = 1 } press_mode_t;
+press_mode_t press_mode_enum = PRESS_MONOTONIC;  // "monotonic" (old) or "target"
+
+// Monotonic pressure
+double press_kappa = 0.8;
+double rho_smooth_tau_s = 0.5;
+
+// Target-density pressure
+double press_target_d_star   = 6.0;  // desired neighbor count (not normalized)
+double press_target_width    = 3.0;  // half-width (neighbors) for the slowdown window
+double press_target_kappa    = 0.8;  // strength of slowdown at d = d*
+double press_target_exponent = 2.0;  // bump sharpness: 1=triangle, 2=parabolic, etc.
 
 // ===== Novelty advection =====
 uint32_t novelty_window_ms = 1500;
@@ -184,6 +196,15 @@ static inline void motor_set_signed(motor_id id, int spd_signed, uint8_t fwd_dir
     uint8_t dir = (spd_signed >= 0) ? fwd_dir_mem : ((fwd_dir_mem==0)?1:0);
     pogobot_motor_dir_set(id, dir);
     pogobot_motor_set(id, mag);
+}
+
+static inline double target_bump(double d, double d_star, double width, double p){
+    // piecewise polynomial "tent" centered at d* with half-width 'width'
+    double x = fabs(d - d_star);
+    if (x >= width) return 0.0;
+    double t = 1.0 - (x / width);        // in (0,1]
+    // exponent p controls sharpness; p=1 triangle, p=2 parabolic
+    return (p == 1.0) ? t : pow(t, p);
 }
 
 // ===== Neighbor mgmt =====
@@ -373,7 +394,23 @@ static void tt_heading_and_speed_update(uint32_t now_ms, uint32_t* last_update_m
     // Speed ODE
     double v = mydata->v_cmd;
     double dv = tt_alpha * v - tt_beta * v * v * v;
-    dv += -press_kappa * mydata->rho_norm;
+
+    // --- pressure term selection ---
+    double press_term = 0.0;
+    if (press_mode_enum == PRESS_MONOTONIC) {
+        // slowdown grows with normalized density
+        press_term = press_kappa * mydata->rho_norm;
+    } else {
+        // slowdown strongest when d ≈ d* (in raw neighbor counts)
+        //double d      = (double)mydata->nb_neighbors;           // current neighbor count
+        double d      = (double)mydata->rho_ema;           // current neighbor count
+        double bump   = target_bump(d, press_target_d_star, press_target_width, press_target_exponent);
+        press_term    = press_target_kappa * bump;
+        //press_term    = press_target_kappa * (1.0 - bump);
+        //printf("DEBUG %f\n", press_term);
+    }
+    dv += -press_term;
+
     dv +=  novelty_speed_gain * mydata->novelty_ema;
     v += dv * dt_s;
     mydata->v_cmd = clamp(v, v_min, v_max);
@@ -566,10 +603,27 @@ static void global_setup(void){
     // TT
     init_from_configuration(tt_alpha);
     init_from_configuration(tt_beta);
-    init_from_configuration(press_kappa);
-    init_from_configuration(rho_smooth_tau_s);
     init_from_configuration(v_min);
     init_from_configuration(v_max);
+
+    // Pressure
+    char press_mode[64] = "monotonic";
+    init_array_from_configuration(press_mode);
+    if (!strcasecmp(press_mode, "monotonic"))      press_mode_enum = PRESS_MONOTONIC;
+    else if (!strcasecmp(press_mode, "target"))    press_mode_enum = PRESS_TARGET;
+    else { printf("ERROR: press_mode must be 'monotonic' or 'target'\n"); exit(1); }
+
+    // original monotonic params
+    init_from_configuration(press_kappa);
+    init_from_configuration(rho_smooth_tau_s);
+
+    // target-mode params
+    init_from_configuration(press_target_d_star);
+    init_from_configuration(press_target_width);
+    init_from_configuration(press_target_kappa);
+    init_from_configuration(press_target_exponent);
+    if (press_target_width <= 0.0) press_target_width = 1.0; // safety
+    if (press_target_exponent < 1.0) press_target_exponent = 1.0;
 
     // Novelty
     init_from_configuration(novelty_window_ms);

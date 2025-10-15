@@ -22,7 +22,7 @@ arena_file:
     #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv", "arenas/triangle.csv"]
     #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv"]
     batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
-arena_surface: 1.5e6    # In mm²
+arena_surface: 1.0e6    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
@@ -220,29 +220,42 @@ parameters:
     enable_cluster_uturn: true
     broadcast_angle_when_avoiding_walls: true
     cluster_u_turn_duration_ms: 1500
-    phi_rad_min: 1.0 # 3.14159        # e.g. U-turn ≈ π
-    phi_rad_max: 1.0 # 3.14159        # or widen, e.g. [1.3, 1.9] for "fan" turns
-    cluster_uturn_align_thresh_rad: 1.0 # 6.28 # 0.35
+    phi_rad_min: 3.14159        # e.g. U-turn ≈ π
+    phi_rad_max: 3.14159        # or widen, e.g. [1.3, 1.9] for "fan" turns
+    cluster_uturn_align_thresh_rad: 2.0 # 6.28 # 0.35
 
-    # Toner–Tu speed (pressure)
+    # Toner–Tu speed
     tt_alpha: 1.5
     tt_beta: 1.5
-    press_kappa: 4.8
-    rho_smooth_tau_s: 0.2
-    v_min: 0.25
-    v_max: 1.0
+
+    # Toner-Tu pressure
+    #press_mode: monotonic
+    #press_kappa: 0.8
+    #rho_smooth_tau_s: 0.6
+    #v_min: 0.25
+    #v_max: 1.0
+    press_mode: target
+    press_target_d_star: 4
+    press_target_width: 2.0
+    press_target_kappa: 2.0
+    press_target_exponent: 1.0  # smoother around the top than triangle
+    v_min: 0.02
+    v_max: 2.0
+
 
     # Novelty advection
     novelty_window_ms: 1500
-    novelty_tau_s: 1.0
-    novelty_dir_tau_s: 2.0
-    novelty_speed_gain: 0.0 # 0.25
-    lambda_adv_rad_per_s: 0.0 # 1.2
+    novelty_tau_s: 0.0 #1.0
+    novelty_dir_tau_s: 0.0 # 2.0
+#    novelty_speed_gain: 0.0 # 0.25
+#    lambda_adv_rad_per_s: 0.0 # 1.2
+    novelty_speed_gain: 0.25
+    lambda_adv_rad_per_s: 0.5
 
     # Continuous heading core
     vicsek_time_continuous: true
-    vicsek_beta_rad_per_s: 10.0
-    cont_noise_sigma_rad: 2.0
+    vicsek_beta_rad_per_s: 2.5
+    cont_noise_sigma_rad: 0.5
     cont_max_dt_s: 0.5
 
     # Wall avoidance & heading (same as your setup)
