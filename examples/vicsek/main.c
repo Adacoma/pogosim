@@ -60,7 +60,11 @@ uint32_t wall_avoidance_turn_duration_ms = 300;
 uint32_t wall_avoidance_forward_commit_ms = 300;
 float wall_avoidance_forward_speed_ratio = 0.5f;
 wall_chirality_t wall_avoidance_chiralty_policy = WALL_MIN_TURN;
-float phi_rad = 0.2f;
+
+//float phi_rad = 0.2f;
+float phi_rad_min = 0.2f;        // uniform draw lower bound (rad)
+float phi_rad_max = 0.2f;        // uniform draw upper bound (rad)
+
 
 // What main LEDs show
 typedef enum {
@@ -141,6 +145,11 @@ static inline double wrap_pi(double a){ while(a> M_PI)a-=2.0*M_PI; while(a<-M_PI
 static inline int16_t rad_to_mrad(double a){ a=wrap_pi(a); long v=lround(a*1000.0); if(v>32767)v=32767; if(v<-32768)v=-32768; return (int16_t)v; }
 static inline double  mrad_to_rad(int16_t m){ return ((double)m)/1000.0; }
 static inline double noise_uniform(double eta){ double u=(double)rand()/(double)RAND_MAX; return (u-0.5)*eta; }
+
+static inline double rand_uniform(double a, double b){
+    double u = (double)rand() / (double)RAND_MAX;
+    return a + (b - a) * u;
+}
 
 static inline void motor_set_signed(motor_id id, int spd_signed, uint8_t fwd_dir_mem){
     int mag = spd_signed >= 0 ? spd_signed : -spd_signed;
@@ -441,8 +450,10 @@ void user_step(void){
     // === CLUSTER U-TURN: rising edge => originate a cluster instruction
     if (!mydata->prev_doing_wall_avoidance && mydata->doing_wall_avoidance) {
         // Set cluster target = current heading + π (U-turn)
-        //double target = wrap_pi(mydata->photo_heading_rad + phi_rad * M_PI);
-        double target = wrap_pi(mydata->photo_heading_rad + phi_rad);
+        //double target = wrap_pi(mydata->photo_heading_rad + phi_rad);
+        // Draw a random phi uniformly in [phi_rad_min, phi_rad_max]
+        double phi_sample = rand_uniform(phi_rad_min, phi_rad_max);
+        double target = wrap_pi(mydata->photo_heading_rad + phi_sample);
         mydata->cluster_target_rad      = target;
         mydata->cluster_wall_t0_ms      = now;
         mydata->cluster_active_until_ms = now + cluster_u_turn_duration_ms;
@@ -555,7 +566,17 @@ static void global_setup(void){
         printf("ERROR: unknown main_led_display: '%s' (use 'cw', 'ccw', 'random', or 'min_turn').\n", wall_avoidance_policy);
         exit(1);
     }
-    init_from_configuration(phi_rad);
+
+    // phi_rad
+    //init_from_configuration(phi_rad);
+    init_from_configuration(phi_rad_min);
+    init_from_configuration(phi_rad_max);
+    // Safety: if bounds are flipped, swap
+    if (phi_rad_min > phi_rad_max) {
+        float tmp = phi_rad_min;
+        phi_rad_min = phi_rad_max;
+        phi_rad_max = tmp;
+    }
 }
 #endif
 

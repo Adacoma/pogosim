@@ -16,6 +16,7 @@ window_height: 600      # In pixels
 boundary_condition: solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
 arena_file: 
     default_option: arenas/disk.csv
+    #default_option: arenas/square.csv
     #default_option: arenas/annulus.csv
     #default_option: arenas/star.csv
     #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv", "arenas/triangle.csv"]
@@ -116,7 +117,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 50             # Number of objects (Pogobots) in this category
+        nb: 60             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -129,11 +130,11 @@ objects:
 
         max_linear_speed: 100.0
         max_angular_speed: 2.0
-        linear_noise_stddev: 0.5
-        angular_noise_stddev:
-            default_option: 1.0
-            batch_options: [0.0, 2.0]
-        angular_systematic_bias_domain: [-70, 70]
+#        linear_noise_stddev: 0.5
+#        angular_noise_stddev:
+#            default_option: 1.0
+#            batch_options: [0.0, 2.0]
+#        angular_systematic_bias_domain: [-70, 70]
 
         #photosensors_systematic_bias_domain: [-100, 100] # Systematic bias to apply to each 3 photosensor of each robot, to simulate real-robot biases.
                                                            #  Domain pair between -32767 and 32767.
@@ -181,6 +182,44 @@ objects:
         plane_half_span: 2000  # Half span of the planar gradient from ``value`` to ``edge_value``, in mm
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
+
+## Default
+#parameters:
+#    max_age: 600
+#    include_self_in_avg: false
+#    broadcast_angle_when_avoiding_walls: false
+#    alpha_deg: 40.0
+#    robot_radius: 0.0265
+#    main_led_display:  angle # state   # state, or angle
+#
+#    wall_avoidance_memory_ms: 300
+#    wall_avoidance_turn_duration_ms: 300
+#    wall_avoidance_forward_commit_ms: 600 # 300
+#    wall_avoidance_forward_speed_ratio: 0.5 # 0.1
+#    cluster_u_turn_duration_ms: 600
+#    phi_rad:
+#        default_option: 3.2
+#        batch_options: [0.2, 3.14159]
+#    wall_avoidance_policy: min_turn     # cw, ccw, random, min_turn
+#    heading_chiralty: cw                # cw or ccw
+#
+#    vicsek_time_continuous: true
+#    # Continuous mode
+#    vicsek_beta_rad_per_s:  # beta = -log(1 - align_gain) / dt_seconds
+#        default_option: 10.0
+#        batch_options: [-10.0, -1.0, 0.0, 1.0, 10.0]
+#    cont_noise_sigma_rad:
+#        default_option: 0.250
+#        batch_options: [0.0, 0.250, 10.0]
+#    cont_max_dt_s: 0.5
+#
+#    # Discrete mode
+#    vicsek_period_ms: 17
+#    noise_eta_rad: 0.5
+#    align_gain: 1.0             # align_gain = 1 - exp(-beta * dt_seconds)
+#    vicsek_turn_gain: 0.8
+
+
 parameters:
     max_age: 600
     include_self_in_avg: false
@@ -194,21 +233,16 @@ parameters:
     wall_avoidance_forward_commit_ms: 600 # 300
     wall_avoidance_forward_speed_ratio: 0.5 # 0.1
     cluster_u_turn_duration_ms: 600
-    phi_rad:
-        default_option: 3.2
-        batch_options: [0.2, 3.14159]
+    phi_rad_min: 3.14
+    phi_rad_max: 3.14
     wall_avoidance_policy: min_turn     # cw, ccw, random, min_turn
     heading_chiralty: cw                # cw or ccw
 
     vicsek_time_continuous: true
     # Continuous mode
-    vicsek_beta_rad_per_s:  # beta = -log(1 - align_gain) / dt_seconds
-        default_option: 10.0
-        batch_options: [-10.0, -1.0, 0.0, 1.0, 10.0]
-    cont_noise_sigma_rad:
-        default_option: 0.250
-        batch_options: [0.0, 0.250, 10.0]
-    cont_max_dt_s: 0.5
+    vicsek_beta_rad_per_s: -10.00 # beta = -log(1 - align_gain) / dt_seconds
+    cont_noise_sigma_rad: 0.05 # 0.55
+    cont_max_dt_s: 0.01
 
     # Discrete mode
     vicsek_period_ms: 17
