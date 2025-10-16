@@ -133,7 +133,7 @@ void user_init(void) {
     mydata->motor_dir_right = dir_mem[0];
 
     // Initialize the run-and-tumble behavior.
-    mydata->phase = PHASE_TUMBLE;                      // Start with the tumble phase.
+    mydata->phase = rand() % 2 == 0 ? PHASE_TUMBLE : PHASE_RUN;                      // Start with the tumble phase.
     mydata->phase_start_time = current_time_milliseconds();  // Record the start time.
     mydata->phase_duration = get_run_duration();       // Set a random duration for running.
     mydata->tumble_direction = rand() % 2;             // Choose a random tumble direction.
