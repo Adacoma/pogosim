@@ -963,6 +963,157 @@ def violins_three_sets_one_figure(inst: Optional[pd.DataFrame],
     plt.close(fig)
 
 
+def _slice_last_time(tab: pd.DataFrame, time_col: str) -> pd.DataFrame:
+    """Keep only rows at the last time for each run (if run_id/seed exists) per arena/prefix."""
+    if tab is None or tab.empty:
+        return tab
+    cols = set(tab.columns)
+    if 'run_id' in cols:
+        gcols = ['arena_file', 'prefix', 'run_id']
+    elif 'seed' in cols:
+        gcols = ['arena_file', 'prefix', 'seed']
+    else:
+        gcols = ['arena_file', 'prefix']
+    idx = tab.groupby(gcols, dropna=False)[time_col].transform('max') == tab[time_col]
+    return tab.loc[idx].copy()
+
+
+def _long_from_prefix_endonly(tab_end: pd.DataFrame, prefix: str, k_first: int) -> pd.DataFrame:
+    """
+    Build long df for violins from last-time rows only, for given prefix.
+    Uses columns: f'{prefix}_lambda_nz_1..k' and f'{prefix}_lambda_max' if present.
+    """
+    if tab_end is None or tab_end.empty:
+        return pd.DataFrame()
+
+    want = [f'{prefix}_lambda_nz_{i+1}' for i in range(k_first)] + [f'{prefix}_lambda_max']
+    have = [c for c in want if c in tab_end.columns]
+    if not have:
+        return pd.DataFrame()
+
+    base_cols = ['arena_file']
+    melt = tab_end[base_cols + have].melt(id_vars=base_cols, value_vars=have,
+                                          var_name='eigen', value_name='value')
+    melt['prefix'] = prefix
+    # strip prefix_ from eigen so we can compare across prefixes
+    melt['eigen_clean'] = melt['eigen'].str.replace(fr'^{prefix}_', '', regex=True)
+    # keep finite positive for log
+    melt = melt[np.isfinite(melt['value']) & (melt['value'] > 0)]
+    return melt
+
+
+def violins_spectrum_by_arena_one_panel(tab: pd.DataFrame, time_col: str, tag: str,
+                                        k_first: int, out_dir: str,
+                                        global_ylim: tuple[float, float] | None = None):
+    """
+    Create violin plots showing each eigenvalue separately at the last time step.
+    One figure with two subplots (swarm and lcc), each showing separate violins 
+    for lambda_nz_1, lambda_nz_2, ..., lambda_max, with arena as hue.
+    
+    Parameters
+    ----------
+    tab : pd.DataFrame
+        Table with eigenvalue time series data
+    time_col : str
+        Name of the time column ('time' or 'time_center')
+    tag : str
+        Label for the output file (e.g., 'instantaneous', 'timeavg_tau_c')
+    k_first : int
+        Number of non-zero eigenvalues computed
+    out_dir : str
+        Output directory for the PDF
+    global_ylim : tuple[float, float] | None
+        Fixed y-limits to match violins_all_sets_combined.pdf
+        If None, will be computed from the data
+    """
+    if tab is None or tab.empty:
+        return
+    _safe_mkdir(out_dir)
+    
+    # Filter to ONLY the last time step
+    last_time = tab[time_col].max()
+    tab_end = tab[tab[time_col] == last_time].copy()
+    
+    if tab_end.empty:
+        print(f"[{tag}] No data at last time step")
+        return
+    
+    # Prepare long-form data for both swarm and lcc
+    long_swarm = _long_from_prefix_endonly(tab_end, 'swarm', k_first)
+    long_lcc = _long_from_prefix_endonly(tab_end, 'lcc', k_first)
+    
+    if long_swarm.empty and long_lcc.empty:
+        print(f"[{tag}] No valid eigenvalues at last time step")
+        return
+    
+    # If global_ylim not provided, compute from data
+    if global_ylim is None:
+        long_all = pd.concat([long_swarm, long_lcc], ignore_index=True)
+        global_ylim = _global_log_ylim_violins(long_all)
+    
+    # Create figure with two subplots (swarm and lcc)
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6), sharey=True, constrained_layout=True)
+    
+    arena_order = sorted(tab_end['arena_file'].dropna().unique()) if 'arena_file' in tab_end.columns else None
+    
+    # Define eigenvalue order for x-axis
+    eig_order = [f'lambda_nz_{i+1}' for i in range(k_first)] + ['lambda_max']
+    
+    for ax, (prefix, long_data) in zip(axes, [('swarm', long_swarm), ('lcc', long_lcc)]):
+        if long_data.empty:
+            ax.set_visible(False)
+            continue
+        
+        # Plot violins: x-axis = eigenvalue type, hue = arena
+        sns.violinplot(
+            data=long_data,
+            x='eigen_clean',
+            y='value',
+            hue='arena_file',
+            inner='box',
+            cut=0,
+            ax=ax,
+            order=eig_order,
+            hue_order=arena_order,
+            linewidth=1.0,
+            density_norm='width'
+        )
+        
+        # Set log scale and fixed y-limits
+        ax.set_yscale('log')
+        ax.set_ylim(global_ylim)
+        
+        # Labels and styling
+        ax.set_xlabel('Eigenvalue', fontsize=13)
+        ax.set_ylabel('Value' if prefix == 'swarm' else '', fontsize=13)
+        ax.set_title(f'{prefix.upper()}', fontsize=15)
+        ax.grid(True, axis='y', alpha=0.25, which='major')
+        
+        # Log scale ticks
+        ax.yaxis.set_major_locator(mticker.LogLocator(base=10, numticks=12))
+        ax.yaxis.set_minor_locator(mticker.LogLocator(base=10, subs=np.arange(2, 10)*0.1, numticks=90))
+        ax.yaxis.set_minor_formatter(mticker.NullFormatter())
+        
+        # Format x-axis labels with LaTeX
+        xticklabels = [_eig_to_latex_label(lbl) for lbl in eig_order]
+        ax.set_xticklabels(xticklabels, rotation=20, ha='right')
+        
+        # Legend - only on first subplot
+        if prefix == 'swarm':
+            ax.legend(title='Arena', loc='upper right', fontsize=10, title_fontsize=11, 
+                     framealpha=0.9, ncol=1)
+        else:
+            ax.legend_.remove()
+    
+    # Overall title
+    fig.suptitle(f'{tag}: Spectrum at final time (t={last_time:.2f})', fontsize=17)
+    
+    # Save
+    out_path = os.path.join(out_dir, f'violin_{tag}_spectrum_by_eigenvalue.pdf')
+    fig.savefig(out_path, bbox_inches='tight')
+    plt.close(fig)
+    print(f"[{tag}] Saved spectrum violin to: {out_path}")
+
 # ---------------------------------- I/O ------------------------------------ #
 
 def load_df_and_config(input_file: str):
@@ -1103,9 +1254,47 @@ def main(argv=None):
     # 2) per-arena multipage PDF that combines ALL sets (Instantaneous, tau_c, 10dt)
     write_lines_per_arena_all_sets(inst, tavg_tau, tavg_10dt, args.k_first, plots_dir)
 
-    # 3) Combined violins (already added previously)
+    # 3) Combined violins - compute global ylim FIRST
+    # Prepare long-form data from all sets to get global ylim
+    all_long_dfs = []
+    for tab, tcol in [(inst, 'time'), (tavg_tau, 'time_center'), (tavg_10dt, 'time_center')]:
+        if tab is not None and not tab.empty:
+            long_swarm = _per_run_time_means_with_prefix(tab, tcol, 'swarm', args.k_first)
+            long_lcc = _per_run_time_means_with_prefix(tab, tcol, 'lcc', args.k_first)
+            combined = pd.concat([long_swarm, long_lcc], ignore_index=True)
+            combined = combined[np.isfinite(combined['value']) & (combined['value'] > 0)]
+            if not combined.empty:
+                all_long_dfs.append(combined)
+    
+    # Compute global ylim from all data
+    #global_violin_ylim = _global_log_ylim_violins(*all_long_dfs) if all_long_dfs else (1e-12, 1.0)
+    global_violin_ylim = (1e-3, 10.0)
+    
+    # Create combined violin figure with computed ylim
     violins_three_sets_one_figure(inst, tavg_tau, tavg_10dt, args.k_first, plots_dir,
                                   filename='violins_all_sets_combined.pdf')
+
+    # 3b) One-panel "spectrum vs arena" violins (per set) - use SAME ylim
+    if not inst.empty:
+        violins_spectrum_by_arena_one_panel(
+            inst, time_col='time', tag='instantaneous',
+            k_first=args.k_first, out_dir=plots_dir,
+            global_ylim=global_violin_ylim
+        )
+    if tavg_tau is not None and not tavg_tau.empty:
+        violins_spectrum_by_arena_one_panel(
+            tavg_tau, time_col='time_center', tag='timeavg_tau_c',
+            k_first=args.k_first, out_dir=plots_dir,
+            global_ylim=global_violin_ylim
+        )
+    if tavg_10dt is not None and not tavg_10dt.empty:
+        vtag = 'fixed' if args.avg_window_s.lower() != 'auto' else 'timeavg_10dt'
+        violins_spectrum_by_arena_one_panel(
+            tavg_10dt, time_col='time_center', tag=vtag,
+            k_first=args.k_first, out_dir=plots_dir,
+            global_ylim=global_violin_ylim
+        )
+
 
     # 4) Per-combination outputs if configured
     if slice_cols:
