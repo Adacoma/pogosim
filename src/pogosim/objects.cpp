@@ -411,7 +411,7 @@ LightLevelMap::~LightLevelMap() {
 float LightLevelMap::get_light_level_at(float x, float y) const {
     // 1) Early‐out if outside the overall map
     if (x < 0.0f || y < 0.0f)
-        return 0.0f;
+        return get_light_level(0, 0);
 
     // 2) Compute which bin this falls into
     size_t bin_x = static_cast<size_t>(std::floor(x / bin_width_));
@@ -419,7 +419,7 @@ float LightLevelMap::get_light_level_at(float x, float y) const {
 
     // 3) Check bounds
     if (bin_x >= num_bins_x_ || bin_y >= num_bins_y_)
-        return 0.0f;
+        return get_light_level(num_bins_x_-1, num_bins_y_-1);
 
     // 4) Delegate to your existing getter
     return get_light_level(bin_x, bin_y);
