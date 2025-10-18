@@ -801,10 +801,28 @@ def _per_run_time_means_with_prefix(tab: pd.DataFrame, time_col: str, prefix: st
     d = tab[keep].dropna(subset=[time_col]).copy()
     if d.empty:
         return pd.DataFrame(columns=['arena_file','run','eigen','value','prefix'])
-    grp = d.groupby(['arena_file','run'], sort=False)[cols].mean().reset_index()
-    long = grp.melt(id_vars=['arena_file','run'], var_name='eigen', value_name='value')
+
+    # group by what exists (may be [], ['arena_file'], ['run'], or both)
+    gcols = [c for c in ['arena_file','run'] if c in d.columns]
+    if gcols:
+        grp = d.groupby(gcols, sort=False)[cols].mean().reset_index()
+    else:
+        # no arena/run → single overall row
+        grp = pd.DataFrame({c: [float(d[c].mean())] for c in cols})
+        # inject synthetic ids so melt/plots keep working
+        grp['arena_file'] = 'ALL'
+        grp['run'] = 0
+
+    # ensure both id columns exist
+    if 'arena_file' not in grp.columns:
+        grp['arena_file'] = 'ALL'
+    if 'run' not in grp.columns:
+        grp['run'] = 0
+
+    long = grp.melt(id_vars=['arena_file','run'], value_vars=cols, var_name='eigen', value_name='value')
     long['prefix'] = prefix
     return long
+
 
 
 def violins_combined_arenas_prefixes_all_eigs(tab: pd.DataFrame, time_col: str, tag: str,
@@ -979,10 +997,6 @@ def _slice_last_time(tab: pd.DataFrame, time_col: str) -> pd.DataFrame:
 
 
 def _long_from_prefix_endonly(tab_end: pd.DataFrame, prefix: str, k_first: int) -> pd.DataFrame:
-    """
-    Build long df for violins from last-time rows only, for given prefix.
-    Uses columns: f'{prefix}_lambda_nz_1..k' and f'{prefix}_lambda_max' if present.
-    """
     if tab_end is None or tab_end.empty:
         return pd.DataFrame()
 
@@ -991,15 +1005,18 @@ def _long_from_prefix_endonly(tab_end: pd.DataFrame, prefix: str, k_first: int) 
     if not have:
         return pd.DataFrame()
 
-    base_cols = ['arena_file']
-    melt = tab_end[base_cols + have].melt(id_vars=base_cols, value_vars=have,
-                                          var_name='eigen', value_name='value')
+    # make sure arena_file exists so hue works; fall back to a single bucket
+    base = tab_end.copy()
+    if 'arena_file' not in base.columns:
+        base['arena_file'] = 'ALL'
+
+    melt = base[['arena_file'] + have].melt(id_vars=['arena_file'], value_vars=have,
+                                            var_name='eigen', value_name='value')
     melt['prefix'] = prefix
-    # strip prefix_ from eigen so we can compare across prefixes
     melt['eigen_clean'] = melt['eigen'].str.replace(fr'^{prefix}_', '', regex=True)
-    # keep finite positive for log
     melt = melt[np.isfinite(melt['value']) & (melt['value'] > 0)]
     return melt
+
 
 
 def violins_spectrum_by_arena_one_panel(tab: pd.DataFrame, time_col: str, tag: str,
