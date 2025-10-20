@@ -733,12 +733,14 @@ void StaticLightObject::launch_user_step(float t) {
 
     // Check if we should launch photo_start
     if (photo_start_at >= 0 && t < photo_start_at) {
+        orig_value = value;
         value = 0.0;
+        light_map->update();
     } else if (photo_start_at >= 0 && t >= photo_start_at && t < photo_start_at + photo_start_duration) {
         // Check if we just started photo_start
         if (!performing_photo_start) {
             performing_photo_start = true;
-            orig_value = value;
+            //orig_value = value;
             value = photo_start_value;
             light_map->update();
         }
