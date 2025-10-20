@@ -204,7 +204,7 @@ parameters:
     main_led_display: polarization
 
     # --- Time-continuous Vicsek controller ---
-    vicsek_beta_rad_per_s: -10.0  # dθ/dt = β sin(θ̄ − θ) + σ ξ
+    vicsek_beta_rad_per_s: 10.0  # dθ/dt = β sin(θ̄ − θ) + σ ξ
     cont_noise_sigma_rad: 0.25   # angular diffusion amplitude (rad/√s)
     cont_max_dt_s: 0.5           # clamp integration step for stability
 
