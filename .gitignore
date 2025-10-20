@@ -88,6 +88,7 @@ examples/push_sum/push_sum
 examples/active_brownian_particles/active_brownian_particles
 examples/avoid_walls/avoid_walls
 examples/vicsek/vicsek
+examples/vicsek-autocal/vicsek-autocal
 examples/toner-tu/toner-tu
 
 # Apptainer

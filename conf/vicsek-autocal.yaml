@@ -1,0 +1,226 @@
+---
+
+# Batch configuration use the key "batch_options" to specify configuration values options for a given key.
+#  The key "result_filename_format" contains the format of the exported feather files, depending on selected batch values.
+
+# Format of the generated dataframes, one for each configuration
+result_filename_format: "result.feather"
+
+# List of new columns to add in the generated dataframes
+result_new_columns: ["arena_file"]
+
+
+window_width: 600       # In pixels
+window_height: 600      # In pixels
+
+boundary_condition: solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
+arena_file: 
+    default_option: arenas/disk.csv
+    #default_option: arenas/square.csv
+    #default_option: arenas/annulus.csv
+    #default_option: arenas/star.csv
+    #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv", "arenas/triangle.csv"]
+    #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv"]
+    #batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
+    batch_options: ["arenas/disk.csv"]
+arena_surface: 1.5e6    # In mm²
+
+delete_old_files: true
+enable_data_logging: true
+data_filename: "frames/data.feather"
+enable_console_logging: true
+console_filename: "frames/console.txt"
+save_data_period: 1.0       # In s, or -1 to disable data export (see also "enable_data_logging")
+save_video_period: 1.0      # In s, or -1 to disable frame export
+frames_name: "frames/f{:010.4f}.png"
+
+seed: 0
+show_communication_channels: false  # In the GUI, can enabled/disabled using F5
+show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
+show_lateral_LEDs: true            # In the GUI, can enabled/disabled using F6
+show_light_levels: false             # In the GUI, can enabled/disabled using F6
+GUI: true
+
+# Time
+simulation_time: 400.0     # In s
+time_step: 0.01            # In s
+GUI_speed_up: 30.0         # How much the visualisation in the GUI should be sped up
+
+light_map_nb_bin_x : 300
+light_map_nb_bin_y : 300
+
+
+# The initial positions of the robot, set as a formation.
+# "initial_formation" can be:
+#   - "random": all robots are placed randomly in the arena, with random direction,
+#   - "aligned_random": all robots are placed randomly in the arena, all with with pi/2 direction.
+#   - "random_near_walls": all robots are placed randomly, as close as possible to the walls to the arena, with random direction.
+#   - "aligned_random_near_walls": all robots are placed randomly, as close as possible to the walls to the arena, all with with pi/2 direction.
+#   - "disk": robots are placed uniformly in a disk shape at the center of the arena.
+#   - "lloyd": robots are placed randomly with an approximately equi-spaced distribution
+#       by running a few iterations of Lloyd’s relaxation (a.k.a. “K-means” on a dense uniform sample).
+#       This method assumes all objects/robots have the same radius.
+#   - "power_lloyd" (default): Similar approach to "lloyd", but using a weighted approach (Laguerre diagrams)
+#       to handle cases where objects/robots do not have the same radius.
+#   - "imported": import the (X, Y, angle) coordinates from a csv or feather dataframe specified by parameter "formation_filename".
+#       E.g.:
+#               formation_filename: "/tmp/data.feather"
+#       By default, the coordinates from the csv/feather file will not be rescaled, and must be in the same units as the simulation.
+#       As such, a feather file generated from the results of another simulation with the same arena can directly be used: if a 'time' column is present in the
+#       dataframe, only the coordinates of agents at t=0s are used. If the coordinates do not originate from a simulation, they may be specified in different
+#       units as the simulation: in this case, it is necessary to specify the "imported_formation_min_coords" and "imported_formation_max_coords" to correspond
+#       to the lower and upper bounds of the coordinate system. All provided coordinates will then be rescaled to match those of the simulation. E.g.
+#               imported_formation_min_coords: [0.0, 0.0]
+#               imported_formation_max_coords: [17.0, 17.0]
+#       Note that the angle (aka "theta") column is optional: if it is not provided, the angle will be sampled from a [-pi, pi] uniform distribution.
+#   - chessboard: robots are placed on a regular grid, with random direction.
+#       The distance between each grid point (robot center) specified by the 'chessboard_distance_between_neighbors' parameter.
+#       As such, if the distance is enough, the robots will only have max 4 neighbors corresponding to the 4 directions top, left, bottom, right.
+#       The "formation_cluster_at_center" parameter (default=true) specifies whether (true) all robots should put as close as possible to the center of the grid (i.e. center of the arena); or (false) if they should just be placed randomly in the grid.
+#   - aligned_chessboard: similar to formation "chessboard", but all robots have a pi/2 direction.
+initial_formation: power_lloyd
+
+# Whether or not to ignore occlusions (e.g. other robots, focal robot) when computing communication exchanges and neighbors lists
+communication_ignore_occlusions: false
+
+# Temperature of the arena and of all objects inside (in Celcius degrees)
+arena_temperature: 25.0
+
+
+# List of objects created in the simulation, by category
+objects:
+    # An object category containing a single light spot encompassing the entire simulation
+#    global_light:
+#        type: static_light  # The light is not active (does not move and does not have a controller)
+#        geometry: global    # The light involve the entire simulation
+#         value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+#        photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
+#                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
+#                            # start their user program in a synchronous manner.
+#        photo_start_duration: 1.0   # Duration of the photo start period, in seconds
+#        photo_start_value: 32767    # Light value during the photo start period (between 0 and 32767). Should be very different from the normal value of the light
+
+
+    # An object category containing a small light spot around the middle of the arena
+#    target_light:
+#        type: static_light  # The light is not active (does not move and does not have a controller)
+#        light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+#        geometry: rectangle # Shape of the light. Can be 'disk', 'rectangle' or 'global'
+#        x: 1000             # Center of the light spot, X coordinate, in mm
+#        y: 500              # Center of the light spot, Y coordinate, in mm
+#        body_width: 200     # Width of the rectangle geometry, in mm
+#        body_height: 200    # Height of the rectangle geometry, in mm
+#        value: 20000        # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+
+
+
+
+    # An object category containing the Pogobot robots
+    robots:
+        type: pogobot       # Category type pertaining to Pogobots
+        nb: 50             # Number of objects (Pogobots) in this category
+        geometry: disk                  # Pogobots are always disk-shaped
+        radius: 26.5                    # In mm
+
+        # Physical properties
+        body_linear_damping: 0.3
+        body_angular_damping: 0.3
+        body_density: 10.0
+        body_friction: 0.3
+        body_restitution: 0.5
+
+        max_linear_speed: 100.0
+        max_angular_speed: 2.0
+        linear_noise_stddev: 0.0
+#        angular_noise_stddev: 5.0
+#        angular_systematic_bias_domain: [-200, 200]
+#        #angular_systematic_bias_domain: [0, 200]
+#        #angular_systematic_bias_domain: [-200, 0]
+#
+#        photosensors_systematic_bias_domain: [-30, 30] # Systematic bias to apply to each 3 photosensor of each robot, to simulate real-robot biases.
+#                                                       #  Domain pair between -32767 and 32767.
+#        photosensors_noise_stddev: 1.0  # Stddev of a gaussian noise to apply to photosensor detected light levels.
+
+        # Communication propeties
+        communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)
+        msg_success_rate:
+            type: static # Fixed msg success rate -- do not depend on the density, or message size
+            rate: 1.0
+            #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
+            #alpha: 0.000001
+            #beta: 3.0708
+            #gamma: 2.3234
+            #delta: 1.1897
+
+
+    # An object category referencing Pogowalls, i.e. LEDs strips fixed on static walls that can send/receive messages, and with a Pogobot head/controller
+    walls:
+        type: pogowall      # Category type for Pogowalls
+        geometry: arena     # Shape of the object. "Arena" means it will use the walls of the entire arena specified by "arena_file" (cf top of config file)
+        communication_radius: 100  # The communication ratius of the Pogowalls, in mm
+        msg_success_rate:
+            type: static # Fixed msg success rate -- do not depend on the density, or message size
+            rate: 1.0
+            #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
+            #alpha: 0.000001
+            #beta: 3.0708
+            #gamma: 2.3234
+            #delta: 1.1897
+
+
+    # An object category containing a small light spot around the middle of the arena
+    target_light:
+        type: static_light    # The light is not active (does not move and does not have a controller)
+        light_mode: plane     # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+        geometry: rectangle   # Shape of the light. Can be 'disk', 'rectangle' or 'global'
+        x: 0                # Center of the light spot, X coordinate, in mm
+        y: 0                # Center of the light spot, Y coordinate, in mm
+        body_width: 3000       # Width of the rectangle geometry, in mm
+        body_height: 3000      # Height of the rectangle geometry, in mm
+        value: 500          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+        edge_value: 40      # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
+        plane_angle: 0.785398 # Angle orientating the planar gradient, in rad
+        plane_half_span: 2000  # Half span of the planar gradient from ``value`` to ``edge_value``, in mm
+        photo_start_at: 2.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
+                            # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
+                            # start their user program in a synchronous manner.
+        photo_start_duration: 2.0   # Duration of the photo start period, in seconds
+        photo_start_value: 200    # Light value during the photo start period (between 0 and 32767). Should be very different from the normal value of the light
+
+########### Parameters used to directly initialize variables from the C code of the robots ###########
+
+parameters:
+    # --- Neighbors / messaging ---
+    max_age: 600                 # ms before a neighbor entry expires
+    include_self_in_avg: false   # include own heading in local mean & polarization
+
+    # --- Heading detection geometry (used inside DDK) ---
+    alpha_deg: 40.0
+    robot_radius: 0.0265
+    heading_chiralty: cw         # 'cw' or 'ccw'
+
+    # --- LED display mode ---
+    # options: 'state' | 'angle' | 'polarization'
+    main_led_display: polarization
+
+    # --- Time-continuous Vicsek controller ---
+    vicsek_beta_rad_per_s: -10.0  # dθ/dt = β sin(θ̄ − θ) + σ ξ
+    cont_noise_sigma_rad: 0.25   # angular diffusion amplitude (rad/√s)
+    cont_max_dt_s: 0.5           # clamp integration step for stability
+
+    # --- Drive command (DDK consumes v ratio + Δθ per tick) ---
+    base_speed_ratio: 0.70       # [0..1] forward speed ratio
+    vicsek_turn_gain_clip_deg: 30.0  # soft clip for very large angular errors (deg)
+
+    # --- Cluster U-turn (kept, broadcast piggybacks on same IR msg) ---
+    cluster_u_turn_duration_ms: 1500
+    phi_rad_min: 3.14
+    phi_rad_max: 3.14
+
+    # --- Polarization consensus (push-sum + EWMA) ---
+    pol_ewma_alpha: 0.20         # [0..1] smoothing of global polarization estimate
+
+
+# MODELINE "{{{1
+# vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
+# vim:foldmethod=marker
