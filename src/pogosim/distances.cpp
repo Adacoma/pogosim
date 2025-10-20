@@ -83,7 +83,7 @@ collect_candidates(std::size_t         i,
             if (clip_fov && !angles::in_fov(bearing, led_dir[i], k_led_half_fov))
                 continue;                                               /* self-block */
             float d2 = dx*dx + dy*dy;
-            glogger->debug("d2={} comm_sq={} OK:{}", d2, comm_sq, (d2 <= comm_sq));
+            //glogger->debug("d2={} comm_sq={} OK:{}", d2, comm_sq, (d2 <= comm_sq));
             if (d2 > comm_sq) continue;
 
             float d   = std::sqrt(d2);

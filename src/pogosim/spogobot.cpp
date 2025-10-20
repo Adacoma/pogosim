@@ -284,6 +284,7 @@ int16_t pogobot_photosensors_read( uint8_t sensor_number ) {
         std::normal_distribution<float> dist(0.0f, noise_level);
         val += dist(rnd_gen);
     }
+    //glogger->debug("{} photobot_photosensor_read: orig_val={} val={} res={} pos=({}, {})", log_current_robot(), simulation->get_light_map()->get_light_level_at(pos.x * VISUALIZATION_SCALE, pos.y * VISUALIZATION_SCALE), val, val + current_robot->photosensors_biases[sensor_number], pos.x, pos.y);
     return val + current_robot->photosensors_biases[sensor_number]; // Add systematic bias to the measure
 }
 

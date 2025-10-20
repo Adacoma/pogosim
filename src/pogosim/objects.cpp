@@ -595,6 +595,9 @@ StaticLightObject::StaticLightObject(float x, float y,
       photo_start_at(_photo_start_at),
       photo_start_duration(_photo_start_duration),
       photo_start_value(_photo_start_value) {
+    if (photo_start_at >= 0) {
+        value = 0.0f;
+    }
     light_map->register_callback([this](LightLevelMap& m){ this->update_light_map(m); });
     //update_light_map();
 }
@@ -726,21 +729,20 @@ void StaticLightObject::parse_configuration(Configuration const& config, Simulat
     photo_start_at  = config["photo_start_at"].get(-1.0f);
     photo_start_duration = config["photo_start_duration"].get(1.0f);
     photo_start_value = config["photo_start_value"].get(32767);
+
+    if (photo_start_at >= 0) {
+        value = 0.0f;
+    }
 }
 
 void StaticLightObject::launch_user_step(float t) {
     Object::launch_user_step(t);
 
     // Check if we should launch photo_start
-    if (photo_start_at >= 0 && t < photo_start_at) {
-        orig_value = value;
-        value = 0.0;
-        light_map->update();
-    } else if (photo_start_at >= 0 && t >= photo_start_at && t < photo_start_at + photo_start_duration) {
+    if (photo_start_at >= 0 && t >= photo_start_at && t < photo_start_at + photo_start_duration) {
         // Check if we just started photo_start
         if (!performing_photo_start) {
             performing_photo_start = true;
-            //orig_value = value;
             value = photo_start_value;
             light_map->update();
         }
