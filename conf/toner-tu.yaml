@@ -13,15 +13,15 @@ result_new_columns: ["arena_file"]
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
-boundary_condition: solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
+boundary_condition: periodic # solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
 arena_file: 
-    default_option: arenas/disk.csv
-    #default_option: arenas/square.csv
+    #default_option: arenas/disk.csv
+    default_option: arenas/square.csv
     #default_option: arenas/annulus.csv
     #default_option: arenas/star.csv
     #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv", "arenas/triangle.csv"]
-    #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv"]
-    batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
+    batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv"]
+    #batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
 arena_surface: 1.0e6    # In mm²
 
 delete_old_files: true
@@ -41,7 +41,7 @@ show_light_levels: true             # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 300.0     # In s
+simulation_time: 5000.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 30.0         # How much the visualisation in the GUI should be sped up
 
@@ -117,7 +117,7 @@ objects:
     # An object category containing the Pogobot robots
     robots:
         type: pogobot       # Category type pertaining to Pogobots
-        nb: 60             # Number of objects (Pogobots) in this category
+        nb: 50             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -130,11 +130,9 @@ objects:
 
         max_linear_speed: 100.0
         max_angular_speed: 2.0
-#        linear_noise_stddev: 0.5
-#        angular_noise_stddev:
-#            default_option: 1.0
-#            batch_options: [0.0, 2.0]
-#        angular_systematic_bias_domain: [-70, 70]
+        #linear_noise_stddev: 0.5
+#        angular_noise_stddev: 1.0
+#        angular_systematic_bias_domain: [-30, 30]
 
         #photosensors_systematic_bias_domain: [-100, 100] # Systematic bias to apply to each 3 photosensor of each robot, to simulate real-robot biases.
                                                            #  Domain pair between -32767 and 32767.
@@ -152,19 +150,19 @@ objects:
             #delta: 1.1897
 
 
-    # An object category referencing Pogowalls, i.e. LEDs strips fixed on static walls that can send/receive messages, and with a Pogobot head/controller
-    walls:
-        type: pogowall      # Category type for Pogowalls
-        geometry: arena     # Shape of the object. "Arena" means it will use the walls of the entire arena specified by "arena_file" (cf top of config file)
-        communication_radius: 100  # The communication ratius of the Pogowalls, in mm
-        msg_success_rate:
-            type: static # Fixed msg success rate -- do not depend on the density, or message size
-            rate: 1.0
-            #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
-            #alpha: 0.000001
-            #beta: 3.0708
-            #gamma: 2.3234
-            #delta: 1.1897
+#    # An object category referencing Pogowalls, i.e. LEDs strips fixed on static walls that can send/receive messages, and with a Pogobot head/controller
+#    walls:
+#        type: pogowall      # Category type for Pogowalls
+#        geometry: arena     # Shape of the object. "Arena" means it will use the walls of the entire arena specified by "arena_file" (cf top of config file)
+#        communication_radius: 100  # The communication ratius of the Pogowalls, in mm
+#        msg_success_rate:
+#            type: static # Fixed msg success rate -- do not depend on the density, or message size
+#            rate: 1.0
+#            #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
+#            #alpha: 0.000001
+#            #beta: 3.0708
+#            #gamma: 2.3234
+#            #delta: 1.1897
 
 
     # An object category containing a small light spot around the middle of the arena
@@ -174,10 +172,10 @@ objects:
         geometry: rectangle   # Shape of the light. Can be 'disk', 'rectangle' or 'global'
         x: 0                # Center of the light spot, X coordinate, in mm
         y: 0                # Center of the light spot, Y coordinate, in mm
-        body_width: 4000       # Width of the rectangle geometry, in mm
-        body_height: 4000      # Height of the rectangle geometry, in mm
+        body_width: 10000       # Width of the rectangle geometry, in mm
+        body_height: 10000      # Height of the rectangle geometry, in mm
         value: 30000          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
-        edge_value: 5000      # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
+        edge_value: 1000      # Value of the light at the edge, in light_mode==gradient. Ignored if light_mode==static
         plane_angle: 0.785398 # Angle orientating the planar gradient, in rad
         plane_half_span: 2000  # Half span of the planar gradient from ``value`` to ``edge_value``, in mm
 
@@ -217,7 +215,7 @@ parameters:
     max_age: 1000
 
     # Toggle the synchronized wall-avoidance (phi_rad) mechanism:
-    enable_cluster_uturn: true
+    enable_cluster_uturn: false
     broadcast_angle_when_avoiding_walls: true
     cluster_u_turn_duration_ms: 1500
     phi_rad_min: 3.14159        # e.g. U-turn ≈ π
@@ -225,8 +223,8 @@ parameters:
     cluster_uturn_align_thresh_rad: 2.0 # 6.28 # 0.35
 
     # Toner–Tu speed
-    tt_alpha: 1.5
-    tt_beta: 1.5
+    tt_alpha: 0.0 # 0.5
+    tt_beta: 0.0 #0.5
 
     # Toner-Tu pressure
     #press_mode: monotonic
@@ -235,33 +233,37 @@ parameters:
     #v_min: 0.25
     #v_max: 1.0
     press_mode: target
-    press_target_d_star: 4
-    press_target_width: 2.0
+    press_target_d_star: 6
+    press_target_width: 4.0
     press_target_kappa: 2.0
-    press_target_exponent: 1.0  # smoother around the top than triangle
-    v_min: 0.02
-    v_max: 2.0
+    press_target_exponent: 10.0  # smoother around the top than triangle
+    #v_min: 0.01
+    #v_max: 0.5
+    v_min: 0.5
+    v_max: 0.5
 
 
     # Novelty advection
-    novelty_window_ms: 1500
-    novelty_tau_s: 0.0 #1.0
-    novelty_dir_tau_s: 0.0 # 2.0
-#    novelty_speed_gain: 0.0 # 0.25
-#    lambda_adv_rad_per_s: 0.0 # 1.2
-    novelty_speed_gain: 0.25
-    lambda_adv_rad_per_s: 0.5
+    novelty_window_ms: 15000
+    novelty_tau_s: 1.0
+    novelty_dir_tau_s: 20.0
+#    novelty_speed_gain: 1.25
+#    lambda_adv_rad_per_s: 10.2
+    novelty_speed_gain: 0.0
+    lambda_adv_rad_per_s: 0.0
+#    novelty_speed_gain: 10.25
+#    lambda_adv_rad_per_s: 10.0
 
     # Continuous heading core
     vicsek_time_continuous: true
-    vicsek_beta_rad_per_s: 2.5
-    cont_noise_sigma_rad: 0.5
+    vicsek_beta_rad_per_s: 10.5 # 2.5
+    cont_noise_sigma_rad: 0.0
     cont_max_dt_s: 0.5
 
     # Wall avoidance & heading (same as your setup)
-    wall_avoidance_memory_ms: 300
-    wall_avoidance_turn_duration_ms: 300
-    wall_avoidance_forward_commit_ms: 300
+    wall_avoidance_memory_ms: 400
+    wall_avoidance_turn_duration_ms: 400
+    wall_avoidance_forward_commit_ms: 500
     wall_avoidance_forward_speed_ratio: 0.5
     wall_avoidance_policy: min_turn
     alpha_deg: 40.0

@@ -21,8 +21,9 @@ arena_file:
     #default_option: arenas/star.csv
     #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv", "arenas/triangle.csv"]
     #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv"]
-    batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
-arena_surface: 1.0e6    # In mm²
+    #batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
+    batch_options: ["arenas/disk.csv"]
+arena_surface: 2.0e6    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
@@ -41,7 +42,7 @@ show_light_levels: true             # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 300.0     # In s
+simulation_time: 200.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 30.0         # How much the visualisation in the GUI should be sped up
 
@@ -130,11 +131,11 @@ objects:
 
         max_linear_speed: 100.0
         max_angular_speed: 2.0
-#        linear_noise_stddev: 0.5
-#        angular_noise_stddev:
-#            default_option: 1.0
-#            batch_options: [0.0, 2.0]
-#        angular_systematic_bias_domain: [-70, 70]
+        #linear_noise_stddev: 0.5
+        angular_noise_stddev: 5.0
+        angular_systematic_bias_domain: [-200, 200]
+        #angular_systematic_bias_domain: [0, 200]
+        #angular_systematic_bias_domain: [-200, 0]
 
         #photosensors_systematic_bias_domain: [-100, 100] # Systematic bias to apply to each 3 photosensor of each robot, to simulate real-robot biases.
                                                            #  Domain pair between -32767 and 32767.
@@ -228,8 +229,9 @@ parameters:
     robot_radius: 0.0265
     main_led_display:  angle # state   # state, or angle
 
-    wall_avoidance_memory_ms: 300
-    wall_avoidance_turn_duration_ms: 300
+    cluster_u_turn_duration_ms: 1500
+    wall_avoidance_memory_ms: 400
+    wall_avoidance_turn_duration_ms: 400
     wall_avoidance_forward_commit_ms: 600 # 300
     wall_avoidance_forward_speed_ratio: 0.5 # 0.1
     cluster_u_turn_duration_ms: 600
@@ -240,9 +242,9 @@ parameters:
 
     vicsek_time_continuous: true
     # Continuous mode
-    vicsek_beta_rad_per_s: -10.00 # beta = -log(1 - align_gain) / dt_seconds
-    cont_noise_sigma_rad: 0.05 # 0.55
-    cont_max_dt_s: 0.01
+    vicsek_beta_rad_per_s: 10.00 # beta = -log(1 - align_gain) / dt_seconds
+    cont_noise_sigma_rad: 0.25 # 0.55
+    cont_max_dt_s: 0.5
 
     # Discrete mode
     vicsek_period_ms: 17
