@@ -47,6 +47,8 @@ cd pogosim
 
 **REMEMBER TO ALWAYS RECOMPILE with "./build.sh" after downloading a new version of Pogosim!**
 
+Note that some (optional) advanced examples need the [pogo-utils](https://github.com/Adacoma/pogo-utils) library -- see below section "Simple way to create a new pogobot/pogosim project" to know how to register associated environment variables so that the Makefiles can assess pogo-utils. If pogo-utils is not present, those examples won't be compiled, but the rest of Pogosim will compile without errors.
+
 
 ## Install on WSL
 Just follow the previous section to install on Ubuntu 24.04+ using WSL.
@@ -58,6 +60,8 @@ export LIBGL_ALWAYS_SOFTWARE=1
 before launching the simulator.
 
 **REMEMBER TO ALWAYS RECOMPILE with "./build.sh" after downloading a new version of Pogosim!**
+
+Note that some (optional) advanced examples need the [pogo-utils](https://github.com/Adacoma/pogo-utils) library -- see below section "Simple way to create a new pogobot/pogosim project" to know how to register associated environment variables so that the Makefiles can assess pogo-utils. If pogo-utils is not present, those examples won't be compiled, but the rest of Pogosim will compile without errors.
 
 
 ## Install on MacOSX
@@ -88,6 +92,8 @@ cd pogosim
 ```
 
 **REMEMBER TO ALWAYS RECOMPILE with "./build.sh" after downloading a new version of Pogosim!**
+
+Note that some (optional) advanced examples need the [pogo-utils](https://github.com/Adacoma/pogo-utils) library -- see below section "Simple way to create a new pogobot/pogosim project" to know how to register associated environment variables so that the Makefiles can assess pogo-utils. If pogo-utils is not present, those examples won't be compiled, but the rest of Pogosim will compile without errors.
 
 
 ## Quickstart

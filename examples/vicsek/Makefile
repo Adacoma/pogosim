@@ -26,13 +26,36 @@ ROBOT_CATEGORY?=robots
 BUILD_DIR?=./build
 POGO_SDK?=../../pogobot-sdk
 POGOSIM_INCLUDE_DIR?=../../pogosim/src/
+POGOUTILS_INCLUDE_DIR?=../../../pogo-utils/src
+
 POGOSIM_SRC_DIR?=$(POGOSIM_INCLUDE_DIR)/pogosim/
+POGOUTILS_SRC_DIR?=$(POGOUTILS_INCLUDE_DIR)/pogo-utils
 POGOBIN_CFLAGS = -flto -ffunction-sections -fdata-sections -finline-small-functions -finline-functions-called-once -fexcess-precision=standard -fsingle-precision-constant # -ffast-math #-fno-math-errno -fno-trapping-math 
 POGOBIN_LDFLAGS = -flto -Wl,--gc-sections -fexcess-precision=standard -fsingle-precision-constant 
-POGOUTILS_INCLUDE_DIR=../../src
 
-POGOSIM_SRC_DIR=$(POGOSIM_INCLUDE_DIR)/pogosim
-POGOUTILS_SRC_DIR=$(POGOUTILS_INCLUDE_DIR)/pogo-utils
+
+# This block makes the build quit peacefully with a warning if pogo-utils
+# is not available (i.e., $(POGOUTILS_SRC_DIR)/version.h is missing).
+POGOUTILS_CHECK := $(wildcard $(POGOUTILS_SRC_DIR)/version.h)
+ifeq ($(POGOUTILS_CHECK),)
+CURRENT_DIR:=$(notdir $(abspath $(CURDIR)))
+$(warning [pogo-utils] Missing $$(POGOUTILS_SRC_DIR)/version.h — build of '$(CURRENT_DIR)' example will be skipped.)
+# Ensure we don't try to build anything from CMake:
+# Declare common targets and a catch-all as no-ops that succeed.
+.PHONY: all clean install help test check default sim bin
+.DEFAULT_GOAL := all
+
+all clean install help test check default sim bin:
+@echo "warning: pogo-utils not available (no $$(POGOUTILS_SRC_DIR)/version.h). Skipping target '$$@'."
+@:
+
+# Catch-all for any other target name.
+%:
+@echo "warning: pogo-utils not available. Skipping target '$$@'."
+@:
+
+else
+
 
 POGO_SDK_TOOLS=$(POGO_SDK)/tools
 POGO_SDK_INCS=$(POGO_SDK)/includes
@@ -141,6 +164,7 @@ $(BUILD_DIR):
 
 .PHONY: all clean connect directories
 
+endif
 
 # MODELINE "{{{1
 # vim:noexpandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
