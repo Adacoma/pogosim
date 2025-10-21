@@ -132,14 +132,14 @@ objects:
         max_linear_speed: 100.0
         max_angular_speed: 2.0
         linear_noise_stddev: 0.0
-#        angular_noise_stddev: 5.0
-#        angular_systematic_bias_domain: [-200, 200]
-#        #angular_systematic_bias_domain: [0, 200]
-#        #angular_systematic_bias_domain: [-200, 0]
-#
-#        photosensors_systematic_bias_domain: [-30, 30] # Systematic bias to apply to each 3 photosensor of each robot, to simulate real-robot biases.
-#                                                       #  Domain pair between -32767 and 32767.
-#        photosensors_noise_stddev: 1.0  # Stddev of a gaussian noise to apply to photosensor detected light levels.
+        angular_noise_stddev: 5.0
+        angular_systematic_bias_domain: [-200, 200]
+        #angular_systematic_bias_domain: [0, 200]
+        #angular_systematic_bias_domain: [-200, 0]
+
+        photosensors_systematic_bias_domain: [-30, 30] # Systematic bias to apply to each 3 photosensor of each robot, to simulate real-robot biases.
+                                                       #  Domain pair between -32767 and 32767.
+        #photosensors_noise_stddev: 1.0  # Stddev of a gaussian noise to apply to photosensor detected light levels.
 
         # Communication propeties
         communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)
@@ -189,6 +189,39 @@ objects:
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
 
+#parameters:
+#    # --- Neighbors / messaging ---
+#    max_age: 600                 # ms before a neighbor entry expires
+#    include_self_in_avg: false   # include own heading in local mean & polarization
+#
+#    # --- Heading detection geometry (used inside DDK) ---
+#    alpha_deg: 40.0
+#    robot_radius: 0.0265
+#    heading_chiralty: cw         # 'cw' or 'ccw'
+#
+#    # --- LED display mode ---
+#    # options: 'state' | 'angle' | 'polarization'
+#    main_led_display: polarization
+#
+#    # --- Time-continuous Vicsek controller ---
+#    vicsek_beta_rad_per_s: 10.0  # dθ/dt = β sin(θ̄ − θ) + σ ξ
+#    cont_noise_sigma_rad: 0.25   # angular diffusion amplitude (rad/√s)
+#    cont_max_dt_s: 0.5           # clamp integration step for stability
+#
+#    # --- Drive command (DDK consumes v ratio + Δθ per tick) ---
+#    base_speed_ratio: 0.70       # [0..1] forward speed ratio
+#    vicsek_turn_gain_clip_deg: 30.0  # soft clip for very large angular errors (deg)
+#
+#    # --- Cluster U-turn (kept, broadcast piggybacks on same IR msg) ---
+#    cluster_u_turn_duration_ms: 1500
+#    phi_rad_min: 3.14
+#    phi_rad_max: 3.14
+#
+#    # --- Polarization consensus (push-sum + EWMA) ---
+#    pol_ewma_alpha: 0.20         # [0..1] smoothing of global polarization estimate
+
+
+# TODO
 parameters:
     # --- Neighbors / messaging ---
     max_age: 600                 # ms before a neighbor entry expires
@@ -200,8 +233,8 @@ parameters:
     heading_chiralty: cw         # 'cw' or 'ccw'
 
     # --- LED display mode ---
-    # options: 'state' | 'angle' | 'polarization'
-    main_led_display: polarization
+    # options: 'state' | 'angle' | 'polarization' | 'stats'
+    main_led_display: stats # polarization
 
     # --- Time-continuous Vicsek controller ---
     vicsek_beta_rad_per_s: 10.0  # dθ/dt = β sin(θ̄ − θ) + σ ξ
@@ -217,8 +250,15 @@ parameters:
     phi_rad_min: 3.14
     phi_rad_max: 3.14
 
-    # --- Polarization consensus (push-sum + EWMA) ---
-    pol_ewma_alpha: 0.20         # [0..1] smoothing of global polarization estimate
+    # --- Consensus (push-sum + EWMA) ---
+    ewma_alpha_polarization: 0.005         # [0..1] smoothing of global polarization estimate
+    ewma_alpha_wallratio: 0.005
+    ewma_alpha_persistence: 0.005
+    ewma_alpha_nb: 0.005
+
+    # --- local-stat settings ---
+    neighbor_persist_norm_ms: 10000
+    neighbor_norm_max: 20
 
 
 # MODELINE "{{{1
