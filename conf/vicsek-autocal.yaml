@@ -13,6 +13,7 @@ result_new_columns: ["arena_file"]
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
+#boundary_condition: periodic # solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
 boundary_condition: solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
 arena_file: 
     default_option: arenas/disk.csv
@@ -23,7 +24,7 @@ arena_file:
     #batch_options: ["arenas/disk.csv", "arenas/annulus.csv", "arenas/star.csv"]
     #batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
     batch_options: ["arenas/disk.csv"]
-arena_surface: 1.5e6    # In mm²
+arena_surface: 2.0e6    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
@@ -37,12 +38,12 @@ frames_name: "frames/f{:010.4f}.png"
 seed: 0
 show_communication_channels: false  # In the GUI, can enabled/disabled using F5
 show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
-show_lateral_LEDs: true            # In the GUI, can enabled/disabled using F6
+show_lateral_LEDs: false            # In the GUI, can enabled/disabled using F6
 show_light_levels: false             # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 400.0     # In s
+simulation_time: 4000.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 30.0         # How much the visualisation in the GUI should be sped up
 
@@ -189,6 +190,7 @@ objects:
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
 
+## Old parameter-driven config
 #parameters:
 #    # --- Neighbors / messaging ---
 #    max_age: 600                 # ms before a neighbor entry expires
@@ -200,8 +202,8 @@ objects:
 #    heading_chiralty: cw         # 'cw' or 'ccw'
 #
 #    # --- LED display mode ---
-#    # options: 'state' | 'angle' | 'polarization'
-#    main_led_display: polarization
+#    # options: 'state' | 'angle' | 'polarization' | 'stats'
+#    main_led_display: stats # polarization
 #
 #    # --- Time-continuous Vicsek controller ---
 #    vicsek_beta_rad_per_s: 10.0  # dθ/dt = β sin(θ̄ − θ) + σ ξ
@@ -217,15 +219,156 @@ objects:
 #    phi_rad_min: 3.14
 #    phi_rad_max: 3.14
 #
-#    # --- Polarization consensus (push-sum + EWMA) ---
-#    pol_ewma_alpha: 0.20         # [0..1] smoothing of global polarization estimate
+#    # --- Consensus (push-sum + EWMA) ---
+#    ewma_alpha_polarization: 0.002         # [0..1] smoothing of global polarization estimate
+#    ewma_alpha_wallratio: 0.002
+#    ewma_alpha_persistence: 0.002
+#    ewma_alpha_nb: 0.002
+#
+#    # --- local-stat settings ---
+#    neighbor_persist_norm_ms: 10000
+#    neighbor_norm_max: 20
 
 
-# TODO
+## TODO SPSA
+#parameters:
+#    # --- Neighbors / messaging ---
+#    max_age: 2000
+#    include_self_in_avg: true
+#
+#    # --- Heading detection geometry ---
+#    alpha_deg: 40.0
+#    robot_radius: 0.0265
+#    heading_chiralty: cw
+#
+#    # --- LED display mode ---
+#    # options: state | angle | polarization | stats | loss
+#    main_led_display: polarization
+#
+#    # --- Vicsek integration ---
+#    cont_max_dt_s: 0.05
+#
+#    # --- Cluster U-turn ---
+#    cluster_u_turn_duration_ms: 1500
+#    phi_rad_min: 3.1416
+#    phi_rad_max: 3.1416
+#
+#    # --- Targets (what you want the swarm to look like) ---
+#    target_pol: 0.10          # local polarization
+#    target_wall: 0.10         # time spent in avoidance/cluster phases
+#    target_pers: 0.55         # neighbor persistence (0..1)
+#    target_nb: 6.0            # neighbors (raw count)
+#
+#    # --- Loss weights (relative importance) ---
+#    w_pol: 1.2
+#    w_wall: 0.2
+#    w_pers: 0.2
+#    w_nb: 0.2
+#
+#    # --- EWMA smoothing of consensus stats (lower = slower, stabler) ---
+#    ewma_alpha_polarization: 0.05
+#    ewma_alpha_wallratio:    0.05
+#    ewma_alpha_persistence:  0.05
+#    ewma_alpha_nb:           0.05
+#
+#    # --- SPSA schedule (online, windowed) ---
+#    spsa_eval_window_ms: 2000   # apply x+ for this long, then x− for this long
+#    spsa_a: 0.20                # step size numerator
+#    spsa_c: 0.10                # perturbation magnitude numerator
+#    spsa_alpha: 0.602
+#    spsa_gamma: 0.101
+#    spsa_A: 20.0
+#
+#    # --- Parameter bounds (projection) ---
+#    beta_lo:   0.0
+#    beta_hi:   10.0
+#    sigma_lo:   0.00
+#    sigma_hi:   2.00
+#    speed_lo:   0.70
+#    speed_hi:   0.70
+#
+#    # --- Parameter consensus (slow coherence across swarm) ---
+#    param_consensus_apply_period_ms: 20000    # 0 to disable
+#    param_consensus_blend: 0.30               # X% toward consensus each pull
+#
+#    # --- Local-stat settings / normalizations ---
+#    neighbor_norm_max: 20   # used for: (a) nb normalization cap, (b) ~persistence horizon in seconds
+
+
+## TODO 1+1-ES
+#parameters:
+#    # --- Neighbors / messaging ---
+#    max_age: 1000
+#    include_self_in_avg: true
+#
+#    # --- Heading detection geometry ---
+#    alpha_deg: 40.0
+#    robot_radius: 0.0265
+#    heading_chiralty: cw
+#
+#    # --- LED display mode ---
+#    # options: state | angle | polarization | stats | loss
+#    main_led_display: polarization
+#
+#    # --- Vicsek integration ---
+#    cont_max_dt_s: 0.5
+#
+#    # --- Cluster U-turn ---
+#    cluster_u_turn_duration_ms: 1500
+#    phi_rad_min: 3.1416
+#    phi_rad_max: 3.1416
+#
+#    # --- Targets (what you want the swarm to look like) ---
+#    target_pol: 0.10          # local polarization
+#    target_wall: 0.10         # time spent in avoidance/cluster phases
+#    target_pers: 0.55         # neighbor persistence (0..1)
+#    target_nb: 6.0            # neighbors (raw count)
+#
+#    # --- Loss weights (relative importance) ---
+#    w_pol: 1.2
+#    w_wall: 0.2
+#    w_pers: 0.2
+#    w_nb: 0.2
+#
+#    # --- EWMA smoothing of consensus stats (lower = slower, stabler) ---
+#    ewma_alpha_polarization: 0.20
+#    ewma_alpha_wallratio:    0.20
+#    ewma_alpha_persistence:  0.20
+#    ewma_alpha_nb:           0.20
+#
+#    # --- ES (1+1) schedule (online, windowed) ---
+#    es_eval_window_ms: 1000   # parent window, then child window of same length
+#    es_evals_per_tick: 1      # usually 1; >1 if the control loop is very slow
+#
+#    # --- 1+1-ES step-size adaptation (success rule) ---
+#    es_sigma0: 0.80           # initial mutation scale in param space
+#    es_sigma_min: 0.00001
+#    es_sigma_max: 0.80
+#    es_s_target: 0.20         # target success rate (~1/5 rule)
+#    es_c_sigma: 0.0           # 0 => auto (≈ 0.6/sqrt(n), n=3 here)
+#    es_s_alpha: 0.20          # smoothing of success EWMA
+#
+#    # --- Parameter bounds (projection) ---
+#    # Allow both alignment/anti-alignment during search; speed fixed high-ish
+#    beta_lo:   0.0
+#    beta_hi:   12.0
+#    sigma_lo:   0.00
+#    sigma_hi:   10.00
+#    speed_lo:   0.70
+#    speed_hi:   0.70
+#
+#    # --- Parameter consensus (slow coherence across swarm) ---
+#    param_consensus_apply_period_ms: 20000
+#    param_consensus_blend: 0.30
+#
+#    # --- Local-stat settings / normalizations ---
+#    neighbor_norm_max: 20
+
+
+# TODO Leader 1+1-ES
 parameters:
     # --- Neighbors / messaging ---
-    max_age: 600                 # ms before a neighbor entry expires
-    include_self_in_avg: false   # include own heading in local mean & polarization
+    max_age: 4000                 # ms before a neighbor entry expires
 
     # --- Heading detection geometry (used inside DDK) ---
     alpha_deg: 40.0
@@ -233,32 +376,67 @@ parameters:
     heading_chiralty: cw         # 'cw' or 'ccw'
 
     # --- LED display mode ---
-    # options: 'state' | 'angle' | 'polarization' | 'stats'
-    main_led_display: stats # polarization
+    # options: 'loss'|'leader' (same behavior), 'angle', 'polarization'
+    # 'loss' => show loss only on the leader(s); followers are black
+    main_led_display: loss
 
-    # --- Time-continuous Vicsek controller ---
-    vicsek_beta_rad_per_s: 10.0  # dθ/dt = β sin(θ̄ − θ) + σ ξ
-    cont_noise_sigma_rad: 0.25   # angular diffusion amplitude (rad/√s)
-    cont_max_dt_s: 0.5           # clamp integration step for stability
-
-    # --- Drive command (DDK consumes v ratio + Δθ per tick) ---
+    # --- Time-continuous Vicsek controller (initial guess; ES will tune) ---
+    vicsek_beta_rad_per_s: 0.1   # dθ/dt = β sin(θ̄ − θ) + σ ξ
+    cont_noise_sigma_rad: 0.10   # angular diffusion amplitude (rad/√s)
+    cont_max_dt_s: 0.05          # clamp integration step for stability
     base_speed_ratio: 0.70       # [0..1] forward speed ratio
-    vicsek_turn_gain_clip_deg: 30.0  # soft clip for very large angular errors (deg)
 
-    # --- Cluster U-turn (kept, broadcast piggybacks on same IR msg) ---
+    # --- Cluster U-turn (kept; piggybacks on IR beacons) ---
     cluster_u_turn_duration_ms: 1500
-    phi_rad_min: 3.14
-    phi_rad_max: 3.14
+    phi_rad_min: 1.0 # 3.1416
+    phi_rad_max: 1.0 # 3.1416
 
     # --- Consensus (push-sum + EWMA) ---
-    ewma_alpha_polarization: 0.005         # [0..1] smoothing of global polarization estimate
-    ewma_alpha_wallratio: 0.005
-    ewma_alpha_persistence: 0.005
-    ewma_alpha_nb: 0.005
+    # These smooth the *cluster-wide* stats the ES uses as feedback
+    ewma_alpha_polarization: 0.01
+    ewma_alpha_wallratio:    0.01
+    ewma_alpha_persistence:  0.01
+    ewma_alpha_nb:           0.01
 
-    # --- local-stat settings ---
-    neighbor_persist_norm_ms: 10000
-    neighbor_norm_max: 20
+    # --- Local-stat settings ---
+    neighbor_persist_norm_ms: 10000   # age normalization for persistence
+    neighbor_norm_max: 20             # scale used in the loss for nb error
+
+    # --- Targets (what you want the swarm to look like) ---
+    target_pol:  1.00          # local polarization (0..1)
+    target_wall: 0.50          # time spent in avoidance/cluster phases (0..1)
+    target_pers: 0.50          # neighbor persistence (0..1; normalized by *neighbor_persist_norm_ms*)
+    target_nb:   6.0           # neighbor count (raw)
+
+    # --- Loss weights (relative importance of each target) ---
+    w_pol:  1.0
+    w_wall: 0.1
+    w_pers: 0.1 # 0.4
+    w_nb:   0.0
+
+    # --- 1+1-ES evaluation schedule (leaders only) ---
+    es_eval_window_ms: 10000     # run each candidate for this long
+    es_eval_quiet_ms:   2000     # ignore the first ms of each window (settling)
+
+    # --- 1+1-ES parameter bounds (β, σ, v) ---
+    es_lo_beta:    0.0          # rad/s
+    es_hi_beta:   1.0
+    es_lo_sigma:   0.0          # rad/√s
+    es_hi_sigma:   1.0
+    es_lo_speed:   0.01         # [0..1]
+    es_hi_speed:   1.00
+#    es_lo_speed:   0.70         # [0..1]
+#    es_hi_speed:   0.70
+
+    # --- 1+1-ES dynamics (step-size control) ---
+    es_sigma0:     0.30         # initial mutation scale
+    es_sigma_min:  0.01
+    es_sigma_max:  0.8
+    es_s_target:   0.20         # target success rate
+    es_s_alpha:    0.20         # success-rate EMA
+    es_c_sigma:    0.0          # 0 => auto (≈0.6/√n)
+    es_evals_per_tick: 1        # keep 1; we evaluate per window anyway
+
 
 
 # MODELINE "{{{1
