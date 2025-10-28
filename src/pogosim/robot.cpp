@@ -101,7 +101,8 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
        std::pair<int16_t, int16_t> angular_systematic_bias_domain,
        std::pair<int16_t, int16_t> photosensors_systematic_bias_domain,
        float _photosensors_noise_stddev,
-       std::string const& _category)
+       std::string const& _category,
+       bool dummy)
     : PhysicalObject(_id, _x, _y, geom, world_id,
       _linear_damping, _angular_damping,
       _density, _friction, _restitution, _category),
@@ -115,6 +116,9 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
     create_robot_body(world_id);
     initialize_photosensors_bias(photosensors_systematic_bias_domain);
     initialize_angular_bias(angular_systematic_bias_domain);
+    if (dummy) {
+        b2Body_Disable(body_id);
+    }
 }
 
 PogobotObject::PogobotObject(Simulation* simulation, uint16_t _id, float _x, float _y,

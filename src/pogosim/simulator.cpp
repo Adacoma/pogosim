@@ -27,6 +27,7 @@
 #include "spogobot.h"
 #undef main         // We defined main() as robot_main() in pogobot.h
 
+void dummy_global_robot_init() {}
 
 void set_current_robot(PogobotObject& robot) {
     // Store values of previous robot
@@ -406,7 +407,7 @@ void Simulation::create_walls() {
 
 void Simulation::init_box2d() {
     // Initialize Box2D world
-b2Vec2 gravity = {0.0f, 0.0f}; // No gravity for robots
+    b2Vec2 gravity = {0.0f, 0.0f}; // No gravity for robots
     b2WorldDef worldDef = b2DefaultWorldDef();
     worldDef.gravity = gravity;
     worldId = b2CreateWorld(&worldDef);
@@ -528,8 +529,8 @@ void Simulation::init_SDL() {
 
     // Init fonts
     font = FC_CreateFont();
-    //FC_LoadFont(font, renderer, "fonts/helvetica.ttf", 20, FC_MakeColor(0,0,0,255), TTF_STYLE_NORMAL);  
-    FC_LoadFont(font, renderer, resolve_path("fonts/helvetica.ttf").c_str(), 20, FC_MakeColor(0,0,0,255), TTF_STYLE_NORMAL);  
+    //FC_LoadFont(font, renderer, "fonts/helvetica.ttf", 20, FC_MakeColor(0,0,0,255), TTF_STYLE_NORMAL);
+    FC_LoadFont(font, renderer, resolve_path("fonts/helvetica.ttf").c_str(), 20, FC_MakeColor(0,0,0,255), TTF_STYLE_NORMAL);
 }
 
 
@@ -561,6 +562,25 @@ void Simulation::create_robots() {
         if (current_robot->user_init != nullptr)
             current_robot->user_init();
     }
+
+    // Create a dummy global robot handle
+    dummy_global_robot = std::make_unique<PogobotObject>(0, 0.0f, 0.0f,
+            dummy_global_robot_geom, worldId,
+            UserdataSize,
+            0,
+            std::make_unique<ConstMsgSuccessRate>(0.0),
+            0.0f,
+            0.0f, 0.0f,
+            10.0f, 0.3f, 0.5f,
+            100.0f, 1.0f,
+            0.0f, 0.0f,
+            std::pair<int16_t,int16_t>{0, 0},
+            std::pair<int16_t,int16_t>{0, 0},
+            0.0f,
+            std::string{"__system"},
+            true);
+    set_current_robot(*dummy_global_robot.get());
+    _pogobot_start(dummy_global_robot_init, callback_global_step, "__system");
 }
 
 
@@ -838,7 +858,7 @@ void Simulation::draw_scale_bar() {
 
     // Render the scale
     std::string formatted_scale = fmt::format("{:.0f} mm", mm_scale);
-    FC_Draw(font, renderer, x1, y1 + 5, "%s", formatted_scale.c_str()); 
+    FC_Draw(font, renderer, x1, y1 + 5, "%s", formatted_scale.c_str());
 }
 
 
@@ -889,7 +909,7 @@ void Simulation::render_all() {
     // Render the current time
     if (show_time) {
         std::string formatted_time  = fmt::format("{:.4f}s", t);
-        FC_Draw(font, renderer, windowWidth - 120, 10, "t=%s", formatted_time.c_str()); 
+        FC_Draw(font, renderer, windowWidth - 120, 10, "t=%s", formatted_time.c_str());
     }
 
     // Render the scale bar
@@ -1004,8 +1024,12 @@ void Simulation::main_loop() {
         GUI_frame_period = time_step_duration * GUI_speed_up;
 
         // Launch global step callback, if specified
+        set_current_robot(*dummy_global_robot.get());
         if (callback_global_step != nullptr) {
-            callback_global_step();
+            if (t * 1000000.0f >= dummy_global_robot->current_time_microseconds) {
+                dummy_global_robot->launch_user_step(t);
+            }
+            //callback_global_step();
         }
 
         // Launch user code on normal objects

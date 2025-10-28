@@ -30,6 +30,9 @@ void set_current_robot(PogobotObject& robot);
 enum class boundary_condition_t { solid, periodic };
 
 
+void dummy_global_robot_init();
+
+
 /**
  * @brief Class representing the simulation environment.
  *
@@ -113,6 +116,11 @@ class Simulation {
     // Data logger
     bool enable_data_logging;                ///< Flag to enable data logging.
     std::unique_ptr<DataLogger> data_logger; ///< DataLogger instance.
+
+    // Dummy robot used as current robot in the global_step callback
+    std::unique_ptr<PogobotObject> dummy_global_robot;
+    DiskGeometry dummy_global_robot_geom = DiskGeometry(26.5);
+
 
 public:
     bool current_robot_enable_data_logging;  ///< Flag to enable data logging on the current robot.

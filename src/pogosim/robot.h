@@ -181,7 +181,8 @@ public:
            std::pair<int16_t, int16_t> angular_systematic_bias_domain = {0, 0},
            std::pair<int16_t, int16_t> photosensors_systematic_bias_domain = {0, 0},
            float _photosensors_noise_stddev = 0.0f,
-           std::string const& _category = "robots");
+           std::string const& _category = "robots",
+           bool dummy = false);
 
     /**
      * @brief Constructs a PogobotObject from a configuration entry.
