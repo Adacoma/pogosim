@@ -551,7 +551,7 @@ void Simulation::create_robots() {
 
     // If there is a global_setup callback, call it
     glogger->info("Global initialization...");
-    if(callback_global_setup != nullptr) {
+    if (callback_global_setup != nullptr) {
         callback_global_setup();
     }
 
@@ -1002,6 +1002,11 @@ void Simulation::main_loop() {
         // Adjust simulation speed
         gui_delay = time_step_duration / GUI_speed_up;
         GUI_frame_period = time_step_duration * GUI_speed_up;
+
+        // Launch global step callback, if specified
+        if (callback_global_step != nullptr) {
+            callback_global_step();
+        }
 
         // Launch user code on normal objects
         for (auto obj : non_robots) {

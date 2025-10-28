@@ -41,7 +41,7 @@ show_light_levels: true             # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 10.0     # In s
+simulation_time: 1000.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 30.0         # How much the visualisation in the GUI should be sped up
 

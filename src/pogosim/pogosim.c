@@ -6,6 +6,7 @@
 void (*callback_create_data_schema)(void) = NULL;
 void (*callback_export_data)(void) = NULL;
 void (*callback_global_setup)(void) = NULL;
+void (*callback_global_step)(void) = NULL;
 #endif
 
 uint8_t main_loop_hz = 60;
