@@ -1301,7 +1301,12 @@ Object* object_factory(Simulation* simulation, uint16_t id, float x, float y, b2
         res = new PogobjectObject(simulation, id, x, y, world_id, userdatasize, config, category);
 
     } else if (type == "pogowall") {
-        res = new Pogowall(simulation, id, x, y, world_id, userdatasize, config, category);
+        if (simulation->get_boundary_condition() == boundary_condition_t::periodic) {
+            // Disable pogowall creation with periodic BC
+            res = nullptr;
+        } else {
+            res = new Pogowall(simulation, id, x, y, world_id, userdatasize, config, category);
+        }
 
     } else if (type == "membrane") {
         res = new MembraneObject(simulation, id, x, y, world_id, userdatasize, config, category);

@@ -205,6 +205,7 @@ public:
     void* data = nullptr;                ///< Pointer to user data.
     void (*user_init)(void) = nullptr;   ///< Pointer to a user-defined initialization function.
     void (*user_step)(void) = nullptr;   ///< Pointer to a user-defined step function.
+    bool _enable_user_steps = true;       ///< Whether we allow user programs to be executed.
     void (*callback_export_data)(void) = nullptr;        ///< Callback to export data.
 
     /**
@@ -364,6 +365,13 @@ public:
      * @param source Pointer to the originating robot.
      */
     void receive_message(message_t *const message, PogobotObject* source);
+
+    /**
+     * @brief Check if user steps are enabled
+     *
+     * @return Whether user steps are enabled/executed or not
+     */
+    bool enable_user_steps() const { return _enable_user_steps; }
 
 
     /**

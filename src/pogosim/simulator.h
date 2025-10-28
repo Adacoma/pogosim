@@ -329,6 +329,13 @@ public:
     arena_polygons_t const& get_arena_geometry() { return arena_polygons; };
 
     /**
+     * @brief Retrieve the arena boundary conditions.
+     *
+     * @return Arena BC
+     */
+    boundary_condition_t const& get_boundary_condition() { return boundary_condition; };
+
+    /**
      * @brief Wrap objects position to have period boundary conditions.
      *
      */

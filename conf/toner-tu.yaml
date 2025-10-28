@@ -41,7 +41,7 @@ show_light_levels: true             # In the GUI, can enabled/disabled using F6
 GUI: true
 
 # Time
-simulation_time: 5000.0     # In s
+simulation_time: 10.0     # In s
 time_step: 0.01            # In s
 GUI_speed_up: 30.0         # How much the visualisation in the GUI should be sped up
 
@@ -150,19 +150,19 @@ objects:
             #delta: 1.1897
 
 
-#    # An object category referencing Pogowalls, i.e. LEDs strips fixed on static walls that can send/receive messages, and with a Pogobot head/controller
-#    walls:
-#        type: pogowall      # Category type for Pogowalls
-#        geometry: arena     # Shape of the object. "Arena" means it will use the walls of the entire arena specified by "arena_file" (cf top of config file)
-#        communication_radius: 100  # The communication ratius of the Pogowalls, in mm
-#        msg_success_rate:
-#            type: static # Fixed msg success rate -- do not depend on the density, or message size
-#            rate: 1.0
-#            #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
-#            #alpha: 0.000001
-#            #beta: 3.0708
-#            #gamma: 2.3234
-#            #delta: 1.1897
+    # An object category referencing Pogowalls, i.e. LEDs strips fixed on static walls that can send/receive messages, and with a Pogobot head/controller
+    walls:
+        type: pogowall      # Category type for Pogowalls
+        geometry: arena     # Shape of the object. "Arena" means it will use the walls of the entire arena specified by "arena_file" (cf top of config file)
+        communication_radius: 100  # The communication ratius of the Pogowalls, in mm
+        msg_success_rate:
+            type: static # Fixed msg success rate -- do not depend on the density, or message size
+            rate: 1.0
+            #type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
+            #alpha: 0.000001
+            #beta: 3.0708
+            #gamma: 2.3234
+            #delta: 1.1897
 
 
     # An object category containing a small light spot around the middle of the arena

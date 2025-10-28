@@ -184,7 +184,9 @@ void PogobotObject::launch_user_step([[maybe_unused]] float t) {
     update_time();
     enable_stop_watches();
     //user_step();
-    pogo_main_loop_step(user_step);
+    if (_enable_user_steps) {
+        pogo_main_loop_step(user_step);
+    }
     disable_stop_watches();
 }
 
@@ -782,6 +784,12 @@ Pogowall::Pogowall(Simulation* simulation, uint16_t _id, float _x, float _y,
     : PogobotObject::PogobotObject(simulation, _id, _x, _y, world_id, _userdatasize, config, _category) {
     auto bd = geom->compute_bounding_disk();
     PhysicalObject::move(bd.center_x, bd.center_y);
+
+    if (dynamic_cast<ArenaGeometry*>(geom) != nullptr && simulation->get_boundary_condition() == boundary_condition_t::periodic) {
+        // Arena geometry and periodic boundary condition. Disable pogowall by default
+        glogger->warn("PogoWall: detected both an ArenaGeometry and periodic BC, disabling associated user program/user steps execution.");
+        _enable_user_steps = false;
+    }
 }
 
 b2Vec2 Pogowall::get_IR_emitter_position([[maybe_unused]] ir_direction dir) const {

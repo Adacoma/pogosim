@@ -244,6 +244,9 @@ void find_neighbors_to_pogowalls(std::vector<std::shared_ptr<Pogowall>>& pogowal
     size_t N = robots.size();
 
     for (auto wall : pogowalls) {
+        if (!wall->enable_user_steps()) {
+            continue;
+        }
         arena_polygons_t contours = wall->generate_contours();
 
         auto dists = compute_wall_distances(dir, robots, contours);
@@ -438,7 +441,6 @@ void find_neighbors_periodic(
             robots[i]->neighbors[dir].push_back(robots[j].get());
     }
 }
-
 
 
 // MODELINE "{{{1
