@@ -259,7 +259,9 @@ static double compute_local_polarization_norm(double self_heading, uint32_t *N_e
     double R0    = sqrt(M_PI) / (2.0 * sqrt((double)N));
     if (R0 > 0.999) R0=0.999;
     double P = (R_bar - R0) / (1.0 - R0);
-    if (P<0.0) P=0.0; if (P>1.0) P=1.0; return P;
+    if (P<0.0) P=0.0;
+    if (P>1.0) P=1.0;
+    return P;
 }
 
 /* --- Cluster helpers --- */
