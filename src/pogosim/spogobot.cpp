@@ -581,40 +581,40 @@ void data_set_value_bool(char const* name, bool value) {
 static std::string const parameters_config_key = "parameters";
 
 void init_bool_from_configuration(bool* var, char const* name, bool const default_value) {
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 void init_double_from_configuration(double* var, char const* name, double const default_value) {
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 void init_float_from_configuration(float* var, char const* name, float const default_value) {
-    //*var = std::stof(simulation->get_config()[name].get(std::to_string(default_value)));
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    //*var = std::stof(simulation->get_config().at_path(name).get(std::to_string(default_value)));
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 void init_int32_from_configuration(int32_t* var, char const* name, int32_t const default_value) {
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 void init_uint32_from_configuration(uint32_t* var, char const* name, uint32_t const default_value) {
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 void init_int16_from_configuration(int16_t* var, char const* name, int16_t const default_value) {
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 void init_uint16_from_configuration(uint16_t* var, char const* name, uint16_t const default_value) {
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 void init_int8_from_configuration(int8_t* var, char const* name, int8_t const default_value) {
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 void init_uint8_from_configuration(uint8_t* var, char const* name, uint8_t const default_value) {
-    *var = simulation->get_config()[parameters_config_key][name].get(default_value);
+    *var = simulation->get_config()[parameters_config_key].at_path(name).get(default_value);
 }
 
 
@@ -644,7 +644,7 @@ void init_string_from_configuration(char *var,
 
     // Get configuration entry
     auto const &cfg_node =
-        simulation->get_config()[parameters_config_key][name];
+        simulation->get_config()[parameters_config_key].at_path(name);
 
     std::string value;
     if (cfg_node.exists()) {
@@ -659,7 +659,7 @@ void init_string_from_configuration(char *var,
 }
 
 void init_float_array_from_configuration(float* var, char const* name, size_t const size) {
-    auto key = simulation->get_config()[parameters_config_key][name];
+    auto key = simulation->get_config()[parameters_config_key].at_path(name);
     if (key.exists()) {
         std::vector<float> data = key.get<std::vector<float>>();
         if (data.size() == 0) {
@@ -675,7 +675,7 @@ void init_float_array_from_configuration(float* var, char const* name, size_t co
 }
 
 void init_double_array_from_configuration(double* var, char const* name, size_t const size) {
-    auto key = simulation->get_config()[parameters_config_key][name];
+    auto key = simulation->get_config()[parameters_config_key].at_path(name);
     if (key.exists()) {
         std::vector<double> data = key.get<std::vector<double>>();
         if (data.size() == 0) {

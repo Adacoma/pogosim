@@ -87,6 +87,13 @@ public:
      */
     Configuration operator[](const std::string& key) const;
 
+    /// Access a nested sub-configuration via a dotted path (supports '\.' to escape dots).
+    Configuration at_path(const std::string& dotted_key) const;
+
+    /// Read a value at a dotted path with a default (convenience wrapper around at_path(...).get(...)).
+    template<typename T>
+    T get_path(const std::string& dotted_key, const T& default_value = T()) const;
+
     /**
      * @brief Retrieves the configuration value cast to type T.
      *
@@ -199,6 +206,11 @@ void Configuration::set(const std::string& key, const T& value) {
         node_ = YAML::Node(YAML::NodeType::Map);
     }
     node_[key] = value;
+}
+
+template<typename T>
+T Configuration::get_path(const std::string& dotted_key, const T& default_value) const {
+    return at_path(dotted_key).get<T>(default_value);
 }
 
 
