@@ -256,10 +256,20 @@ void Simulation::create_arena() {
 
     // Read multiple polygons from the CSV file
     //arena_polygons = read_poly_from_csv(csv_file, arena_width, arena_height);
-    arena_polygons = read_poly_from_csv(csv_file, arena_surface);
-    if (arena_polygons.empty()) {
-        glogger->error("Error: No polygons found in the arena file");
-        throw std::runtime_error("No polygons found in the arena file or unable to open arena file");
+    bool empty_arena = false;
+    try {
+        arena_polygons = read_poly_from_csv(csv_file, arena_surface);
+        empty_arena = arena_polygons.empty();
+    } catch (const std::exception& e) {
+        empty_arena = true;
+    }
+    if (empty_arena) {
+        glogger->warn("No polygons found in the arena file!");
+        glogger->warn("Assuming an empty arena with periodic boundary conditions.");
+        boundary_condition = boundary_condition_t::periodic;
+        std::string const csv_file_square = resolve_path(std::string("arenas/square.csv"));
+        arena_polygons = read_poly_from_csv(csv_file_square, arena_surface);
+        //throw std::runtime_error("No polygons found in the arena file or unable to open arena file");
     }
 
     // Compute the bounding box of the main polygon
