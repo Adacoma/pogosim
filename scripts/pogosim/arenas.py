@@ -20,7 +20,7 @@ import yaml
 from shapely.geometry import Polygon
 from shapely import affinity
 
-import utils  # ← use project plotting helper
+import pogosim.utils
 
 
 # ──────────────────────────────────────────────────────────────────────────────
