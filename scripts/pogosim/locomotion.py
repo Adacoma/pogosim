@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import multiprocessing as mp
+import re
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Tuple
 
@@ -26,6 +27,14 @@ def _sem(s: pd.Series) -> float:
     n = s.size
     return (s.std(ddof=1) / np.sqrt(n)) if n > 1 else 0.0
 
+def _unique_arenas(df: pd.DataFrame) -> list[str]:
+    if "arena_file" not in df.columns:
+        return []
+    return [str(a) for a in df["arena_file"].dropna().unique()]
+
+def _label_arena(arena: str) -> str:
+    # reuse the same safe shortener used by traces
+    return _short_label_from_arena(arena)
 
 ############### SPEEDS / STATS / PECLET ############### {{{1
 # All functions respect the optional 'arena_file' column.
@@ -212,8 +221,9 @@ def summarize_speed_stats(
                 'n_agents': h.shape[0],
             })
 
+        group_keys = (['arena_file'] if 'arena_file' in rolled.columns else []) + [ts_col]
         time_stats = (
-            rolled.groupby(ts_col, sort=True)
+            rolled.groupby(group_keys, sort=True)
                   .agg(mean_v=('v_roll', 'mean'),
                        sem_v =('v_roll', _sem),
                        mean_om=('omega_roll', 'mean'),
@@ -233,24 +243,32 @@ def summarize_speed_stats(
                 fig, axes = plt.subplots(2, 1, figsize=figsize, sharex=True)
                 ax1, ax2 = axes
 
-                # v
-                ax1.plot(time_stats['time'], time_stats['mean_v'], label='⟨v⟩')
-                ax1.fill_between(time_stats['time'],
-                                 time_stats['mean_v']-time_stats['sem_v'],
-                                 time_stats['mean_v']+time_stats['sem_v'],
-                                 alpha=0.25, label='± SEM')
-                ax1.set_ylabel('speed ⟨v⟩')
-                ax1.legend(loc='best')
+                if 'arena_file' in time_stats.columns:
+                    for arena, g in time_stats.groupby('arena_file', sort=False):
+                        ax1.plot(g['time'], g['mean_v'], label=f'{arena} ⟨v⟩')
+                        ax1.fill_between(g['time'], g['mean_v']-g['sem_v'], g['mean_v']+g['sem_v'], alpha=0.25)
+                        ax2.plot(g['time'], g['mean_om'], label=f'{arena} ⟨ω⟩')
+                        ax2.fill_between(g['time'], g['mean_om']-g['sem_om'], g['mean_om']+g['sem_om'], alpha=0.25)
+                    ax1.legend(loc='best'); ax2.legend(loc='best')
+                else:
+                    # v
+                    ax1.plot(time_stats['time'], time_stats['mean_v'], label='⟨v⟩')
+                    ax1.fill_between(time_stats['time'],
+                                     time_stats['mean_v']-time_stats['sem_v'],
+                                     time_stats['mean_v']+time_stats['sem_v'],
+                                     alpha=0.25, label='± SEM')
+                    ax1.set_ylabel('speed ⟨v⟩')
+                    ax1.legend(loc='best')
 
-                # omega
-                ax2.plot(time_stats['time'], time_stats['mean_om'], label='⟨ω⟩')
-                ax2.fill_between(time_stats['time'],
-                                 time_stats['mean_om']-time_stats['sem_om'],
-                                 time_stats['mean_om']+time_stats['sem_om'],
-                                 alpha=0.25, label='± SEM')
-                ax2.set_ylabel('angular speed ⟨ω⟩ [rad/s]')
-                ax2.set_xlabel('time [s]')
-                ax2.legend(loc='best')
+                    # omega
+                    ax2.plot(time_stats['time'], time_stats['mean_om'], label='⟨ω⟩')
+                    ax2.fill_between(time_stats['time'],
+                                     time_stats['mean_om']-time_stats['sem_om'],
+                                     time_stats['mean_om']+time_stats['sem_om'],
+                                     alpha=0.25, label='± SEM')
+                    ax2.set_ylabel('angular speed ⟨ω⟩ [rad/s]')
+                    ax2.set_xlabel('time [s]')
+                    ax2.legend(loc='best')
 
                 fig.tight_layout()
                 if savepath:
@@ -740,6 +758,17 @@ def _process_run(args: Tuple[int, pd.DataFrame, str, dict]) -> Tuple[int, List[s
 # ──────────────────────────────────────────────────────────────────────
 #  public API
 # ──────────────────────────────────────────────────────────────────────
+
+def _safe_arena_name(s: str) -> str:
+    return "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in s)
+
+def _short_label_from_arena(arena: str, maxlen: int = 50) -> str:
+    """Return a short, filesystem-safe label for an arena path/filename."""
+    name = Path(str(arena)).name           # keep only the filename
+    name = name.rsplit(".", 1)[0]          # drop extension if any
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", name)  # replace weird chars
+    return safe[:maxlen] or "arena"
+
 def generate_trace_images(
     df: pd.DataFrame,
     *,
@@ -759,6 +788,8 @@ def generate_trace_images(
     gifski_bin: str = "gifski",
     # Parallelism
     n_jobs: int | None = None,
+    # Safeguard for recursion
+    split_by_arena: bool = True,
 ) -> Union[List[str], Dict[int, List[str]]]:
     """
     Render fading-trail PNGs (and optional GIFs) from a robot-trace dataframe.
@@ -769,6 +800,39 @@ def generate_trace_images(
         • Set `n_jobs=1` to disable the pool (sequential).
     """
     df = df.copy()
+
+    # -- dispatch by arena first -------------------------------------
+    if split_by_arena and "arena_file" in df.columns and run_id is None:
+        out: dict[tuple[str, int], list[str]] = {}
+        base = Path(output_dir)
+        base.mkdir(parents=True, exist_ok=True)
+
+        for arena in sorted(df["arena_file"].dropna().unique()):
+            sub = df[df["arena_file"] == arena]
+            arena_label = _short_label_from_arena(str(arena))
+            arena_dir = base / arena_label
+
+            res = generate_trace_images(
+                sub,
+                k_steps=k_steps,
+                output_dir=str(arena_dir),
+                run_id=None,
+                robot_cmap_name=robot_cmap_name,
+                point_size=point_size,
+                line_width=line_width,
+                fade_min_alpha=fade_min_alpha,
+                dpi=dpi,
+                run_fmt=run_fmt,
+                make_gif=make_gif,
+                gif_fps=gif_fps,
+                gif_name=gif_name,
+                gifski_bin=gifski_bin,
+                n_jobs=n_jobs,
+                split_by_arena=False,  # <-- stop here; no further arena splitting
+            )
+            for r, paths in res.items():
+                out[(arena_label, r)] = paths
+        return out
 
     # ------------ single-run request -------------------------------------
     if run_id is not None:
@@ -933,7 +997,7 @@ def write_text_summary(
     Create SUMMARY.txt with key scalars + regime hints and also print to stdout.
     """
     lines: list[str] = []
-    lines.append("# Locomotion analysis — textual summary\n")
+    lines.append(f"# Locomotion analysis — textual summary (dir: {output_dir})\n")
 
     # Basic counts
     n_agents = None
@@ -1148,8 +1212,9 @@ def create_all_locomotion_plots(input_file, output_dir,
     msd_agent.to_csv(os.path.join(stats_dir, "msd_per_agent.csv"), index=False)
 
     # Aggregate across agents at each tau (no pandas .apply → no FutureWarning)
+    by = (['arena_file','tau'] if 'arena_file' in msd_agent.columns else ['tau'])
     msd_time = (
-        msd_agent.groupby('tau', sort=True)
+        msd_agent.groupby(by, sort=True)
                  .agg(mean_msd=('msd', 'mean'),
                       sem_msd =('msd', _sem),
                       n_agents=('msd', 'size'))
@@ -1159,11 +1224,16 @@ def create_all_locomotion_plots(input_file, output_dir,
 
     # Plot 1: linear axes
     plt.figure(figsize=(7, 4))
-    plt.plot(msd_time['tau'], msd_time['mean_msd'], label='⟨MSD(τ)⟩')
-    plt.fill_between(msd_time['tau'],
-                     msd_time['mean_msd'] - msd_time['sem_msd'],
-                     msd_time['mean_msd'] + msd_time['sem_msd'],
-                     alpha=0.25, label='± SEM')
+    if 'arena_file' in msd_time.columns:
+        for arena, g in msd_time.groupby('arena_file', sort=False):
+            plt.plot(g['tau'], g['mean_msd'], label=f'{arena}')
+            plt.fill_between(g['tau'], g['mean_msd']-g['sem_msd'], g['mean_msd']+g['sem_msd'], alpha=0.25)
+    else:
+        plt.plot(msd_time['tau'], msd_time['mean_msd'], label='⟨MSD(τ)⟩')
+        plt.fill_between(msd_time['tau'],
+                         msd_time['mean_msd'] - msd_time['sem_msd'],
+                         msd_time['mean_msd'] + msd_time['sem_msd'],
+                         alpha=0.25, label='± SEM')
     plt.xlabel('lag time τ [s]')
     plt.ylabel('MSD [mm²]')
     plt.legend(loc='best')
@@ -1174,11 +1244,16 @@ def create_all_locomotion_plots(input_file, output_dir,
     msd_pos = msd_time[(msd_time['tau'] > 0) & (msd_time['mean_msd'] > 0)]
     if not msd_pos.empty:
         plt.figure(figsize=(7, 4))
-        plt.plot(msd_pos['tau'], msd_pos['mean_msd'], label='⟨MSD(τ)⟩')
-        plt.fill_between(msd_pos['tau'],
-                         (msd_pos['mean_msd'] - msd_pos['sem_msd']).clip(lower=1e-30),
-                         msd_pos['mean_msd'] + msd_pos['sem_msd'],
-                         alpha=0.25, label='± SEM')
+        if 'arena_file' in msd_pos.columns:
+            for arena, g in msd_pos.groupby('arena_file', sort=False):
+                plt.plot(g['tau'], g['mean_msd'], label=f'{arena}')
+                plt.fill_between(g['tau'], g['mean_msd']-g['sem_msd'], g['mean_msd']+g['sem_msd'], alpha=0.25)
+        else:
+            plt.plot(msd_pos['tau'], msd_pos['mean_msd'], label='⟨MSD(τ)⟩')
+            plt.fill_between(msd_pos['tau'],
+                             (msd_pos['mean_msd'] - msd_pos['sem_msd']).clip(lower=1e-30),
+                             msd_pos['mean_msd'] + msd_pos['sem_msd'],
+                             alpha=0.25, label='± SEM')
         plt.xscale('log'); plt.yscale('log')
         plt.xlabel('lag time τ [s] (log)')
         plt.ylabel('MSD [mm²] (log)')
@@ -1194,6 +1269,45 @@ def create_all_locomotion_plots(input_file, output_dir,
         peclet_df=peclet_df,
         msd_time=msd_time,
     )
+
+    # ---------- per-arena summaries (each in its own subfolder) ----------
+    arenas = _unique_arenas(df)
+    for arena in arenas:
+        a_label = _label_arena(arena)
+        a_dir = os.path.join(output_dir, "arenas", a_label)
+        os.makedirs(a_dir, exist_ok=True)
+
+        # filter already-computed tables for this arena
+        def _filt(frame: pd.DataFrame | None) -> pd.DataFrame | None:
+            if frame is None or frame.empty or "arena_file" not in frame.columns:
+                return frame
+            return frame[frame["arena_file"] == arena].copy()
+
+        agent_stats_a = _filt(agent_stats)
+        time_stats_a  = _filt(time_stats)
+        peclet_df_a   = _filt(peclet_df)
+        msd_time_a    = _filt(msd_time)
+
+        # per-arena SUMMARY.txt
+        write_text_summary(
+            a_dir,
+            agent_stats=agent_stats_a,
+            time_stats=time_stats_a,
+            peclet_df=peclet_df_a,
+            msd_time=msd_time_a,
+        )
+
+        # Also export per-arena CSVs
+        stats_a_dir = os.path.join(a_dir, "stats")
+        os.makedirs(stats_a_dir, exist_ok=True)
+        if agent_stats_a is not None and not agent_stats_a.empty:
+            agent_stats_a.to_csv(os.path.join(stats_a_dir, "speed_agent_stats.csv"), index=False)
+        if time_stats_a is not None and not time_stats_a.empty:
+            time_stats_a.to_csv(os.path.join(stats_a_dir, "speed_time_stats.csv"), index=False)
+        if peclet_df_a is not None and not peclet_df_a.empty:
+            peclet_df_a.to_csv(os.path.join(stats_a_dir, "peclet.csv"), index=False)
+        if msd_time_a is not None and not msd_time_a.empty:
+            msd_time_a.to_csv(os.path.join(stats_a_dir, "msd_time_stats.csv"), index=False)
 
 
 if __name__ == "__main__":

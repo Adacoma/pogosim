@@ -1096,6 +1096,88 @@ def _fmt(x, p=3):
     return "n/a" if (x is None or not np.isfinite(x)) else f"{x:.{p}f}"
 
 
+def write_per_arena_summaries(output_dir: str, results: Dict[str, pd.DataFrame]) -> None:
+    def _safe_mean(df, col):
+        vals = df[col] if col in df.columns else None
+        return float(np.nanmean(vals)) if vals is not None and not df.empty else np.nan
+
+    arenas = set()
+    for df in results.values():
+        if isinstance(df, pd.DataFrame) and 'arena_file' in df.columns:
+            arenas.update(df['arena_file'].dropna().unique().tolist())
+
+    if not arenas:
+        return
+
+    lines = ["# Per-arena structure metrics — summary\n"]
+    for a in sorted(arenas):
+        lines.append(f"\n## arena_file = {a}\n")
+        # Polar order
+        P = results.get('polar_order', pd.DataFrame())
+        lines.append(f"- Global Polar order ⟨P⟩: "
+                     f"{_fmt(_safe_mean(P[P.get('arena_file')==a], 'P_polar'))}")
+        # Local polar
+        LP = results.get('local_polar', pd.DataFrame())
+        lines.append(f"- Local ⟨P_local⟩ (bias-free): "
+                     f"{_fmt(_safe_mean(LP[LP.get('arena_file')==a], 'P_local_biasfree_mean'))}")
+        # Local pairwise alignment
+        LPA = results.get('local_pair_align', pd.DataFrame())
+        lines.append(f"- Local pairwise ⟨A⟩ (edge-weighted): "
+                     f"{_fmt(_safe_mean(LPA[LPA.get('arena_file')==a], 'A_edge_mean'))}")
+        # ξ
+        AC = results.get('align_corr_len', pd.DataFrame())
+        lines.append(f"- Correlation length ⟨ξ⟩: "
+                     f"{_fmt(_safe_mean(AC[AC.get('arena_file')==a], 'xi_align'))}")
+        # ψ_k
+        psi_df = results.get('psi_k', pd.DataFrame())
+        if psi_df is not None and not psi_df.empty:
+            psi_col = [c for c in psi_df.columns if c.startswith('psi_')]
+            if psi_col:
+                col = psi_col[0]
+                lines.append(f"- Bond-orientational ⟨|{col}|⟩: "
+                             f"{_fmt(_safe_mean(psi_df[psi_df.get('arena_file')==a], col))}")
+        # Isolation
+        if not LP.empty:
+            lines.append(f"- Mean fraction isolated: "
+                         f"{_fmt(_safe_mean(LP[LP.get('arena_file')==a], 'frac_isolated'))}")
+        # Largest cluster
+        L = results.get('largest_cluster', pd.DataFrame())
+        lines.append(f"- Largest cluster fraction ⟨f_max⟩: "
+                     f"{_fmt(_safe_mean(L[L.get('arena_file')==a], 'largest_cluster_frac'))}")
+        # Number fluctuation
+        NF = results.get('number_fluct', pd.DataFrame())
+        lines.append(f"- Number-fluctuation exponent ⟨α⟩: "
+                     f"{_fmt(_safe_mean(NF[NF.get('arena_file')==a], 'alpha_number_fluct'))}")
+        # T_eff/T_ref
+        TE = results.get('Teff_ratio', pd.DataFrame())
+        if TE is not None and not TE.empty:
+            lines.append(f"- ⟨T_eff/T_ref⟩: "
+                         f"{_fmt(_safe_mean(TE[TE.get('arena_file')==a], 'Teff_over_Tref'))}")
+        # Vorticity & milling
+        VOR = results.get('vortex_summary', pd.DataFrame())
+        lines.append(f"- Mean enstrophy ⟨ω²⟩: "
+                     f"{_fmt(_safe_mean(VOR[VOR.get('arena_file')==a], 'enstrophy'))}")
+        lines.append(f"- Mean |ω|: "
+                     f"{_fmt(_safe_mean(VOR[VOR.get('arena_file')==a], 'mean_abs_vorticity'))}")
+        lines.append(f"- Mean swirling ⟨λ_ci⟩: "
+                     f"{_fmt(_safe_mean(VOR[VOR.get('arena_file')==a], 'mean_lambda_ci'))}")
+        lines.append(f"- Okubo–Weiss area ⟨Frac(Q<0)⟩: "
+                     f"{_fmt(_safe_mean(VOR[VOR.get('arena_file')==a], 'frac_Q_negative'))}")
+
+        MIL = results.get('milling', pd.DataFrame())
+        lines.append(f"- Milling index ⟨|t̂·v̂|⟩: "
+                     f"{_fmt(_safe_mean(MIL[MIL.get('arena_file')==a], 'tau_abs'))}")
+        lines.append(f"- Signed tangential ⟨t̂·v̂⟩: "
+                     f"{_fmt(_safe_mean(MIL[MIL.get('arena_file')==a], 'tau_mean'))}")
+        lines.append(f"- Normalized angular momentum ⟨Lz_norm⟩: "
+                     f"{_fmt(_safe_mean(MIL[MIL.get('arena_file')==a], 'Lz_norm'))}")
+
+    text = "\n".join(lines) + "\n"
+    with open(os.path.join(output_dir, "SUMMARY_per_arena.txt"), "w", encoding="utf-8") as f:
+        f.write(text)
+    print(text)
+
+
 def write_global_summary(output_dir: str, results: Dict[str, pd.DataFrame]) -> None:
     lines = ["# Global structure metrics — summary\n"]
     def add_line(label, value): lines.append(f"- {label}: {value}")
@@ -1701,6 +1783,7 @@ def main(argv=None):
 
     # Text summary (printed + file)
     write_global_summary(args.output_dir, results)
+    write_per_arena_summaries(args.output_dir, results)
     if not args.no_extended_infos:
         write_metric_descriptions(args.output_dir, results)
 
