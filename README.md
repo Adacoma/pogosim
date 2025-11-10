@@ -1,5 +1,5 @@
 # Pogosim ![Badge CI](https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg) ![Version](https://img.shields.io/badge/version-v0.10.7-blue)
-Pogosim is a simulator for the [Pogobot robots](https://pogobot.github.io/). It aims to reproduce the C API used on the robots, so that the exact same code can be used in simulations as in robotic experiments.
+Pogosim is a simulator for the [Pogobot robots](https://pogobot.github.io/). It aims to reproduce the C API used on the robots, so that the exact same code can be used in simulations as in robotic experiments. An extensive description of the Pogosim can be found in this [article](https://arxiv.org/pdf/2509.10968) or [here (RG link)](https://www.researchgate.net/publication/395526571_Pogosim_--_a_Simulator_for_Pogobot_robots).
 
 Pogosim is coded in C++20 and C17, using SDL2 and Box2D 3.0.
 
@@ -455,13 +455,11 @@ This will generate a PDF report named "latex/refman.pdf".
 ## Citing
 
 ```bibtex
-@misc{pogosim,
-    title = {pogosim: A simulator for Pogobot robots},
-    author = {Cazenille, L., Bredeche, N.},
-    year = {2025},
-    publisher = {Github},
-    journal = {GitHub repository},
-    howpublished = {\url{https://github.com/Adacoma/pogosim}},
+@article{cazenille2025pogosim,
+  title={Pogosim-a Simulator for Pogobot robots},
+  author={Cazenille, Leo and Macabre, Loona and Bredeche, Nicolas},
+  journal={arXiv preprint arXiv:2509.10968},
+  year={2025}
 }
 ```
 
