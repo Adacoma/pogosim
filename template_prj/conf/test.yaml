@@ -7,33 +7,73 @@ arena_file: arenas/disk.csv
 #arena_file: arenas/arena8.csv
 arena_surface: 1.0e6    # In mm²
 
+# Logging
 delete_old_files: true
 enable_data_logging: true
 data_filename: "frames/data.feather"
 enable_console_logging: true
 console_filename: "frames/console.txt"
-
-seed: 0
-nBots: 150
-initial_robot_formation: random
-simulationTime: 500.0   # In s
-robot_radius: 26.5      # In mm
-commRadius: 133.0       # In mm, from center of a focal robot to the center of a neighboring robot
-msgSuccessRate: 0.9
-showComms: false
-GUI: true
-
-timeStep: 0.01          # In s
-GUI_speed_up: 1.0
-
-initial_light_value: 32767
-photo_start_at: 1.0         # In s
-photo_start_duration: 1.0   # In s
-
-
 save_data_period: 1.0       # In s
 save_video_period: 1.0      # In s
 frames_name: "frames/f{:010.4f}.png"
+
+# Seed
+seed: 0
+
+# GUI options
+show_time: true                         # In the GUI, show the current simulated time in the top right corner
+show_scale_bar: true                    # In the GUI, show a scale bar in the bottom left corner
+show_communication_channels: false      # In the GUI, can enabled/disabled using F5
+show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
+show_lateral_LEDs: true                 # In the GUI, can enabled/disabled using F6
+show_light_levels: true                 # In the GUI, can enabled/disabled using F6
+GUI: true
+
+# Time
+simulation_time: 500.0   # In s
+time_step: 0.01          # In s
+GUI_speed_up: 1.0
+
+# Setup
+initial_formation: random
+
+objects:
+  # An object category containing a single light spot encompassing the entire simulation
+  global_light:
+    type: static_light  # The light is not active (does not move and does not have a controller)
+    light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
+    geometry: global    # The light involve the entire simulation
+    value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
+    photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
+                        # A photo start is a short period of time at the beginning of an experiment where the light is changed so that the robots know they should
+                        # start their user program in a synchronous manner.
+    photo_start_duration: 1.0   # Duration of the photo start period, in seconds
+    photo_start_value: 32767    # Light value during the photo start period (between 0 and 32767). Should be very different from the normal value of the light
+
+  # An object category containing the Pogobot robots
+  robots:
+        type: pogobot                   # Category type pertaining to Pogobots
+        nb: 150                         # Number of objects (Pogobots) in this category
+        geometry: disk                  # Pogobots are always disk-shaped
+        radius: 26.5                    # In mm
+
+        # Communication properties
+        communication_radius: 133.0     # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)
+        msg_success_rate:
+          type: static
+          rate: 0.9
+
+        # Physical properties
+        body_linear_damping: 0.3
+        body_angular_damping: 0.3
+        body_density: 10.0
+        body_friction: 0.3
+        body_restitution: 0.5
+
+        max_linear_speed: 100.0
+        max_angular_speed: 2.0
+        linear_noise_stddev: 0
+        angular_noise_stddev: 0
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
