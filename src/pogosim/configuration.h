@@ -145,6 +145,14 @@ public:
 
 private:
     YAML::Node node_;
+
+    /**
+     * @brief If @p n is a map containing a 'batch_hierarchical_options' map with a
+     *        'default' map, return a new node equal to @p n but with that default
+     *        merged at the same level and the key removed. Otherwise return @p n.
+     */
+    static YAML::Node resolve_hierarchical_default(const YAML::Node& n);
+
 };
 
 
@@ -161,8 +169,7 @@ numeric_fallback(const YAML::Node& n, const T& default_value) {
 
         tmp_t tmp = n.as<tmp_t>();            // may still throw
         return static_cast<T>(tmp);
-    }
-    catch (const YAML::Exception&) {
+    } catch (const YAML::Exception&) {
         return default_value;                 // out-of-range, etc.
     }
 }
@@ -182,8 +189,10 @@ T Configuration::get(const T& default_value) const {
         return default_value;
     }
 
+    // Resolve a possible hierarchical default at this level first
+    YAML::Node target = resolve_hierarchical_default(node_);
+
     /* honour an eventual "default_option" sub-key ---------------- */
-    YAML::Node target = node_;
     if (target.IsMap()) {
         YAML::Node opt = target["default_option"];
         if (opt) { target = opt; }
@@ -192,8 +201,7 @@ T Configuration::get(const T& default_value) const {
     /* -------- 1st attempt – let yaml-cpp do the conversion ------ */
     try {
         return target.as<T>();         // success? great, we’re done.
-    }
-    catch (const YAML::Exception&) {
+    } catch (const YAML::Exception&) {
         /* -------- 2nd attempt – only if T is numeric ------------ */
         return detail::numeric_fallback(target, default_value);
     }

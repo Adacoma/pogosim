@@ -15,8 +15,11 @@ void Configuration::load(const std::string& file_name) {
 }
 
 Configuration Configuration::operator[](const std::string& key) const {
-    if (node_ && node_[key])
-        return Configuration(node_[key]);
+    // Always resolve hierarchical default at this level before lookup
+    YAML::Node self = resolve_hierarchical_default(node_);
+    if (self && self[key]) {
+        return Configuration(self[key]);
+    }
     return Configuration(YAML::Node());
 }
 
@@ -33,17 +36,18 @@ std::string Configuration::summary() const {
 
 std::vector<std::pair<std::string, Configuration>> Configuration::children() const {
     std::vector<std::pair<std::string, Configuration>> result;
-    if (!node_ || !(node_.IsMap() || node_.IsSequence())) {
+    YAML::Node self = resolve_hierarchical_default(node_);
+    if (!self || !(self.IsMap() || self.IsSequence())) {
         return result;
     }
-    if (node_.IsMap()) {
-        for (auto it = node_.begin(); it != node_.end(); ++it) {
+    if (self.IsMap()) {
+        for (auto it = self.begin(); it != self.end(); ++it) {
             std::string key = it->first.as<std::string>();
             result.push_back({ key, Configuration(it->second) });
         }
-    } else if (node_.IsSequence()) {
-        for (std::size_t i = 0; i < node_.size(); ++i) {
-            result.push_back({ std::to_string(i), Configuration(node_[i]) });
+    } else if (self.IsSequence()) {
+        for (std::size_t i = 0; i < self.size(); ++i) {
+            result.push_back({ std::to_string(i), Configuration(self[i]) });
         }
     }
     return result;
@@ -68,9 +72,12 @@ Configuration Configuration::at_path(const std::string& dotted_key) const {
         return (*this)[dotted_key];
     }
 
+    // Start from a view where the current level has hierarchical defaults resolved
+    YAML::Node start = resolve_hierarchical_default(node_);
+
     // Exact key with dots wins (const lookup; no insertion)
-    if (node_.IsMap()) {
-        YAML::Node exact = node_[dotted_key]; // const operator[] called here
+    if (start.IsMap()) {
+        YAML::Node exact = start[dotted_key]; // const operator[] called here
         if (exact) return Configuration(exact);
     }
 
@@ -100,7 +107,7 @@ Configuration Configuration::at_path(const std::string& dotted_key) const {
     };
 
     // IMPORTANT: keep traversal on a *const* node to avoid insertions
-    const YAML::Node* cur = &node_;
+    const YAML::Node* cur = &start;
     YAML::Node cur_val; // holds the last retrieved value to return at end
     for (const std::string& part : split_dotted(dotted_key)) {
         if (!*cur) return Configuration(YAML::Node());
@@ -109,12 +116,17 @@ Configuration Configuration::at_path(const std::string& dotted_key) const {
             // const operator[] (no insertion)
             cur_val = (*cur)[part];
             if (!cur_val) return Configuration(YAML::Node());
+            // Resolve hierarchical default at the *new* level before continuing
+            cur_val = resolve_hierarchical_default(cur_val);
             cur = &cur_val;
         } else if (cur->IsSequence() && is_int_str(part)) {
             long long idx = 0;
             try { idx = std::stoll(part); } catch (...) { return Configuration(YAML::Node()); }
             if (idx < 0 || static_cast<std::size_t>(idx) >= cur->size()) return Configuration(YAML::Node());
             cur_val = (*cur)[static_cast<std::size_t>(idx)]; // const operator[]
+            // If the sequence element itself is a map with hierarchical options,
+            // resolve before descending further
+            cur_val = resolve_hierarchical_default(cur_val);
             cur = &cur_val;
         } else {
             return Configuration(YAML::Node());
@@ -122,6 +134,37 @@ Configuration Configuration::at_path(const std::string& dotted_key) const {
     }
 
     return Configuration(cur_val);
+}
+
+
+YAML::Node Configuration::resolve_hierarchical_default(const YAML::Node& n) {
+    if (!n || !n.IsMap()) {
+        return n;
+    }
+    YAML::Node bho = n["batch_hierarchical_options"];
+    if (!bho || !bho.IsMap()) {
+        return n;
+    }
+    YAML::Node def = bho["default"];
+    if (!def || !def.IsMap()) {
+        // No usable default → behave as if no hierarchical options existed.
+        return n;
+    }
+    // Build a merged view: copy all parent keys except the hierarchical key,
+    // then overlay the default alternative's content at the same level.
+    YAML::Node out(YAML::NodeType::Map);
+    for (auto it = n.begin(); it != n.end(); ++it) {
+        std::string k = it->first.as<std::string>();
+        if (k == "batch_hierarchical_options") {
+            continue;
+        }
+        out[k] = it->second;
+    }
+    for (auto it = def.begin(); it != def.end(); ++it) {
+        std::string k = it->first.as<std::string>();
+        out[k] = it->second;
+    }
+    return out;
 }
 
 
