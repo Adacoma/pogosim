@@ -71,6 +71,7 @@ tmp_opt/
 *.feather
 
 # Example binaries
+template_prj/template_prj
 examples/helloworld/helloworld
 examples/hanabi/hanabi
 examples/ssr/ssr

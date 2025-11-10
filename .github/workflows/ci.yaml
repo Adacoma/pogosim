@@ -202,6 +202,7 @@ jobs:
           ./examples/walls/walls -c conf/pair.yaml -g -nr
           ./examples/cpp_helloworld/cpp_helloworld -c conf/pair.yaml -g -nr
           ./scripts/pogosim/pogobatch.py -c conf/pair.yaml -S examples/hanabi/hanabi -r 1 -t tmp -o results/tmp
+          cd template_prj && make clean sin && ./template_prj -c conf/test.yaml -g -nr && cd ..
 
       # Step 4: Run tests
       - name: Launch Pogosim (Windows+WSL2)
@@ -218,6 +219,7 @@ jobs:
           ./examples/walls/walls -c conf/pair.yaml -g -nr
           ./examples/cpp_helloworld/cpp_helloworld -c conf/pair.yaml -g -nr
           python ./scripts/pogosim/pogobatch.py -c conf/pair.yaml -S examples/hanabi/hanabi -r 1 -t tmp -o results/tmp
+          cd template_prj && make clean sin && ./template_prj -c conf/test.yaml -g -nr && cd ..
 
 #      # Step 4: Run tests
 #      - name: Run tests

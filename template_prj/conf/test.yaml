@@ -30,7 +30,7 @@ show_light_levels: true                 # In the GUI, can enabled/disabled using
 GUI: true
 
 # Time
-simulation_time: 500.0   # In s
+simulation_time: 50.0   # In s
 time_step: 0.01          # In s
 GUI_speed_up: 1.0
 
