@@ -4,7 +4,10 @@
 #  The key "result_filename_format" contains the format of the exported feather files, depending on selected batch values.
 
 # Format of the generated dataframes, one for each configuration
-result_filename_format: "result_{objects.robots.nb}_{arena_file}.feather"
+result_filename_format: "result_{objects.robots.nb}.feather"
+
+# List of new columns to add in the generated dataframes
+result_new_columns: ["arena_file", "objects.robots.msg_success_rate"]
 
 window_width: 600       # In pixels
 window_height: 600      # In pixels
@@ -12,7 +15,7 @@ window_height: 600      # In pixels
 boundary_condition: solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
 arena_file:        # Test the results on two arenas
     default_option: arenas/disk.csv
-    batch_options: ["arenas/disk.csv", "arenas/arena8.csv", "arenas/annulus.csv", "arenas/star7.csv"]
+    batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
 arena_surface: 1.0e6    # In mm²
 
 delete_old_files: true
@@ -45,6 +48,7 @@ objects:
     # An object category containing a single light spot encompassing the entire simulation
     global_light:
         type: static_light  # The light is not active (does not move and does not have a controller)
+        light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
         geometry: global    # The light involve the entire simulation
         value: 200          # Value of the light between 0 and 32767. Corresponds to the light level detected by the Pogobots (e.g. by the pogobot_photosensors_read function)
         photo_start_at: 1.0 # Whether to enable a photo start (values ≥ 0) and when (in seconds). 
@@ -56,6 +60,7 @@ objects:
     # An object category containing a small light spot around the middle of the arena
     target_light:
         type: static_light  # The light is not active (does not move and does not have a controller)
+        light_mode: static  # Type of light level paradigm: static (same value across the entire geometry) or gradient (``value`` at the center, ``edge_value`` at the edge)
         geometry: disk      # Shape of the light. Can be 'disk', 'rectangle' or 'global'
         x: 500              # Center of the light spot, X coordinate, in mm
         y: 500              # Center of the light spot, Y coordinate, in mm
@@ -66,8 +71,8 @@ objects:
     robots:
         type: pogobot       # Category type pertaining to Pogobots
         nb:                 # Number of objects (Pogobots) in this category
-            default_option: 100
-            batch_options: [100, 200]          # Test the results on three different swarm sizes
+            default_option: 50
+            batch_options: [50, 100]          # Test the results on three different swarm sizes
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
 
@@ -86,13 +91,19 @@ objects:
         # Communication propeties
         communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)
         msg_success_rate:
-            #type: static # Fixed msg success rate -- do not depend on the density, or message size
-            #rate: 0.9
-            type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
-            alpha: 0.000004
-            beta: 2.8096
-            gamma: 2.3807
-            delta: 1.2457
+            batch_hierarchical_options:
+                default:
+                    type: static # Fixed msg success rate -- do not depend on the density, or message size
+                    rate: 0.9
+                static_rate:
+                    type: static # Fixed msg success rate -- do not depend on the density, or message size
+                    rate: 0.9
+                dynamic_rate:
+                    type: dynamic # Msg success rate follows this formula: "1 / (1 + (alpha * msg_size**beta * p_send**gamma * cluster_size**delta))"
+                    alpha: 0.000004
+                    beta: 2.8096
+                    gamma: 2.3807
+                    delta: 1.2457
 
 
 ########### Parameters used to directly initialize variables from the C code of the robots ###########

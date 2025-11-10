@@ -232,6 +232,8 @@ class PogobotLauncher:
                 logger.info(d)
 
 
+
+
 class PogobotBatchRunner:
     """
     A reusable class to run batch simulations for every combination of parameters
@@ -261,43 +263,78 @@ class PogobotBatchRunner:
     def get_combinations(self, config: dict) -> list[dict]:
         """
         Return every configuration obtained by choosing **exactly one** value
-        from each *batch_options* list found anywhere in the YAML tree.
-
-        • Ordinary Python lists that are *not* under a `batch_options` key are
-          treated as plain data (e.g. vectors, colour tables) and **do not**
-          create extra combinations.
-
-        • If no batch_options are present, the original config is returned.
+        from each *batch_options* list found anywhere in the YAML tree, and from
+        each *batch_hierarchical_options* mapping.
+        For hierarchical options, the chosen alternative's key/values are merged
+        into the parent dict, and the key is removed. We also record the chosen
+        alternative name so that `result_new_columns` can expose it later.
         """
         option_paths: list[str] = []
         option_values: list[list] = []
 
-        # ---------------------------------------------------------------------
-        # Collect every "...batch_options: [v1, v2, ...]" we can find
-        # ---------------------------------------------------------------------
+        hier_paths: list[str] = []           # dotted path to parent dict
+        hier_maps: list[dict] = []           # mapping name->{...}
+        hier_choice_names: list[list[str]] = []
+
         def recurse(node: dict | list | Any, prefix: str = "") -> None:
             if isinstance(node, dict):
+                # list-based options
                 if "batch_options" in node and isinstance(node["batch_options"], list):
-                    option_paths.append(prefix.rstrip("."))       # where to set
-                    option_values.append(node["batch_options"])   # the choices
-                    return                                        # don't dive deeper
+                    option_paths.append(prefix.rstrip("."))
+                    option_values.append(node["batch_options"])
+                    return
+                # hierarchical options (accept both spellings)
+                key_candidates = ("batch_hierarchical_options",)
+                present_key = next((k for k in key_candidates if k in node), None)
+                if present_key is not None and isinstance(node[present_key], dict):
+                    mapping = node[present_key]
+                    names = [k for k in mapping.keys() if k != "default"]
+                    if names:
+                        hier_paths.append(prefix.rstrip("."))
+                        hier_maps.append(mapping)
+                        hier_choice_names.append(names)
+                        return
                 for k, v in node.items():
                     recurse(v, f"{prefix}{k}.")
-            # NOTE: plain lists are *ignored* on purpose.
+            # NOTE: plain lists are ignored intentionally
 
         recurse(config)
 
-        # ---------------------------------------------------------------------
-        # Build the Cartesian product of every collected factor
-        # ---------------------------------------------------------------------
-        if not option_paths:                       # nothing to vary
+        have_simple = len(option_paths) > 0
+        have_hier   = len(hier_paths) > 0
+        if not (have_simple or have_hier):
             return [config]
 
+        factors: list[list[Any]] = []
+        factors.extend(option_values)
+        factors.extend(hier_choice_names)
+
         combos: list[dict] = []
-        for prod in itertools.product(*option_values):
+        for prod in itertools.product(*factors):
             cfg = copy.deepcopy(config)
-            for path, val in zip(option_paths, prod, strict=True):
-                set_in_dict(cfg, path, val)        # overwrite dict→raw value
+            choice_names: dict[str, str] = {}
+
+            offset = 0
+            if have_simple:
+                simple_choices = prod[offset:offset + len(option_paths)]
+                for path, val in zip(option_paths, simple_choices, strict=True):
+                    set_in_dict(cfg, path, val)
+                offset += len(option_paths)
+
+            if have_hier:
+                hier_choices = prod[offset:offset + len(hier_paths)]
+                for path, mapping, choice_name in zip(hier_paths, hier_maps, hier_choices, strict=True):
+                    parent = get_by_dotted_path(cfg, path)
+                    parent.pop("batch_hierarchial_options", None)
+                    parent.pop("batch_hierarchical_options", None)
+                    chosen = mapping[choice_name]
+                    for k, v in chosen.items():
+                        parent[k] = copy.deepcopy(v)
+                    choice_names[path] = choice_name
+
+            if choice_names:
+                cfg.setdefault("_batch_choice_names", {}).update(choice_names)
+
             combos.append(cfg)
         return combos
 
@@ -358,12 +395,18 @@ class PogobotBatchRunner:
                                      temp_config_path: str,
                                      final_output: str,
                                      comb_config: dict) -> str:
-        # ── Build extra-columns dict (same as before) ──────────────────────────
+        # ── Build extra-columns dict ───────────────────────────────────────────────
         extra_columns: dict[str, Any] = {}
         for path in comb_config.get("result_new_columns", []):
             try:
                 raw = get_by_dotted_path(comb_config, path)
-                if isinstance(raw, str) and os.path.dirname(raw):
+                # If the raw value is a mapping (e.g., the merged dict), replace it by
+                # the chosen hierarchical alternative name when available.
+                if isinstance(raw, dict):
+                    alt = comb_config.get("_batch_choice_names", {}).get(path)
+                    raw = alt if alt is not None else None
+                elif isinstance(raw, str) and os.path.dirname(raw):
+                    # shorten any filesystem path to its basename stem
                     raw = os.path.splitext(os.path.basename(raw))[0]
                 extra_columns[path] = raw
             except KeyError:
