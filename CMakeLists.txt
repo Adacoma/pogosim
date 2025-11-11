@@ -179,10 +179,13 @@ foreach(EXAMPLE ${EXAMPLE_DIRS})
         # Create a custom target for this specific example
         add_custom_target(example_${EXAMPLE}
             COMMAND ${CMAKE_COMMAND} -E echo "Building example: ${EXAMPLE}"
-            COMMAND make clean
-            COMMAND make sim
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE}
+            #COMMAND make clean
+            #COMMAND make sim
+            #WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE}
+            COMMAND $(MAKE) -C ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE} clean
+            COMMAND $(MAKE) -C ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE} sim
             DEPENDS ${PROJECT_NAME}
+            USES_TERMINAL
             COMMENT "Building example ${EXAMPLE}"
         )
         
