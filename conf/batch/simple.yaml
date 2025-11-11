@@ -7,7 +7,8 @@
 result_filename_format: "result_{objects.robots.nb}.feather"
 
 # List of new columns to add in the generated dataframes
-result_new_columns: ["arena_file", "objects.robots.msg_success_rate"]
+#result_new_columns: ["arena_file", "objects.robots.msg_success_rate"]
+result_new_columns: ["arena_file", "msg_success_rate"]
 
 window_width: 600       # In pixels
 window_height: 600      # In pixels
@@ -92,6 +93,7 @@ objects:
         communication_radius: 80.0      # In mm, from each IR emitter. Pogobots typically have 4 IR emitters (front, left, back, right)
         msg_success_rate:
             batch_hierarchical_options:
+                name: msg_success_rate
                 default:
                     type: static # Fixed msg success rate -- do not depend on the density, or message size
                     rate: 0.9

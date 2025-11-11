@@ -275,6 +275,7 @@ class PogobotBatchRunner:
         hier_paths: list[str] = []           # dotted path to parent dict
         hier_maps: list[dict] = []           # mapping name->{...}
         hier_choice_names: list[list[str]] = []
+        hier_aliases: list[str | None] = []   # optional alias from "name"
 
         def recurse(node: dict | list | Any, prefix: str = "") -> None:
             if isinstance(node, dict):
@@ -288,11 +289,13 @@ class PogobotBatchRunner:
                 present_key = next((k for k in key_candidates if k in node), None)
                 if present_key is not None and isinstance(node[present_key], dict):
                     mapping = node[present_key]
-                    names = [k for k in mapping.keys() if k != "default"]
+                    # exclude control keys from the choice set
+                    names = [k for k in mapping.keys() if k not in ("default", "name")]
                     if names:
                         hier_paths.append(prefix.rstrip("."))
                         hier_maps.append(mapping)
                         hier_choice_names.append(names)
+                        hier_aliases.append(mapping.get("name"))
                         return
                 for k, v in node.items():
                     recurse(v, f"{prefix}{k}.")
@@ -323,14 +326,20 @@ class PogobotBatchRunner:
 
             if have_hier:
                 hier_choices = prod[offset:offset + len(hier_paths)]
-                for path, mapping, choice_name in zip(hier_paths, hier_maps, hier_choices, strict=True):
+                for path, mapping, choice_name, alias in zip(hier_paths, hier_maps, hier_choices, hier_aliases, strict=True):
                     parent = get_by_dotted_path(cfg, path)
-                    parent.pop("batch_hierarchial_options", None)
                     parent.pop("batch_hierarchical_options", None)
                     chosen = mapping[choice_name]
                     for k, v in chosen.items():
                         parent[k] = copy.deepcopy(v)
                     choice_names[path] = choice_name
+                    # If an alias is provided, expose it at the top level so
+                    # result_new_columns and result_filename_format can use it.
+                    if alias and isinstance(alias, str) and len(alias):
+                        # top-level alias holds the chosen alternative name
+                        cfg[alias] = choice_name
+                        # also record it so run_launcher_for_combination can replace dicts by names
+                        choice_names[alias] = choice_name
 
             if choice_names:
                 cfg.setdefault("_batch_choice_names", {}).update(choice_names)
