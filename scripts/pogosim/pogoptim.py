@@ -212,8 +212,11 @@ class VarSpec:
 
 def discover_optimization_domains(config: Dict[str, Any]) -> List[VarSpec]:
     specs: List[VarSpec] = []
+    CTRL_KEYS = {"name", "default"}
+
     def rec(node: Any, dotted: str) -> None:
         if isinstance(node, dict):
+            # explicit domain
             if "optimization_domain" in node:
                 dom = node.get("optimization_domain", {}) or {}
                 kind = dom.get("type")
@@ -226,9 +229,9 @@ def discover_optimization_domains(config: Dict[str, Any]) -> List[VarSpec]:
 
                 if kind == "categorical":
                     if not choices or not isinstance(choices, list):
-                        raise RuntimeError(f"categorical domain for {dotted} needs a non-empty 'choices' list (or 'batch_options').")
+                        raise RuntimeError(f"categorical domain {dotted} needs a non-empty 'choices' list (or 'batch_options').")
                     init_val = dom.get("init", node.get("default_option"))
-                    init_idx = choices.index(init_val) if init_val in choices else 0
+                    init_idx = choices.index(init_val) if (init_val in choices) else 0
                     specs.append(VarSpec(path=dotted, kind="categorical", choices=choices, init=float(init_idx)))
                 elif kind in ("float", "int"):
                     try:
@@ -244,15 +247,28 @@ def discover_optimization_domains(config: Dict[str, Any]) -> List[VarSpec]:
                     specs.append(VarSpec(path=dotted, kind=kind, lo=lo, hi=hi, log=log_flag, init=init))
                 else:
                     raise RuntimeError(f"Unsupported or missing domain type for {dotted}")
+
+            # NEW: hierarchical domain (treat as categorical over branch names)
+            if "batch_hierarchical_options" in node and isinstance(node["batch_hierarchical_options"], dict):
+                mapping = node["batch_hierarchical_options"]
+                names = [k for k in mapping.keys() if k not in CTRL_KEYS]
+                if names:
+                    init_val = node.get("default_option")
+                    init_idx = names.index(init_val) if (init_val in names) else 0
+                    specs.append(VarSpec(path=dotted, kind="categorical", choices=names, init=float(init_idx)))
+
+            # Recurse
             for k, v in node.items():
                 if k == "optimization_domain":
                     continue
                 newdot = f"{dotted}.{k}" if dotted else k
                 rec(v, newdot)
+
     rec(config, "")
     if not specs:
         raise RuntimeError("Config contains no 'optimization_domain' entries to optimize.")
     return specs
+
 
 
 def strip_optimization_domains(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -346,10 +362,29 @@ def set_optimized_values_in_config(base_cfg: Dict[str, Any], values: Dict[str, A
         try:
             node = _resolve_node(cfg, dotted)
             if isinstance(node, dict):
-                node["default_option"] = val
+                # If this node holds a hierarchical mapping, shrink it to the chosen branch.
+                if "batch_hierarchical_options" in node and isinstance(node["batch_hierarchical_options"], dict):
+                    mapping = node["batch_hierarchical_options"]
+                    if val not in mapping:
+                        raise KeyError(f"Chosen hierarchical alternative '{val}' not found at {dotted}")
+                    chosen = mapping[val]
+                    # Keep alias if any, plus only the chosen branch
+                    alias = mapping.get("name")
+                    new_map = {"batch_hierarchical_options": {val: copy.deepcopy(chosen)}}
+                    if alias is not None:
+                        new_map["batch_hierarchical_options"]["name"] = alias
+                    # Replace mapping in place
+                    node["batch_hierarchical_options"] = new_map["batch_hierarchical_options"]
+                    # Optionally remember for reproducibility
+                    node["default_option"] = val
+                else:
+                    # regular dict target (incl. list-based batch_options owners)
+                    node["default_option"] = val
             else:
+                # scalar path
                 set_in_dict(cfg, dotted, val)
         except KeyError:
+            # Create a dict owner with default_option when the path is missing
             set_in_dict(cfg, dotted, {"default_option": val})
     return cfg
 

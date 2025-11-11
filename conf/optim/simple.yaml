@@ -37,6 +37,7 @@ optimization:
 window_width: 600       # In pixels
 window_height: 600      # In pixels
 
+boundary_condition: solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
 arena_file:        # Test the results on two arenas
     default_option: arenas/disk.csv
     batch_options: ["arenas/disk.csv", "arenas/annulus.csv"]
