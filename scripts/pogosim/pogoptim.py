@@ -950,7 +950,16 @@ def main():
     p.add_argument("--qd-batch", type=int, default=32, help="Batch of offspring per QD iteration (steady-state). Default: 32.")
 
     args = p.parse_args()
+
+    # Init logging
     init_logging(args.verbose)
+    pogobatch_logger = logging.getLogger("pogobatch")
+    # Ensure the library logger does not add its own handlers:
+    pogobatch_logger.handlers.clear()
+    pogobatch_logger.propagate = True  # bubble up to root handler we own
+    # Show pogobatch DEBUG only when -v
+    pogobatch_logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+
 
     try:
         optimize(

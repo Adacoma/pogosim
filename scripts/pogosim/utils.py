@@ -76,14 +76,14 @@ class CustomFormatter(logging.Formatter):
     red = "\x1b[31;21m"
     bold_red = "\x1b[31;1m"
     reset = "\x1b[0m"
-    format = "%(asctime)s - %(levelname)s - (%(filename)s:%(lineno)d) - %(message)s"
+    fmt = "%(asctime)s - %(levelname)s - (%(filename)s:%(lineno)d) - %(message)s"
 
     FORMATS = {
-        logging.DEBUG: grey + format + reset,
+        logging.DEBUG: grey + fmt + reset,
         logging.INFO: "%(message)s",
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
+        logging.WARNING: yellow + fmt + reset,
+        logging.ERROR: red + fmt + reset,
+        logging.CRITICAL: bold_red + fmt + reset
     }
 
     def format(self, record):
@@ -95,10 +95,13 @@ def init_logging(verbose=False):
     """
     Initialize logging using the CustomFormatter and declare the global logger variable.
     """
-    ch = logging.StreamHandler(sys.stderr)
-    ch.setFormatter(CustomFormatter())
-    logging.root.addHandler(ch)
-    logging.root.setLevel(logging.INFO if verbose else logging.INFO)
+    root = logging.getLogger()
+    if not root.handlers:
+        ch = logging.StreamHandler(sys.stderr)
+        ch.setFormatter(CustomFormatter())
+        root.addHandler(ch)
+    # Levels
+    root.setLevel(logging.DEBUG if verbose else logging.INFO)
 
 
 def save_figure(filename: str, dpi: int = 300) -> None:

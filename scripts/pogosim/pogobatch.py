@@ -24,6 +24,8 @@ from pogosim import __version__
 from multiprocessing import Pool
 
 logger = logging.getLogger("pogobatch")
+# Library best practice: add a NullHandler so it never configures global logging.
+logger.addHandler(logging.NullHandler())
 
 
 def set_in_dict(d: Dict[str, Any], dotted_key: str, value: Any, sep: str = ".") -> None:
@@ -168,7 +170,7 @@ class PogobotLauncher:
         if dataframes:
             combined_df = pd.concat(dataframes, ignore_index=True)
             combined_df.to_feather(self.combined_output_path)
-            logger.info(f"Combined data saved to {self.combined_output_path}")
+            logger.debug(f"Combined data saved to {self.combined_output_path}")
         else:
             logger.error("No dataframes were loaded to combine.")
 
@@ -233,7 +235,6 @@ class PogobotLauncher:
 
 
 
-
 class PogobotBatchRunner:
     """
     A reusable class to run batch simulations for every combination of parameters
@@ -256,8 +257,8 @@ class PogobotBatchRunner:
         self.retries = retries
         self.gui = gui
 
-        # Initialize logging via utils.
-        utils.init_logging(self.verbose)
+#        # Initialize logging via utils.
+#        utils.init_logging(self.verbose)
 
 
     def get_combinations(self, config: dict) -> list[dict]:
@@ -425,7 +426,7 @@ class PogobotBatchRunner:
         tmp_output = os.path.join(self.temp_base,
                                   f"run_{uuid.uuid4().hex}.feather")
 
-        logger.info("Launch → tmp %s  (will merge into %s)",
+        logger.debug("Launch → tmp %s  (will merge into %s)",
                      tmp_output, final_output)
 
         # ── 2. Run the simulator ------------------------------------------------
@@ -470,7 +471,7 @@ class PogobotBatchRunner:
             table = table.replace_schema_metadata(merged_meta)
             paw.write_feather(table, final_output)  # version=2 by default
 
-            logger.info(
+            logger.debug(
                 ("%s with %d rows" % ("Appended to" if os.path.exists(final_output) else "Created", len(new_df)))
                 + f" → {final_output}"
             )
@@ -507,13 +508,13 @@ class PogobotBatchRunner:
             temp_yaml = self.write_temp_yaml(comb)
             output_file = self.compute_output_filename(comb)
             tasks.append((temp_yaml, output_file, comb))
-            logger.info(f"Task: Config file {temp_yaml} -> Output: {output_file}")
+            logger.debug(f"Task: Config file {temp_yaml} -> Output: {output_file}")
 
         # Remove any pre-existing result_*.feather before first append
         for outfile in {t[1] for t in tasks}:                   # unique names
             if os.path.exists(outfile):
                 os.remove(outfile)
-                logger.info("Removed stale result file: %s", outfile)
+                logger.debug("Removed stale result file: %s", outfile)
 
         results = []
         for temp_yaml, output_file, comb in tasks:
@@ -557,6 +558,14 @@ def main():
     if not len(args.config) or not len(args.simulator_binary):
         parser.print_usage()
         sys.exit(1)
+
+    # Initialize logging via utils.
+    utils.init_logging(args.verbose)
+    # Show pogobatch DEBUG only with -v; else keep it quiet (WARNING+)
+    plog = logging.getLogger("pogobatch")
+    plog.handlers.clear()       # rely on root’s single handler
+    plog.propagate = True
+    plog.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     runner = PogobotBatchRunner(
         multi_config_file=args.config,
