@@ -297,8 +297,10 @@ class PogobotBatchRunner:
                         hier_maps.append(mapping)
                         hier_choice_names.append(names)
                         hier_aliases.append(mapping.get("name"))
-                        return
+                # IMPORTANT: do NOT return here; we still need to scan siblings
                 for k, v in node.items():
+                    if k == present_key:        # skip the alternatives mapping itself
+                        continue
                     recurse(v, f"{prefix}{k}.")
             # NOTE: plain lists are ignored intentionally
 
