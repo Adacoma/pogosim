@@ -1028,6 +1028,7 @@ void data_add_column_int64(char const* name);
 void data_add_column_double(char const* name);
 void data_add_column_string(char const* name);
 void data_add_column_bool(char const* name);
+void data_add_column_float16(char const* name);
 
 void enable_data_export(void);
 void disable_data_export(void);
@@ -1039,6 +1040,7 @@ void data_set_value_int64(char const* name, int64_t value);
 void data_set_value_double(char const* name, double value);
 void data_set_value_string(char const* name, char const* value);
 void data_set_value_bool(char const* name, bool value);
+void data_set_value_float16(char const* name, float value);
 
 void init_bool_from_configuration(bool* var, char const* name, bool const default_value);
 void init_double_from_configuration(double* var, char const* name, double const default_value);

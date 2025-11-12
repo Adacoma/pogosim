@@ -2,6 +2,73 @@
 #include "data_logger.h"
 #include "utils.h"
 #include "version.h"
+#include <bit>     // C++20
+#include <cmath>   // std::fabs, std::isnan, std::isinf
+#include <cstring> // std::memcpy
+
+
+// ---- float32 -> binary16 helper ----
+DataLogger::half_float_t DataLogger::float_to_half_bits(float f) {
+    // IEEE-754 binary32 layout
+    uint32_t w;
+    static_assert(sizeof(float) == sizeof(uint32_t));
+    std::memcpy(&w, &f, sizeof(w));
+
+    const uint32_t sign = (w >> 31) & 0x1;
+    const int32_t  exp  = ((w >> 23) & 0xFF) - 127;  // unbiased
+    uint32_t mant = (w & 0x7FFFFF);
+
+    // NaN / Inf handling
+    if ((w & 0x7F800000u) == 0x7F800000u) {
+        // Inf or NaN -> preserve sign; map to half Inf/NaN
+        const uint16_t half_sign = static_cast<uint16_t>(sign) << 15;
+        if ((w & 0x007FFFFFu) == 0) {
+            // Infinity
+            return half_sign | static_cast<uint16_t>(0x7C00);
+        } else {
+            // NaN: quiet NaN payload
+            return half_sign | static_cast<uint16_t>(0x7E00);
+        }
+    }
+
+    // Underflow to zero or subnormal half
+    if (exp < -14) {
+        // Too small for normal half; may be subnormal or zero
+        // Convert by shifting the mantissa with implicit 1
+        if (exp < -24) {
+            // Underflow to signed zero
+            return static_cast<uint16_t>(sign << 15);
+        }
+        // Subnormal half: exp = -14, shift mant accordingly
+        uint32_t shifted = (mant | 0x00800000u) >> static_cast<uint32_t>(-exp - 14 + 1);
+        // Round to nearest, ties to even (add 1 if LSBs indicate rounding)
+        uint16_t half_mant = static_cast<uint16_t>((shifted + 1) >> 1);
+        return static_cast<uint16_t>((sign << 15) | half_mant);
+    }
+
+    // Overflow to Inf
+    if (exp > 15) {
+        return static_cast<uint16_t>((sign << 15) | 0x7C00);
+    }
+
+    // Normal half number
+    uint16_t half_exp  = static_cast<uint16_t>(exp + 15);
+    // Take top 10 bits of mantissa with rounding
+    uint32_t half_mant_rounded = (mant + 0x00001000u) >> 13; // add 0.5 ulp then shift
+
+    // Handle rounding overflow in mantissa
+    if (half_mant_rounded == 0x400) { // 11 bits set -> carry into exponent
+        half_mant_rounded = 0;
+        ++half_exp;
+        if (half_exp >= 0x1F) {
+            // becomes Inf
+            return static_cast<uint16_t>((sign << 15) | 0x7C00);
+        }
+    }
+
+    return static_cast<uint16_t>((sign << 15) | (half_exp << 10) | (half_mant_rounded & 0x3FF));
+}
+
 
 
 // Destructor to close file
@@ -116,6 +183,11 @@ void DataLogger::set_value(const std::string& column_name, bool value) {
     row_values_[column_name] = value;
 }
 
+void DataLogger::set_value_float16(const std::string& column_name, float value) {
+    check_column(column_name);
+    row_values_[column_name] = float_to_half_bits(value);
+}
+
 
 void DataLogger::save_row() {
     if (!file_opened_) {
@@ -157,6 +229,8 @@ void DataLogger::save_row() {
             builders[i] = std::make_shared<arrow::StringBuilder>();
         } else if (field_type->id() == arrow::Type::BOOL) {
             builders[i] = std::make_shared<arrow::BooleanBuilder>();
+        } else if (field_type->id() == arrow::Type::HALF_FLOAT) {
+            builders[i] = std::make_shared<arrow::HalfFloatBuilder>();
         } else {
             throw std::runtime_error("Unsupported data type for column: " + fields_[i]->name());
         }
@@ -185,6 +259,8 @@ void DataLogger::save_row() {
                 status = std::static_pointer_cast<arrow::StringBuilder>(builders[i])->AppendNull();
             } else if (field_type->id() == arrow::Type::BOOL) {
                 status = std::static_pointer_cast<arrow::BooleanBuilder>(builders[i])->AppendNull();
+            } else if (field_type->id() == arrow::Type::HALF_FLOAT) {
+                status = std::static_pointer_cast<arrow::HalfFloatBuilder>(builders[i])->AppendNull();
             }
         } else {
             // Append actual values
@@ -215,6 +291,10 @@ void DataLogger::save_row() {
             } else if (field_type->id() == arrow::Type::BOOL) {
                 status = std::static_pointer_cast<arrow::BooleanBuilder>(builders[i])->Append(
                     std::get<bool>(row_values_[field_name])
+                );
+            } else if (field_type->id() == arrow::Type::HALF_FLOAT) {
+                status = std::static_pointer_cast<arrow::HalfFloatBuilder>(builders[i])->Append(
+                    std::get<half_float_t>(row_values_[field_name])
                 );
             }
         }

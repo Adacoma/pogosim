@@ -154,6 +154,20 @@ public:
      */
     void set_value(const std::string& column_name, bool value);
 
+
+    /**
+     * @brief Sets the value for a specified column in the current row.
+     *
+     * Not overloaded method (like set_value methods), to avoid automatic promotions to double
+     *
+     * @param column_name The name of the column.
+     * @param value The boolean value to set.
+     *
+     * @throw std::runtime_error if the file is not open or the column does not exist.
+     */
+    void set_value_float16(const std::string& column_name, float value);
+
+
     /**
      * @brief Saves the current row to the Feather file.
      *
@@ -166,6 +180,9 @@ public:
     void save_row();
 
 private:
+    // Store Arrow float16 values as their raw 16-bit representation
+    using half_float_t = arrow::NumericBuilder<arrow::HalfFloatType>::value_type;
+
     /// Vector of Arrow fields representing the schema.
     std::vector<std::shared_ptr<arrow::Field>> fields_;
     /// The Arrow schema constructed from the fields.
@@ -177,7 +194,7 @@ private:
     /// Mapping from column names to their index positions in the schema.
     std::unordered_map<std::string, size_t> column_indices_;
     /// Current row values stored as a variant of supported types.
-    std::unordered_map<std::string, std::variant<int64_t, int32_t, int16_t, int8_t, double, std::string, bool>> row_values_;
+    std::unordered_map<std::string, std::variant<int64_t, int32_t, int16_t, int8_t, double, std::string, bool, half_float_t>> row_values_;
     /// Flag indicating whether the file has been opened.
     bool file_opened_ = false;
     /// Stores user-supplied metadata until the file is opened.
@@ -200,6 +217,9 @@ private:
      * Initializes all row values for each field to a default value (zero for numeric types).
      */
     void reset_row();
+
+    // Convert float32 -> IEEE-754 half payload (16-bit)
+    static half_float_t float_to_half_bits(float v);
 };
 
 

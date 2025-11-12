@@ -555,6 +555,9 @@ void data_add_column_string(char const* name) {
 void data_add_column_bool(char const* name) {
     simulation->get_data_logger()->add_field(name, arrow::boolean());
 }
+void data_add_column_float16(char const* name) {
+    simulation->get_data_logger()->add_field(name, arrow::float16());
+}
 
 void data_set_value_int8(char const* name, int8_t value) {
     simulation->get_data_logger()->set_value(name, value);
@@ -576,6 +579,9 @@ void data_set_value_string(char const* name, char const* value) {
 }
 void data_set_value_bool(char const* name, bool value) {
     simulation->get_data_logger()->set_value(name, value);
+}
+void data_set_value_float16(char const* name, float value) {
+    simulation->get_data_logger()->set_value_float16(name, value);
 }
 
 static std::string const parameters_config_key = "parameters";
