@@ -389,24 +389,24 @@ The main image definition file for apptainer is based on Ubuntu 24.04 LTS ("pogo
 
 To build the image:
 ```shell
-sudo apptainer build --sandbox -F pogosim.simg pogosim-apptainer.def
+sudo apptainer build -F pogosim.sif pogosim-apptainer.def
 ```
 Or, if you want to use Clang instead of GCC:
 ```shell
-sudo apptainer build --sandbox -F --build-arg USE_CLANG=true pogosim.simg pogosim-apptainer.def
+sudo apptainer build -F --build-arg USE_CLANG=true pogosim.sif pogosim-apptainer.def
 ```
 
 
 Use the image to compile a pogosim project:
 ```shell
 cd ~/my_pogobot_project
-apptainer exec /PATH/TO/pogosim.simg make clean sim
+apptainer exec /PATH/TO/pogosim.sif make clean sim
 ```
 Note that your current directory should be a subpath of your home (~) directory -- elsewise apptainer/singularity cannot access it by default.
 
 Then the simulator can be launched with:
 ```shell
-apptainer exec /PATH/TO/pogosim.simg ./my_pogobot_project -c conf/test.yaml
+apptainer exec /PATH/TO/pogosim.sif ./my_pogobot_project -c conf/test.yaml
 ```
 
 
