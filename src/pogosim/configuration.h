@@ -145,6 +145,8 @@ public:
 
 private:
     YAML::Node node_;
+    mutable YAML::Node resolved_cache_;  // Cache for resolved hierarchical default
+    mutable bool cache_valid_;           // Whether the cache is valid
 
     /**
      * @brief If @p n is a map containing a 'batch_hierarchical_options' map with a
@@ -152,6 +154,11 @@ private:
      *        merged at the same level and the key removed. Otherwise return @p n.
      */
     static YAML::Node resolve_hierarchical_default(const YAML::Node& n);
+    
+    /**
+     * @brief Get the resolved node for this configuration, using cache if available.
+     */
+    const YAML::Node& get_resolved() const;
 
 };
 
@@ -189,8 +196,9 @@ T Configuration::get(const T& default_value) const {
         return default_value;
     }
 
-    // Resolve a possible hierarchical default at this level first
-    YAML::Node target = resolve_hierarchical_default(node_);
+    // Get the cached resolved node at this level
+    const YAML::Node& target_ref = get_resolved();
+    YAML::Node target = target_ref;  // Copy for subsequent modifications
 
     /* honour an eventual "default_option" sub-key ---------------- */
     if (target.IsMap()) {

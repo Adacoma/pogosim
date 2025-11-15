@@ -2,9 +2,17 @@
 #include "configuration.h"
 
 
-Configuration::Configuration() : node_(YAML::Node()) {}
+Configuration::Configuration() : node_(YAML::Node()), cache_valid_(false) {}
 
-Configuration::Configuration(const YAML::Node &node) : node_(node) {}
+Configuration::Configuration(const YAML::Node &node) : node_(node), cache_valid_(false) {}
+
+const YAML::Node& Configuration::get_resolved() const {
+    if (!cache_valid_) {
+        resolved_cache_ = resolve_hierarchical_default(node_);
+        cache_valid_ = true;
+    }
+    return resolved_cache_;
+}
 
 void Configuration::load(const std::string& file_name) {
     try {
@@ -15,8 +23,8 @@ void Configuration::load(const std::string& file_name) {
 }
 
 Configuration Configuration::operator[](const std::string& key) const {
-    // Always resolve hierarchical default at this level before lookup
-    YAML::Node self = resolve_hierarchical_default(node_);
+    // Use cached resolved node
+    const YAML::Node& self = get_resolved();
     if (self && self[key]) {
         return Configuration(self[key]);
     }
@@ -36,7 +44,7 @@ std::string Configuration::summary() const {
 
 std::vector<std::pair<std::string, Configuration>> Configuration::children() const {
     std::vector<std::pair<std::string, Configuration>> result;
-    YAML::Node self = resolve_hierarchical_default(node_);
+    const YAML::Node& self = get_resolved();
     if (!self || !(self.IsMap() || self.IsSequence())) {
         return result;
     }
@@ -72,8 +80,8 @@ Configuration Configuration::at_path(const std::string& dotted_key) const {
         return (*this)[dotted_key];
     }
 
-    // Start from a view where the current level has hierarchical defaults resolved
-    YAML::Node start = resolve_hierarchical_default(node_);
+    // Start from cached resolved view
+    const YAML::Node& start = get_resolved();
 
     // Exact key with dots wins (const lookup; no insertion)
     if (start.IsMap()) {
