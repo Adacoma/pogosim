@@ -14,7 +14,7 @@ ifeq ($(OS), Darwin)  # macOS
 	SIM_INCLUDES_EXT = -I/usr/local/include -I/opt/homebrew/include
 else  # Linux
 	SIM_LD_FLAGS_BOX2D = -lbox2d
-	SIM_LD_FLAGS_POGOSIM = -Wl,--whole-archive -lpogosim -lpogo-utils -Wl,--no-whole-archive -lboost_system
+	SIM_LD_FLAGS_POGOSIM = -Wl,--whole-archive -lpogosim -lpogo-utils -Wl,--no-whole-archive
     WHOLE_ARCHIVE_FLAG = -Wl,--whole-archive
     STDCPP_LIB = -lstdc++
 	SIM_LD_EXT = -L/usr/local/lib
