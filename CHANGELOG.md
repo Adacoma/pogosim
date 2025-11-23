@@ -1,6 +1,48 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.8] - 2025-11-23
+
+### Added
+ - pogobatch: allow sequential backend + option to enable GUI
+ - add script+conf to benchmark speed of Pogosim
+ - add implementation of the "pogobot\_infrared\_get\_receiver\_error\_counter" function of the Pogobot API
+ - add a new "am.py" script to compute Active-Matter statistics of robot dynamics. Split results by arena
+ - add example 'avoid\_walls' that show robots avoiding active walls
+ - add default active wall user code functions in pogosim.{h,c} -- active wall default behavior can just be set using one line (cf example "avoid\_walls")
+ - PogobotObject: add support for systematic angular biases
+ - add support for periodic boundary conditions ("empty.csv" or "torus.csv" configuration files, or "boundary\_condition: periodic" in config). find neighbors respects periodic boundary conditions. Disable pogowall creation on periodic BC
+ - add Vicsek example, with heading estimation and wall avoidance from pogo-utils. Use cluster-level U-turns to avoid walls.
+ - add Toner-tu example, extending the Vicsek example with crowding/pressure terms + others.
+ - network script: create violin comparing arena eigenvalues
+ - examples using pogo-utils will be peacefully skipped if pogo-utils is not found (Makefile)
+ - add the global\_step callback, executed once per step
+ - configuration: allow dotted paths
+ - README: link to arxiv paper
+ - pogobatch: allow hierarchical options + dataframe columns
+ - configuration: allow hierarchical options format from pogobatch (always take the 'default' option). Hierarchical options can now be named.
+ - pogoptim: add hierarchical categorical optimization domains
+ - support for float16 in data logs (2 bytes). Takes far less space than double (8 bytes)
+ - add a configuration file containing noisy locomotion
+
+### Changed
+ - intangible objects pose is now always saved as NaN
+ - run\_and\_tumble example: randomly select run or tumble at init
+ - photostart: always starts at light value = 0, before photo start light spike happens
+ - locomotion.py script now splits results by arena
+ - CI: now compile and launch/test template\_prj alongside the baseline examples
+ - update apptainer instructions in the README, avoid the --sandbox parameter
+
+### Fixed
+ - major fix: when receiving from all directions, create 4 differents msg reception calls, rather than one call with \_receiver\_ir\_index=ir\_all. This aligns with the Pogolib.
+ - major fix: remove boost\_system from the Makefile, as it is not compatible with boost 1.89
+ - avoid crash if no robot are created, put warning instead
+ - network script: fix crash when input dataframes did not have 'run' and 'arena\_file' columns
+ - fix pogosim.arenas script import from python
+ - pogobatch/pogoptim: fix logging - debug messages were not filtered correctly when pogoptim called pogobatch routines
+ - fix CMakeLists to avoid returning a warning on some computers when compiling examples
+
+
 ## [0.10.7] - 2025-09-11
 
 ### Added
