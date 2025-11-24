@@ -26,7 +26,7 @@ ROBOT_CATEGORY?=robots
 BUILD_DIR?=./build
 POGO_SDK?=../../pogobot-sdk
 POGOSIM_INCLUDE_DIR?=../../src/
-POGOSIM_SRC_DIR?=$(POGOSIM_INCLUDE_DIR)/pogosim/
+POGOSIM_SRC_DIR=$(POGOSIM_INCLUDE_DIR)/pogosim/
 POGOBIN_CFLAGS = -flto -ffunction-sections -fdata-sections -finline-small-functions -finline-functions-called-once # -ffast-math #-fno-math-errno -fno-trapping-math 
 POGOBIN_LDFLAGS = -flto -Wl,--gc-sections
 

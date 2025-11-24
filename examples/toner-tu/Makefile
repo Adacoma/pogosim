@@ -28,8 +28,8 @@ POGO_SDK?=../../pogobot-sdk
 POGOSIM_INCLUDE_DIR?=../../pogosim/src/
 POGOUTILS_INCLUDE_DIR?=../../../pogo-utils/src
 
-POGOSIM_SRC_DIR?=$(POGOSIM_INCLUDE_DIR)/pogosim/
-POGOUTILS_SRC_DIR?=$(POGOUTILS_INCLUDE_DIR)/pogo-utils
+POGOSIM_SRC_DIR=$(POGOSIM_INCLUDE_DIR)/pogosim/
+POGOUTILS_SRC_DIR=$(POGOUTILS_INCLUDE_DIR)/pogo-utils
 POGOBIN_CFLAGS = -flto -ffunction-sections -fdata-sections -finline-small-functions -finline-functions-called-once -fexcess-precision=standard -fsingle-precision-constant # -ffast-math #-fno-math-errno -fno-trapping-math 
 POGOBIN_LDFLAGS = -flto -Wl,--gc-sections -fexcess-precision=standard -fsingle-precision-constant 
 
