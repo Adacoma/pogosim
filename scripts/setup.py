@@ -21,6 +21,10 @@ setup(
         "pyyaml>=5.3",
         "pandas>=1.3.0",
         "pyarrow>=19.0.0",
+        "matplotlib>=3.10.3",
+        "seaborn>=0.13.2",
+        "shapely>=2.1.0",
+        "scikit-learn>=1.7.1",
         # "ray>=2.0",
     ],
     classifiers=[
