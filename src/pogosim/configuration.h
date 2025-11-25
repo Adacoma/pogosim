@@ -67,7 +67,7 @@ public:
     Configuration();
 
     /// Construct Configuration from an existing YAML::Node.
-    Configuration(const YAML::Node &node);
+    explicit Configuration(const YAML::Node &node);
 
     /**
      * @brief Loads configuration parameters from a YAML file.
