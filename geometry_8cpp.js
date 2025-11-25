@@ -1,0 +1,26 @@
+var geometry_8cpp =
+[
+    [ "adjust_mm_to_pixels", "geometry_8cpp.html#a6f2524a8fca8ad68f61ae3bfb2568805", null ],
+    [ "compute_polygon_area", "geometry_8cpp.html#a15ac241a6accd331b86d209dd889a70e", null ],
+    [ "compute_polygon_dimensions", "geometry_8cpp.html#a8c2c5f60172186fca0daa83407e2a86b", null ],
+    [ "euclidean_distance_sq", "geometry_8cpp.html#a70c72bb13f10f194f2536c6a39225f17", null ],
+    [ "generate_chessboard_points", "geometry_8cpp.html#a3bfa0e6daa8ae0d704cf282b25ee9b1b", null ],
+    [ "generate_points_voronoi_lloyd", "geometry_8cpp.html#a324677e8093877aa0876613a49666e0d", null ],
+    [ "generate_random_point_within_polygon", "geometry_8cpp.html#aba2572b4ee0344bcdc1cee1fd9acf3e3", null ],
+    [ "generate_random_points_layered", "geometry_8cpp.html#aba0020e3e00fd79881c8b43457385ccc", null ],
+    [ "generate_random_points_power_lloyd", "geometry_8cpp.html#ae5b5e400b14772fe48f8c4b9e3277d5f", null ],
+    [ "generate_random_points_within_polygon_safe", "geometry_8cpp.html#a22187493dac8cea6ae5286a2c77ecdfd", null ],
+    [ "generate_regular_disk_points_in_polygon", "geometry_8cpp.html#ab70d032568001cd6f8ad49c68e96cc30", null ],
+    [ "import_points_from_file", "geometry_8cpp.html#a14ae44b918ffa60675fb450ec775a444", null ],
+    [ "is_point_within_polygon", "geometry_8cpp.html#ae0d53ae819a7d994c21d8b60c3866ff4", null ],
+    [ "offset_polygon", "geometry_8cpp.html#ad6c33659f7609a5b225d1874dbe98a0d", null ],
+    [ "point_to_line_segment_distance", "geometry_8cpp.html#a41f8ce7cd9ad47872f165c227fa843d8", null ],
+    [ "polygon_centroid", "geometry_8cpp.html#a3d23d86bfb61af34c5a025be7a5325af", null ],
+    [ "read_poly_from_csv", "geometry_8cpp.html#a5f54e0b530a83fc7354746b3207b5fcb", null ],
+    [ "sqr", "geometry_8cpp.html#a4980b166a157e438d3fe066dae7cb40a", null ],
+    [ "visualization_position", "geometry_8cpp.html#a8e76ec292d7df60cf3dbbba91c07e44e", null ],
+    [ "visualization_position", "geometry_8cpp.html#a26bae0c48b4485fc418034fccaebad7f", null ],
+    [ "mm_to_pixels", "geometry_8cpp.html#aa57852bee0e7ed3f9ac024c7dffbc0b2", null ],
+    [ "visualization_x", "geometry_8cpp.html#ae8c2c5d921f6fae8ad89c96487681e6c", null ],
+    [ "visualization_y", "geometry_8cpp.html#a87a967d94e4b6a2e1d971db97325c468", null ]
+];
