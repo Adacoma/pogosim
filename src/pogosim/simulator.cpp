@@ -549,21 +549,35 @@ void Simulation::init_SDL() {
         throw std::runtime_error("Error while initializing SDL");
     }
 
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    // Init renderer
+    Uint32 renderer_flags = SDL_RENDERER_ACCELERATED;
+    if (!enable_gui) {
+        renderer_flags = 0; // allow software / whatever is available
+    }
+    renderer = SDL_CreateRenderer(window, -1, renderer_flags);
     if (!renderer) {
-        SDL_Log("Failed to create renderer: %s", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        throw std::runtime_error("Error while initializing SDL");
+        if (enable_gui) {
+            SDL_Log("Failed to create renderer: %s", SDL_GetError());
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            throw std::runtime_error("Error while initializing SDL");
+        } else {
+            SDL_Log("Headless mode: no renderer available, continuing without one: %s",
+                    SDL_GetError());
+            renderer = nullptr;
+        }
     }
 
-    // Init fpng
-    fpng::fpng_init();
+    // Init PNG export and fonts
+    if (renderer) {
+        // Init fpng
+        fpng::fpng_init();
 
-    // Init fonts
-    font = FC_CreateFont();
-    //FC_LoadFont(font, renderer, "fonts/helvetica.ttf", 20, FC_MakeColor(0,0,0,255), TTF_STYLE_NORMAL);
-    FC_LoadFont(font, renderer, resolve_path("fonts/helvetica.ttf").c_str(), 20, FC_MakeColor(0,0,0,255), TTF_STYLE_NORMAL);
+        // Init fonts
+        font = FC_CreateFont();
+        //FC_LoadFont(font, renderer, "fonts/helvetica.ttf", 20, FC_MakeColor(0,0,0,255), TTF_STYLE_NORMAL);
+        FC_LoadFont(font, renderer, resolve_path("fonts/helvetica.ttf").c_str(), 20, FC_MakeColor(0,0,0,255), TTF_STYLE_NORMAL);
+    }
 }
 
 
@@ -896,6 +910,10 @@ void Simulation::draw_scale_bar() {
 
 
 void Simulation::render_all() {
+    if (!renderer || !window) {
+        return; // headless / CI without renderer
+    }
+
     if (show_light_levels) {
         SDL_RenderClear(renderer);
         light_map->render(renderer);
@@ -952,6 +970,10 @@ void Simulation::render_all() {
 }
 
 void Simulation::export_frames() {
+    if (!renderer || !window) {
+        return; // headless / CI without renderer
+    }
+
     // If wanted, export to PNG
     float const save_video_period = config["save_video_period"].get(-1.0f);
     std::string const frames_name = config["frames_name"].get(std::string("frames/f{:010.4f}.png"));

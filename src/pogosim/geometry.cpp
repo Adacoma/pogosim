@@ -20,7 +20,6 @@
 #include "distances.h"
 #include "render.h"
 #include "spogobot.h"
-#include "fpng.h"
 
 
 float mm_to_pixels = 1.0f;
