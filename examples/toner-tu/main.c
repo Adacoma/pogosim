@@ -115,10 +115,8 @@ double   cluster_uturn_align_thresh_rad = 0.4;  // ≈ 23°
 typedef enum { SHOW_STATE, SHOW_ANGLE, SHOW_SPEED } main_led_display_type_t;
 main_led_display_type_t main_led_display_enum = SHOW_STATE;
 
-// === Cluster U-turn wire format (copied from Vicsek example) ===
-enum : uint8_t {
-    VMSGF_CLUSTER_UTURN = 0x01
-};
+// === Cluster U-turn wire format ===
+#define VMSGF_CLUSTER_UTURN 0x01
 
 typedef struct __attribute__((__packed__)) {
     uint16_t sender_id;

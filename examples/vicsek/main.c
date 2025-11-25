@@ -74,9 +74,7 @@ typedef enum {
 main_led_display_type_t main_led_display_enum = SHOW_STATE;
 
 // === CLUSTER U-TURN message flag ===
-enum : uint8_t {
-    VMSGF_CLUSTER_UTURN = 0x01
-};
+#define VMSGF_CLUSTER_UTURN 0x01
 
 // Extended Vicsek message (packed).
 typedef struct __attribute__((__packed__)) {
