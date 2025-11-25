@@ -479,31 +479,54 @@ void Simulation::init_SDL() {
     SDL_version version;
     SDL_GetVersion(&version);
     glogger->info("Initializing SDL version {}.{}.{}", version.major, version.minor, version.patch);
+    std::string video_driver;
 
     if (!enable_gui) {
         /*--------------------------------------------------------------------
           In SDL == 2.32.xx there is a bug when sdl_quit segfaults.
           ------------------------------------------------------------------*/
         if (version.major == 2 && version.minor == 32) {
-            // ...
+            // Work around known 2.32 bug, don't force a special driver here
         } else {
             /*--------------------------------------------------------------------
               In SDL < 2.0.22 the hint does not exist, but you can still achieve
               the same effect by setting the environment variable instead.
               ------------------------------------------------------------------*/
 #if SDL_VERSION_ATLEAST(2, 0, 22)   // compile-time check :contentReference[oaicite:1]{index=1}
-            SDL_SetHint(SDL_HINT_VIDEODRIVER, "offscreen");
+            video_driver = "offscreen";
+            SDL_SetHint(SDL_HINT_VIDEODRIVER, video_driver.c_str());
 #else
             /*  SDL_setenv appeared in 2.0.2; fall back for older headers */
-            SDL_setenv("SDL_VIDEODRIVER", "offscreen", /*overwrite =*/1);
+            video_driver = "dummy";
+            SDL_setenv("SDL_VIDEODRIVER", video_driver.c_str(), /*overwrite =*/1);
+
 #endif
         }
     }
 
-    // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
-        throw std::runtime_error("Error while initializing SDL");
+    auto init_sdl = [&]() -> bool {
+        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+            SDL_Log("Failed to initialize SDL (driver '%s'): %s",
+                    video_driver.empty() ? "<default>" : video_driver.c_str(),
+                    SDL_GetError());
+            return false;
+        }
+        return true;
+    };
+
+    if (!init_sdl()) {
+        // Typical case: we asked for "offscreen" but this SDL doesn't have it
+        if (!enable_gui && video_driver == "offscreen") {
+            video_driver = "dummy";
+#if SDL_VERSION_ATLEAST(2, 0, 2)
+            SDL_setenv("SDL_VIDEODRIVER", video_driver.c_str(), 1);
+#endif
+            if (!init_sdl()) {
+                throw std::runtime_error("Error while initializing SDL (offscreen and dummy both failed)");
+            }
+        } else {
+            throw std::runtime_error("Error while initializing SDL");
+        }
     }
 
     const char* title = (std::string("Pogosim ") + std::string(POGOSIM_VERSION)).c_str();
