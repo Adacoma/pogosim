@@ -219,7 +219,7 @@ private:
     void reset_row();
 
     // Convert float32 -> IEEE-754 half payload (16-bit)
-    static half_float_t float_to_half_bits(float v);
+    static half_float_t float_to_half_bits(float f);
 };
 
 
