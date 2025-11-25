@@ -39,9 +39,7 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]  # Test on multiple OS
-        #os: [ubuntu-latest, macos-latest]  # Test on multiple OS
-        #os: [ubuntu-latest]  # Test on multiple OS
+        os: [ubuntu-latest, ubuntu-22.04, ubuntu-20.04, macos-latest, windows-latest]  # Test on multiple OS
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -51,7 +49,7 @@ jobs:
 
       # Step 2: Install dependencies (Ubuntu)
       - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           export DEBIAN_FRONTEND=noninteractive
           sudo apt-get update
@@ -230,7 +228,8 @@ jobs:
 #      # Step 5: Static code analysis with cppcheck (optional)
 #      - name: Static analysis with cppcheck
 #        run: |
-#          cppcheck --enable=all --inconclusive --std=c++17 --quiet --suppress=missingIncludeSystem .
+#          #cppcheck --enable=all --inconclusive --std=c++17 --quiet --suppress=missingIncludeSystem .
+#          cppcheck --enable=all --inconclusive --std=c++17 --quiet --suppress=missingIncludeSystem --suppress=normalCheckLevelMaxBranches --suppress=missingInclude --suppress=unusedFunction src -i src/pogosim/fpng.cpp  -i src/pogosim/SDL_FontCache.c
 #
 #      # Step 6: Upload build artifacts (optional)
 #      - name: Upload build artifacts
