@@ -33,7 +33,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # Default Doxygen output directory; adjust if your Doxyfile uses another OUTPUT_DIRECTORY
-          publish_dir: ./html
+          publish_dir: ./docs/html
 
   build-and-test:
     strategy:
