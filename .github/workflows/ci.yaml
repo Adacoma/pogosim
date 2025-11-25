@@ -10,36 +10,35 @@ on:
       - main
       - dev
 
+permissions:
+  contents: write   # needed so actions-gh-pages can push to gh-pages
+
 jobs:
-#  documentation:
-#    # The type of runner that the job will run on
-#    runs-on: ubuntu-latest
-#
-#    # Steps represent a sequence of tasks that will be executed as part of the job
-#    steps:
-#    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-#    - uses: actions/checkout@v3
-#
-#    - name: Doxygen Action
-#      uses: mattnotmitt/doxygen-action@v1.1.0
-#      with:
-#        # Path to Doxyfile
-#        doxyfile-path: "./Doxyfile" # default is ./Doxyfile
-#        # Working directory
-#        working-directory: "." # default is .
-#
-#    - name: Deploy
-#      uses: peaceiris/actions-gh-pages@v3
-#      with:
-#        github_token: ${{ secrets.GITHUB_TOKEN }}
-#        # Default Doxyfile build documentation to html directory.
-#        # Change the directory if changes in Doxyfile
-#        publish_dir: ./html
+  documentation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Doxygen documentation
+        uses: mattnotmitt/doxygen-action@v1.1.0
+        with:
+          doxyfile-path: "./Doxyfile"
+          working-directory: "."
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'  # only deploy on pushes to main
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Default Doxygen output directory; adjust if your Doxyfile uses another OUTPUT_DIRECTORY
+          publish_dir: ./html
 
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, ubuntu-20.04, macos-latest, windows-latest]  # Test on multiple OS
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest]  # Test on multiple OS
     runs-on: ${{ matrix.os }}
 
     steps:
