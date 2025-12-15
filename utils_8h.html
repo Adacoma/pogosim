@@ -116,6 +116,7 @@ $(function(){initNavTree('utils_8h.html',''); initResizable(true); });
 <code>#include &lt;box2d/box2d.h&gt;</code><br />
 <code>#include &lt;random&gt;</code><br />
 <code>#include &lt;algorithm&gt;</code><br />
+<code>#include &quot;<a class="el" href="configuration_8h_source.html">configuration.h</a>&quot;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 </div>
 <p><a href="utils_8h_source.html">Go to the source code of this file.</a></p>
@@ -140,9 +141,9 @@ Functions</h2></td></tr>
 <tr class="memitem:a1a8f8ae3303c6d2b2ebb9a62539b61c5" id="r_a1a8f8ae3303c6d2b2ebb9a62539b61c5"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1a8f8ae3303c6d2b2ebb9a62539b61c5">all_true</a> (const std::vector&lt; bool &gt; &amp;flags)</td></tr>
 <tr class="memdesc:a1a8f8ae3303c6d2b2ebb9a62539b61c5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check whether every element in a <code>std::vector&lt;bool&gt;</code> is <code>true</code>.  <br /></td></tr>
 <tr class="separator:a1a8f8ae3303c6d2b2ebb9a62539b61c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab3d0e9567cfad5d6f83abc585beb520d" id="r_ab3d0e9567cfad5d6f83abc585beb520d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab3d0e9567cfad5d6f83abc585beb520d">init_logger</a> ()</td></tr>
-<tr class="memdesc:ab3d0e9567cfad5d6f83abc585beb520d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the global loggers.  <br /></td></tr>
-<tr class="separator:ab3d0e9567cfad5d6f83abc585beb520d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aca6eafaed4bb0be512e4501e7d5509c0" id="r_aca6eafaed4bb0be512e4501e7d5509c0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aca6eafaed4bb0be512e4501e7d5509c0">init_logger</a> (<a class="el" href="classConfiguration.html">Configuration</a> &amp;config)</td></tr>
+<tr class="memdesc:aca6eafaed4bb0be512e4501e7d5509c0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the global loggers.  <br /></td></tr>
+<tr class="separator:aca6eafaed4bb0be512e4501e7d5509c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad45018d9680f3c4e36be31414aa54816" id="r_ad45018d9680f3c4e36be31414aa54816"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad45018d9680f3c4e36be31414aa54816">loggers_add_file_sink</a> (std::string const &amp;filename)</td></tr>
 <tr class="memdesc:ad45018d9680f3c4e36be31414aa54816"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a file sink to the global loggers.  <br /></td></tr>
 <tr class="separator:ad45018d9680f3c4e36be31414aa54816"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -360,8 +361,8 @@ template&lt;typename T&gt; </div>
 
 </div>
 </div>
-<a id="ab3d0e9567cfad5d6f83abc585beb520d" name="ab3d0e9567cfad5d6f83abc585beb520d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab3d0e9567cfad5d6f83abc585beb520d">&#9670;&#160;</a></span>init_logger()</h2>
+<a id="aca6eafaed4bb0be512e4501e7d5509c0" name="aca6eafaed4bb0be512e4501e7d5509c0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aca6eafaed4bb0be512e4501e7d5509c0">&#9670;&#160;</a></span>init_logger()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -369,7 +370,7 @@ template&lt;typename T&gt; </div>
         <tr>
           <td class="memname">void init_logger </td>
           <td>(</td>
-          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td class="paramtype"><a class="el" href="classConfiguration.html">Configuration</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>config</em></span></td><td>)</td>
           <td></td>
         </tr>
       </table>

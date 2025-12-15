@@ -347,6 +347,10 @@ Functions</h2></td></tr>
 <tr class="separator:a9c3b5c1991444256a85842638ecc8e00"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3b529bfca844cb9f1efdd2fa68c5d7f3" id="r_a3b529bfca844cb9f1efdd2fa68c5d7f3"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3b529bfca844cb9f1efdd2fa68c5d7f3">pogosim_putchar</a> (int ch)</td></tr>
 <tr class="separator:a3b529bfca844cb9f1efdd2fa68c5d7f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a792fa23699f20dcd9f6e58b100059ebb" id="r_a792fa23699f20dcd9f6e58b100059ebb"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a792fa23699f20dcd9f6e58b100059ebb">get_nb_robots</a> (void)</td></tr>
+<tr class="separator:a792fa23699f20dcd9f6e58b100059ebb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1e174472a7055dfd9576f2a7b7fbf937" id="r_a1e174472a7055dfd9576f2a7b7fbf937"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1e174472a7055dfd9576f2a7b7fbf937">stop_simulation</a> (void)</td></tr>
+<tr class="separator:a1e174472a7055dfd9576f2a7b7fbf937"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae2841040115ec51fa3eedb47992dc349" id="r_ae2841040115ec51fa3eedb47992dc349"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae2841040115ec51fa3eedb47992dc349">data_add_column_int8</a> (char const *name)</td></tr>
 <tr class="separator:ae2841040115ec51fa3eedb47992dc349"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a86a6db99eb8dc98a0bec50ba8a899785" id="r_a86a6db99eb8dc98a0bec50ba8a899785"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a86a6db99eb8dc98a0bec50ba8a899785">data_add_column_int16</a> (char const *name)</td></tr>
@@ -458,9 +462,9 @@ Variables</h2></td></tr>
 <div class="line">        <span class="keywordtype">double</span> (*)[] : <a class="code hl_function" href="spogobot_8cpp.html#a62b6d9ab3c3e73f247d99b4e4420dda0">init_double_array_from_configuration</a>,               \</div>
 <div class="line">        <span class="keywordtype">char</span>   (*)[] : <a class="code hl_function" href="spogobot_8cpp.html#aba64f63196f711e44ca87505eb3441cd">init_string_from_configuration</a>                      \</div>
 <div class="line">    )((a), #a, <span class="keyword">sizeof</span>(a) / <span class="keyword">sizeof</span>((a)[0]))</div>
-<div class="ttc" id="aspogobot_8cpp_html_a62b6d9ab3c3e73f247d99b4e4420dda0"><div class="ttname"><a href="spogobot_8cpp.html#a62b6d9ab3c3e73f247d99b4e4420dda0">init_double_array_from_configuration</a></div><div class="ttdeci">void init_double_array_from_configuration(double *var, char const *name, size_t const size)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:683</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_aba64f63196f711e44ca87505eb3441cd"><div class="ttname"><a href="spogobot_8cpp.html#aba64f63196f711e44ca87505eb3441cd">init_string_from_configuration</a></div><div class="ttdeci">void init_string_from_configuration(char *var, char const *name, std::size_t size)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:641</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_aed88e946499729cb5d9b0007155d92cd"><div class="ttname"><a href="spogobot_8cpp.html#aed88e946499729cb5d9b0007155d92cd">init_float_array_from_configuration</a></div><div class="ttdeci">void init_float_array_from_configuration(float *var, char const *name, size_t const size)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:667</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a62b6d9ab3c3e73f247d99b4e4420dda0"><div class="ttname"><a href="spogobot_8cpp.html#a62b6d9ab3c3e73f247d99b4e4420dda0">init_double_array_from_configuration</a></div><div class="ttdeci">void init_double_array_from_configuration(double *var, char const *name, size_t const size)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:692</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_aba64f63196f711e44ca87505eb3441cd"><div class="ttname"><a href="spogobot_8cpp.html#aba64f63196f711e44ca87505eb3441cd">init_string_from_configuration</a></div><div class="ttdeci">void init_string_from_configuration(char *var, char const *name, std::size_t size)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:650</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_aed88e946499729cb5d9b0007155d92cd"><div class="ttname"><a href="spogobot_8cpp.html#aed88e946499729cb5d9b0007155d92cd">init_float_array_from_configuration</a></div><div class="ttdeci">void init_float_array_from_configuration(float *var, char const *name, size_t const size)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:676</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -489,15 +493,15 @@ Variables</h2></td></tr>
 <div class="line">        int8_t:   <a class="code hl_function" href="spogobot_8cpp.html#a6799d5ff599821da96477fdc7e51d2f8">init_int8_from_configuration</a>,                             \</div>
 <div class="line">        uint8_t:  <a class="code hl_function" href="spogobot_8cpp.html#a6f3eb9c534be032155a8b1ddcda52b8e">init_uint8_from_configuration</a>                             \</div>
 <div class="line">    )(&amp;(x), #x, (x))</div>
-<div class="ttc" id="aspogobot_8cpp_html_a11d75ec72a55cf4f7767eacbee00604b"><div class="ttname"><a href="spogobot_8cpp.html#a11d75ec72a55cf4f7767eacbee00604b">init_uint16_from_configuration</a></div><div class="ttdeci">void init_uint16_from_configuration(uint16_t *var, char const *name, uint16_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:614</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_a300d02b91cd3bb360f05b7d4a48f64d3"><div class="ttname"><a href="spogobot_8cpp.html#a300d02b91cd3bb360f05b7d4a48f64d3">init_double_from_configuration</a></div><div class="ttdeci">void init_double_from_configuration(double *var, char const *name, double const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:593</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_a3790c082f52201d133b805baaf2722bc"><div class="ttname"><a href="spogobot_8cpp.html#a3790c082f52201d133b805baaf2722bc">init_uint32_from_configuration</a></div><div class="ttdeci">void init_uint32_from_configuration(uint32_t *var, char const *name, uint32_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:606</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_a5bf26ca20ed778410d5f64162b51faeb"><div class="ttname"><a href="spogobot_8cpp.html#a5bf26ca20ed778410d5f64162b51faeb">init_int16_from_configuration</a></div><div class="ttdeci">void init_int16_from_configuration(int16_t *var, char const *name, int16_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:610</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_a5ca16a23f651c78aec1fac28c057093c"><div class="ttname"><a href="spogobot_8cpp.html#a5ca16a23f651c78aec1fac28c057093c">init_float_from_configuration</a></div><div class="ttdeci">void init_float_from_configuration(float *var, char const *name, float const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:597</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_a5f76f1d7e109c07af2345db0e5efebbd"><div class="ttname"><a href="spogobot_8cpp.html#a5f76f1d7e109c07af2345db0e5efebbd">init_int32_from_configuration</a></div><div class="ttdeci">void init_int32_from_configuration(int32_t *var, char const *name, int32_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:602</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_a6799d5ff599821da96477fdc7e51d2f8"><div class="ttname"><a href="spogobot_8cpp.html#a6799d5ff599821da96477fdc7e51d2f8">init_int8_from_configuration</a></div><div class="ttdeci">void init_int8_from_configuration(int8_t *var, char const *name, int8_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:618</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_a6f3eb9c534be032155a8b1ddcda52b8e"><div class="ttname"><a href="spogobot_8cpp.html#a6f3eb9c534be032155a8b1ddcda52b8e">init_uint8_from_configuration</a></div><div class="ttdeci">void init_uint8_from_configuration(uint8_t *var, char const *name, uint8_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:622</div></div>
-<div class="ttc" id="aspogobot_8cpp_html_ada62e256c57f54f07c006641caf14b34"><div class="ttname"><a href="spogobot_8cpp.html#ada62e256c57f54f07c006641caf14b34">init_bool_from_configuration</a></div><div class="ttdeci">void init_bool_from_configuration(bool *var, char const *name, bool const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:589</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a11d75ec72a55cf4f7767eacbee00604b"><div class="ttname"><a href="spogobot_8cpp.html#a11d75ec72a55cf4f7767eacbee00604b">init_uint16_from_configuration</a></div><div class="ttdeci">void init_uint16_from_configuration(uint16_t *var, char const *name, uint16_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:623</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a300d02b91cd3bb360f05b7d4a48f64d3"><div class="ttname"><a href="spogobot_8cpp.html#a300d02b91cd3bb360f05b7d4a48f64d3">init_double_from_configuration</a></div><div class="ttdeci">void init_double_from_configuration(double *var, char const *name, double const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:602</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a3790c082f52201d133b805baaf2722bc"><div class="ttname"><a href="spogobot_8cpp.html#a3790c082f52201d133b805baaf2722bc">init_uint32_from_configuration</a></div><div class="ttdeci">void init_uint32_from_configuration(uint32_t *var, char const *name, uint32_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:615</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a5bf26ca20ed778410d5f64162b51faeb"><div class="ttname"><a href="spogobot_8cpp.html#a5bf26ca20ed778410d5f64162b51faeb">init_int16_from_configuration</a></div><div class="ttdeci">void init_int16_from_configuration(int16_t *var, char const *name, int16_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:619</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a5ca16a23f651c78aec1fac28c057093c"><div class="ttname"><a href="spogobot_8cpp.html#a5ca16a23f651c78aec1fac28c057093c">init_float_from_configuration</a></div><div class="ttdeci">void init_float_from_configuration(float *var, char const *name, float const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:606</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a5f76f1d7e109c07af2345db0e5efebbd"><div class="ttname"><a href="spogobot_8cpp.html#a5f76f1d7e109c07af2345db0e5efebbd">init_int32_from_configuration</a></div><div class="ttdeci">void init_int32_from_configuration(int32_t *var, char const *name, int32_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:611</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a6799d5ff599821da96477fdc7e51d2f8"><div class="ttname"><a href="spogobot_8cpp.html#a6799d5ff599821da96477fdc7e51d2f8">init_int8_from_configuration</a></div><div class="ttdeci">void init_int8_from_configuration(int8_t *var, char const *name, int8_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:627</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_a6f3eb9c534be032155a8b1ddcda52b8e"><div class="ttname"><a href="spogobot_8cpp.html#a6f3eb9c534be032155a8b1ddcda52b8e">init_uint8_from_configuration</a></div><div class="ttdeci">void init_uint8_from_configuration(uint8_t *var, char const *name, uint8_t const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:631</div></div>
+<div class="ttc" id="aspogobot_8cpp_html_ada62e256c57f54f07c006641caf14b34"><div class="ttname"><a href="spogobot_8cpp.html#ada62e256c57f54f07c006641caf14b34">init_bool_from_configuration</a></div><div class="ttdeci">void init_bool_from_configuration(bool *var, char const *name, bool const default_value)</div><div class="ttdef"><b>Definition</b> spogobot.cpp:598</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -1453,6 +1457,27 @@ Photosensor id definition</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a792fa23699f20dcd9f6e58b100059ebb" name="a792fa23699f20dcd9f6e58b100059ebb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a792fa23699f20dcd9f6e58b100059ebb">&#9670;&#160;</a></span>get_nb_robots()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t get_nb_robots </td>
+          <td>(</td>
+          <td class="paramtype">void</td>          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>(get_nb_robots) Returns the number of robots in the simulation</p>
+<h1><a class="anchor" id="autotoc_md118"></a>
+Return</h1>
+<p>the number of robots in the simulation </p>
 
 </div>
 </div>
@@ -3166,6 +3191,24 @@ Return</h1>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1e174472a7055dfd9576f2a7b7fbf937" name="a1e174472a7055dfd9576f2a7b7fbf937"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1e174472a7055dfd9576f2a7b7fbf937">&#9670;&#160;</a></span>stop_simulation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void stop_simulation </td>
+          <td>(</td>
+          <td class="paramtype">void</td>          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>(stop_simulation) Stops the simulation </p>
 
 </div>
 </div>

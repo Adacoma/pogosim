@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['macosx_0',['Install on MacOSX',['../index.html#autotoc_md122',1,'']]],
+  ['macosx_0',['Install on MacOSX',['../index.html#autotoc_md123',1,'']]],
   ['main_1',['main',['../spogobot_8h.html#aa4e97f3782107649d3e4eb3875090b3a',1,'main:&#160;spogobot.h'],['../main_8cpp.html#a3c04138a5bfe5d72780bb7e82a18e627',1,'main(int argc, char **argv):&#160;main.cpp']]],
   ['main_2ecpp_2',['main.cpp',['../main_8cpp.html',1,'']]],
   ['main_2eh_3',['main.h',['../main_8h.html',1,'']]],
@@ -23,8 +23,8 @@ var searchData=
   ['message_5ft_20',['message_t',['../structmessage__t.html',1,'message_t'],['../spogobot_8h.html#adba1cc438bbfd876f22e899ef7f497f1',1,'message_t:&#160;spogobot.h']]],
   ['messages_21',['messages',['../classPogobotObject.html#a4c20e3d4c698a80b855a761114f04e86',1,'PogobotObject']]],
   ['mm_5fto_5fpixels_22',['mm_to_pixels',['../geometry_8cpp.html#aa57852bee0e7ed3f9ac024c7dffbc0b2',1,'mm_to_pixels:&#160;geometry.cpp'],['../geometry_8h.html#aa57852bee0e7ed3f9ac024c7dffbc0b2',1,'mm_to_pixels:&#160;geometry.cpp']]],
-  ['mode_23',['mode',['../index.html#autotoc_md129',1,'Headless mode'],['../classStaticLightObject.html#aace6c904d1ddf5904806e203d04fa9b6',1,'StaticLightObject::mode']]],
-  ['mode_20i_20get_20an_20sdl_20related_20error_24',['In headless/Pogobatch mode, I get an SDL-related error',['../index.html#autotoc_md132',1,'']]],
+  ['mode_23',['mode',['../index.html#autotoc_md130',1,'Headless mode'],['../classStaticLightObject.html#aace6c904d1ddf5904806e203d04fa9b6',1,'StaticLightObject::mode']]],
+  ['mode_20i_20get_20an_20sdl_20related_20error_24',['In headless/Pogobatch mode, I get an SDL-related error',['../index.html#autotoc_md133',1,'']]],
   ['motor_20id_20definition_20_3a_25',['Motor id definition :',['../spogobot_8h.html#autotoc_md72',1,'']]],
   ['motor_20range_20_3a_26',['Motor range :',['../spogobot_8h.html#autotoc_md73',1,'']]],
   ['motor_5fdir_27',['motor_dir',['../classPogobotObject.html#a392ba1d68ece864e65d9dbc870e1904f',1,'PogobotObject']]],
@@ -49,7 +49,7 @@ var searchData=
   ['msg_5ftx_5ffn_46',['msg_tx_fn',['../classPogobotObject.html#abd3bebaa8da5ac30d947fd894bc525fd',1,'PogobotObject::msg_tx_fn'],['../pogosim_8c.html#ab0bc9fd1c5d29fee369f73d5b182806b',1,'msg_tx_fn:&#160;pogosim.c'],['../pogosim_8h.html#ab0bc9fd1c5d29fee369f73d5b182806b',1,'msg_tx_fn:&#160;pogosim.c']]],
   ['msgsuccessrate_47',['MsgSuccessRate',['../classMsgSuccessRate.html',1,'']]],
   ['msleep_48',['msleep',['../spogobot_8cpp.html#a1a26bb2566d09cb015a7466650e79e38',1,'msleep(int milliseconds):&#160;spogobot.cpp'],['../spogobot_8h.html#a1a26bb2566d09cb015a7466650e79e38',1,'msleep(int milliseconds):&#160;spogobot.cpp']]],
-  ['multi_20categories_20projects_49',['Compiling binaries for multi-categories projects',['../index.html#autotoc_md128',1,'']]],
+  ['multi_20categories_20projects_49',['Compiling binaries for multi-categories projects',['../index.html#autotoc_md129',1,'']]],
   ['my_5fmes_5ffifo_50',['my_mes_fifo',['../spogobot_8h.html#a0ad73567ad7c54ca81a81b9812274d43',1,'spogobot.h']]],
   ['my_5fmes_5ffifo_5fp_51',['my_mes_fifo_p',['../spogobot_8h.html#a996a4795c8d3618e636ff852f4dce0ad',1,'spogobot.h']]],
   ['mydata_52',['mydata',['../robot_8h.html#ae2a4387e3da085f9082643e6034f7721',1,'robot.h']]]

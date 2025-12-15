@@ -31,13 +31,14 @@ var searchData=
   ['get_5flight_5flevel_5fat_28',['get_light_level_at',['../classLightLevelMap.html#a630bd98f0dc836f0d2b831dc11822767',1,'LightLevelMap']]],
   ['get_5flight_5fmap_29',['get_light_map',['../classSimulation.html#adb8b3c9adef77b54519d5c506ae9853e',1,'Simulation']]],
   ['get_5flinear_5facceleration_30',['get_linear_acceleration',['../classPhysicalObject.html#a3710933d950ce73f152cbe6db8482583',1,'PhysicalObject']]],
-  ['get_5fnum_5fbins_5fx_31',['get_num_bins_x',['../classLightLevelMap.html#ab3b2d53b95615a62606b8eeb42fc5169',1,'LightLevelMap']]],
-  ['get_5fnum_5fbins_5fy_32',['get_num_bins_y',['../classLightLevelMap.html#ac4abb7b5b0a324bdfb52335f1311fa60',1,'LightLevelMap']]],
-  ['get_5fpath_33',['get_path',['../classConfiguration.html#a6f61f824c8f1db89f9913680fff29a5f',1,'Configuration']]],
-  ['get_5fphotosensor_5fposition_34',['get_photosensor_position',['../classPogobotObject.html#a001152161a216ed42fc46af89eb605b4',1,'PogobotObject']]],
-  ['get_5fposition_35',['get_position',['../classPhysicalObject.html#a06eda66a3fb541b632de953edbc919a7',1,'PhysicalObject::get_position()'],['../classMembraneObject.html#a1a0a65e042578639b00892337ba3a3a8',1,'MembraneObject::get_position()']]],
-  ['get_5fradius_36',['get_radius',['../classDiskGeometry.html#a47daa97e977c122aab08e150d0eacc84',1,'DiskGeometry']]],
-  ['get_5fshape_5fid_37',['get_shape_id',['../classObjectGeometry.html#a473f25087e9b2f2f347ce34c2e22cb4d',1,'ObjectGeometry']]],
-  ['get_5fwidth_38',['get_width',['../classRectangleGeometry.html#a47c537a1477b8c9b1e1fd87c9014bece',1,'RectangleGeometry']]],
-  ['globalgeometry_39',['GlobalGeometry',['../classGlobalGeometry.html#a8909add31bf1b254a746a68862ec016e',1,'GlobalGeometry']]]
+  ['get_5fnb_5frobots_31',['get_nb_robots',['../classSimulation.html#a3f3519c9f82a23ff016cc29d0fe21fdd',1,'Simulation::get_nb_robots()'],['../spogobot_8cpp.html#a792fa23699f20dcd9f6e58b100059ebb',1,'get_nb_robots(void):&#160;spogobot.cpp'],['../spogobot_8h.html#a792fa23699f20dcd9f6e58b100059ebb',1,'get_nb_robots(void):&#160;spogobot.cpp']]],
+  ['get_5fnum_5fbins_5fx_32',['get_num_bins_x',['../classLightLevelMap.html#ab3b2d53b95615a62606b8eeb42fc5169',1,'LightLevelMap']]],
+  ['get_5fnum_5fbins_5fy_33',['get_num_bins_y',['../classLightLevelMap.html#ac4abb7b5b0a324bdfb52335f1311fa60',1,'LightLevelMap']]],
+  ['get_5fpath_34',['get_path',['../classConfiguration.html#a6f61f824c8f1db89f9913680fff29a5f',1,'Configuration']]],
+  ['get_5fphotosensor_5fposition_35',['get_photosensor_position',['../classPogobotObject.html#a001152161a216ed42fc46af89eb605b4',1,'PogobotObject']]],
+  ['get_5fposition_36',['get_position',['../classPhysicalObject.html#a06eda66a3fb541b632de953edbc919a7',1,'PhysicalObject::get_position()'],['../classMembraneObject.html#a1a0a65e042578639b00892337ba3a3a8',1,'MembraneObject::get_position()']]],
+  ['get_5fradius_37',['get_radius',['../classDiskGeometry.html#a47daa97e977c122aab08e150d0eacc84',1,'DiskGeometry']]],
+  ['get_5fshape_5fid_38',['get_shape_id',['../classObjectGeometry.html#a473f25087e9b2f2f347ce34c2e22cb4d',1,'ObjectGeometry']]],
+  ['get_5fwidth_39',['get_width',['../classRectangleGeometry.html#a47c537a1477b8c9b1e1fd87c9014bece',1,'RectangleGeometry']]],
+  ['globalgeometry_40',['GlobalGeometry',['../classGlobalGeometry.html#a8909add31bf1b254a746a68862ec016e',1,'GlobalGeometry']]]
 ];

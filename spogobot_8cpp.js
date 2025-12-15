@@ -20,6 +20,7 @@ var spogobot_8cpp =
     [ "disable_data_export", "spogobot_8cpp.html#a115cb372d6c3ce7982c6d8df5e0f63ba", null ],
     [ "enable_data_export", "spogobot_8cpp.html#a7389dc0a4142b3235bc80804164a1988", null ],
     [ "get_current_time_microseconds", "spogobot_8cpp.html#a6fcfb96a77960b53abee40d3600d2ead", null ],
+    [ "get_nb_robots", "spogobot_8cpp.html#a792fa23699f20dcd9f6e58b100059ebb", null ],
     [ "init_bool_from_configuration", "spogobot_8cpp.html#ada62e256c57f54f07c006641caf14b34", null ],
     [ "init_double_array_from_configuration", "spogobot_8cpp.html#a62b6d9ab3c3e73f247d99b4e4420dda0", null ],
     [ "init_double_from_configuration", "spogobot_8cpp.html#a300d02b91cd3bb360f05b7d4a48f64d3", null ],
@@ -79,6 +80,7 @@ var spogobot_8cpp =
     [ "pogobot_timer_wait_for_expiry", "spogobot_8cpp.html#ac1ea548e60206ef721d4354c1874654e", null ],
     [ "pogosim_printf", "spogobot_8cpp.html#a9c3b5c1991444256a85842638ecc8e00", null ],
     [ "pogosim_putchar", "spogobot_8cpp.html#a3b529bfca844cb9f1efdd2fa68c5d7f3", null ],
+    [ "stop_simulation", "spogobot_8cpp.html#a1e174472a7055dfd9576f2a7b7fbf937", null ],
     [ "_selected_power", "spogobot_8cpp.html#a4a92c481adc0ada6884aed647027471a", null ],
     [ "_slip_error_counter", "spogobot_8cpp.html#a76e897d2bd73e748cbfefeb16ef9b9cf", null ]
 ];

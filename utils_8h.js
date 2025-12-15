@@ -6,7 +6,7 @@ var utils_8h =
     [ "contains", "utils_8h.html#aba1bcff32e4e39066f09a248c25abc2c", null ],
     [ "delete_files_with_extension", "utils_8h.html#a91aa6460cd10832ae299c5fbdb101e20", null ],
     [ "ensure_directories_exist", "utils_8h.html#a641e08756002576ec250d504128b3942", null ],
-    [ "init_logger", "utils_8h.html#ab3d0e9567cfad5d6f83abc585beb520d", null ],
+    [ "init_logger", "utils_8h.html#aca6eafaed4bb0be512e4501e7d5509c0", null ],
     [ "loggers_add_file_sink", "utils_8h.html#ad45018d9680f3c4e36be31414aa54816", null ],
     [ "resolve_path", "utils_8h.html#a49860c517ed7dbc6ea2efb938f7be71b", null ],
     [ "string_to_bool", "utils_8h.html#a2ca48aadcfe428b105571b727ea25dc5", null ],

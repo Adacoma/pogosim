@@ -65,9 +65,9 @@ var NAVTREEINDEX =
 [
 "FifoBuffer_8h.html",
 "classPogobotObject.html#afa49cf9f7a4238121567d64194fd404f",
-"globals_func_g.html",
-"spogobot_8cpp.html#a701200e6c5ed6e38e38ba71199d63eed",
-"utils_8cpp.html#ad45018d9680f3c4e36be31414aa54816"
+"globals_func_e.html",
+"spogobot_8cpp.html#a6799d5ff599821da96477fdc7e51d2f8",
+"utils_8cpp.html#a49860c517ed7dbc6ea2efb938f7be71b"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';

@@ -1,11 +1,11 @@
 var searchData=
 [
   ['a_0',['a',['../structangles_1_1Interval.html#ac29366af36744e9e5e0374d06c25fdce',1,'angles::Interval::a'],['../structInterval.html#ac29366af36744e9e5e0374d06c25fdce',1,'Interval::a']]],
-  ['a_20binary_20for_20the_20real_20pogobots_1',['Compile a binary for the real Pogobots',['../index.html#autotoc_md127',1,'']]],
+  ['a_20binary_20for_20the_20real_20pogobots_1',['Compile a binary for the real Pogobots',['../index.html#autotoc_md128',1,'']]],
   ['a_20ir_20message_2',['Maximum size of a payload in a IR message',['../spogobot_8h.html#autotoc_md13',1,'']]],
-  ['a_20new_20pogobot_20pogosim_20project_3',['Simple way to create a new pogobot/pogosim project',['../index.html#autotoc_md125',1,'']]],
+  ['a_20new_20pogobot_20pogosim_20project_3',['Simple way to create a new pogobot/pogosim project',['../index.html#autotoc_md126',1,'']]],
   ['a_20payload_20in_20a_20ir_20message_4',['Maximum size of a payload in a IR message',['../spogobot_8h.html#autotoc_md13',1,'']]],
-  ['access_20the_20pose_20and_20states_20of_20the_20robots_20in_20python_5',['Access the pose and states of the robots in Python',['../index.html#autotoc_md133',1,'']]],
+  ['access_20the_20pose_20and_20states_20of_20the_20robots_20in_20python_5',['Access the pose and states of the robots in Python',['../index.html#autotoc_md134',1,'']]],
   ['accuracy_6',['Numerical accuracy',['../colormaps_8h.html#autotoc_md1',1,'']]],
   ['actions_20workflows_20ci_20yaml_20badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_7',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
   ['adacoma_20pogosim_20actions_20workflows_20ci_20yaml_20badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_8',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
@@ -19,10 +19,10 @@ var searchData=
   ['alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_16',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
   ['alt_20version_17',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
   ['alternatingdualrayoflightobject_18',['AlternatingDualRayOfLightObject',['../classAlternatingDualRayOfLightObject.html',1,'AlternatingDualRayOfLightObject'],['../classAlternatingDualRayOfLightObject.html#a18ece56f47f75fbcc8d85102cf9cd833',1,'AlternatingDualRayOfLightObject::AlternatingDualRayOfLightObject(float x, float y, ObjectGeometry &amp;geom, LightLevelMap *light_map, int16_t value, float ray_half_width=0.1f, float angular_speed=3.0f, float long_white_frame_dur=1.0f, float short_white_frame_dur=0.03f, int16_t white_frame_val=32767, std::string const &amp;category=&quot;objects&quot;)'],['../classAlternatingDualRayOfLightObject.html#ae92f0bc135b674e44e7ea433bfc5bb59',1,'AlternatingDualRayOfLightObject::AlternatingDualRayOfLightObject(Simulation *simulation, float x, float y, LightLevelMap *light_map, Configuration const &amp;config, std::string const &amp;category=&quot;objects&quot;)']]],
-  ['an_20apptainer_20singularity_20container_19',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md135',1,'']]],
-  ['an_20sdl_20related_20error_20',['In headless/Pogobatch mode, I get an SDL-related error',['../index.html#autotoc_md132',1,'']]],
-  ['and_20states_20of_20the_20robots_20in_20python_21',['Access the pose and states of the robots in Python',['../index.html#autotoc_md133',1,'']]],
-  ['and_20use_20the_20simulator_20in_20an_20apptainer_20singularity_20container_22',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md135',1,'']]],
+  ['an_20apptainer_20singularity_20container_19',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md136',1,'']]],
+  ['an_20sdl_20related_20error_20',['In headless/Pogobatch mode, I get an SDL-related error',['../index.html#autotoc_md133',1,'']]],
+  ['and_20states_20of_20the_20robots_20in_20python_21',['Access the pose and states of the robots in Python',['../index.html#autotoc_md134',1,'']]],
+  ['and_20use_20the_20simulator_20in_20an_20apptainer_20singularity_20container_22',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md136',1,'']]],
   ['angle_23',['angle',['../structCandidate.html#a976b3cec80ec5f8be5cfb6b862aad452',1,'Candidate']]],
   ['angles_24',['angles',['../namespaceangles.html',1,'']]],
   ['angular_5fbias_25',['angular_bias',['../classPogobotObject.html#ad630286ce2714902f4b6b183facad8e2',1,'PogobotObject']]],
@@ -32,11 +32,11 @@ var searchData=
   ['api_20functions_29',['API Functions',['../spogobot_8h.html#autotoc_md2',1,'Infrared communication API Functions'],['../spogobot_8h.html#autotoc_md22',1,'Infrared communication API Functions'],['../spogobot_8h.html#autotoc_md74',1,'Motors API Functions'],['../spogobot_8h.html#autotoc_md60',1,'Photosensors API Functions']]],
   ['api_20values_30',['API Values',['../spogobot_8h.html#autotoc_md7',1,'Motors API Values'],['../spogobot_8h.html#autotoc_md71',1,'Motors API Values'],['../spogobot_8h.html#autotoc_md4',1,'Photosensors API Values'],['../spogobot_8h.html#autotoc_md58',1,'Photosensors API Values']]],
   ['apply_5fperiodic_5fwrapping_31',['apply_periodic_wrapping',['../classSimulation.html#a7a5952f5421c81e3ee5e1d4a39817fd5',1,'Simulation']]],
-  ['apptainer_20singularity_20container_32',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md135',1,'']]],
+  ['apptainer_20singularity_20container_32',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md136',1,'']]],
   ['arena_5fpolygons_5ft_33',['arena_polygons_t',['../geometry_8h.html#a3ee73d4e69ef717ee7294518790ed8c3',1,'geometry.h']]],
   ['arenageometry_34',['ArenaGeometry',['../classArenaGeometry.html',1,'ArenaGeometry'],['../classArenaGeometry.html#a95f007da937be9dee2963ea966b8c922',1,'ArenaGeometry::ArenaGeometry()']]],
   ['array_35',['array',['../unionemitting__power__list__t.html#a454aa831bdccb09d98414de43299954b',1,'emitting_power_list_t']]],
   ['arrow_5fhead_5fsize_5fworld_36',['arrow_head_size_world',['../robot_8cpp.html#acd9b9cb33e530dcab2ea510dbd54c2dd',1,'robot.cpp']]],
   ['at_5fpath_37',['at_path',['../classConfiguration.html#a0b2f8f87afa6233b4db8892ee153d0c3',1,'Configuration']]],
-  ['authors_38',['Authors',['../index.html#autotoc_md138',1,'']]]
+  ['authors_38',['Authors',['../index.html#autotoc_md139',1,'']]]
 ];

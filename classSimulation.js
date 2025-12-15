@@ -17,6 +17,7 @@ var classSimulation =
     [ "get_config", "classSimulation.html#a024f27bad15c014bfd4b5894fccaa727", null ],
     [ "get_data_logger", "classSimulation.html#a45d677dd3bed5b9d8c452d0c6565bb8e", null ],
     [ "get_light_map", "classSimulation.html#adb8b3c9adef77b54519d5c506ae9853e", null ],
+    [ "get_nb_robots", "classSimulation.html#a3f3519c9f82a23ff016cc29d0fe21fdd", null ],
     [ "handle_SDL_events", "classSimulation.html#a4098adefb3d644b8d12448ca15e99245", null ],
     [ "help_message", "classSimulation.html#a6e877019dbf74e13c8de84813d48814e", null ],
     [ "init_all", "classSimulation.html#a31103bf056643ee23f0f8b616c395cd3", null ],
@@ -31,5 +32,6 @@ var classSimulation =
     [ "render_all", "classSimulation.html#a83ee5c4926415219811fe8ac98275fb1", null ],
     [ "speed_down", "classSimulation.html#a036b70e265a1f6e0ccf9dbdd1370c7c7", null ],
     [ "speed_up", "classSimulation.html#a02ad6ce38548da0853f62b8555237a26", null ],
+    [ "stop_simulation_main_loop", "classSimulation.html#a765d8e1e6d180d9966c655bd0de8b736", null ],
     [ "current_robot_enable_data_logging", "classSimulation.html#aecef4f2d7869ad7d77f0b339f49dc821", null ]
 ];

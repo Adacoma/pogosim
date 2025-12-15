@@ -189,6 +189,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a380ce2b0e02313dc1dbda319e457029d" id="r_a380ce2b0e02313dc1dbda319e457029d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a380ce2b0e02313dc1dbda319e457029d">main_loop</a> ()</td></tr>
 <tr class="memdesc:a380ce2b0e02313dc1dbda319e457029d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs the main simulation loop.  <br /></td></tr>
 <tr class="separator:a380ce2b0e02313dc1dbda319e457029d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a765d8e1e6d180d9966c655bd0de8b736" id="r_a765d8e1e6d180d9966c655bd0de8b736"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a765d8e1e6d180d9966c655bd0de8b736">stop_simulation_main_loop</a> ()</td></tr>
+<tr class="memdesc:a765d8e1e6d180d9966c655bd0de8b736"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stops the main simulation loop.  <br /></td></tr>
+<tr class="separator:a765d8e1e6d180d9966c655bd0de8b736"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa93a19cb1df82568ff3c83b8cd42e160" id="r_aa93a19cb1df82568ff3c83b8cd42e160"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa93a19cb1df82568ff3c83b8cd42e160">delete_old_data</a> ()</td></tr>
 <tr class="memdesc:aa93a19cb1df82568ff3c83b8cd42e160"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deletes old data files.  <br /></td></tr>
 <tr class="separator:aa93a19cb1df82568ff3c83b8cd42e160"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -210,6 +213,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a7a5952f5421c81e3ee5e1d4a39817fd5" id="r_a7a5952f5421c81e3ee5e1d4a39817fd5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a7a5952f5421c81e3ee5e1d4a39817fd5">apply_periodic_wrapping</a> ()</td></tr>
 <tr class="memdesc:a7a5952f5421c81e3ee5e1d4a39817fd5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wrap objects position to have period boundary conditions.  <br /></td></tr>
 <tr class="separator:a7a5952f5421c81e3ee5e1d4a39817fd5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3f3519c9f82a23ff016cc29d0fe21fdd" id="r_a3f3519c9f82a23ff016cc29d0fe21fdd"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3f3519c9f82a23ff016cc29d0fe21fdd">get_nb_robots</a> () const</td></tr>
+<tr class="memdesc:a3f3519c9f82a23ff016cc29d0fe21fdd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the number of robots in the simulation.  <br /></td></tr>
+<tr class="separator:a3f3519c9f82a23ff016cc29d0fe21fdd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -590,6 +596,34 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a3f3519c9f82a23ff016cc29d0fe21fdd" name="a3f3519c9f82a23ff016cc29d0fe21fdd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3f3519c9f82a23ff016cc29d0fe21fdd">&#9670;&#160;</a></span>get_nb_robots()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t Simulation::get_nb_robots </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel inline">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Returns the number of robots in the simulation. </p>
+<dl class="section return"><dt>Returns</dt><dd>Number of robots </dd></dl>
+
+</div>
+</div>
 <a id="a4098adefb3d644b8d12448ca15e99245" name="a4098adefb3d644b8d12448ca15e99245"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a4098adefb3d644b8d12448ca15e99245">&#9670;&#160;</a></span>handle_SDL_events()</h2>
 
@@ -883,6 +917,25 @@ Public Attributes</h2></td></tr>
 
 <p>Speeds up the simulation GUI. </p>
 <p>Increases the GUI speed-up factor and logs the new value. </p>
+
+</div>
+</div>
+<a id="a765d8e1e6d180d9966c655bd0de8b736" name="a765d8e1e6d180d9966c655bd0de8b736"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a765d8e1e6d180d9966c655bd0de8b736">&#9670;&#160;</a></span>stop_simulation_main_loop()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Simulation::stop_simulation_main_loop </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Stops the main simulation loop. </p>
 
 </div>
 </div>

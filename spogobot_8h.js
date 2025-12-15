@@ -84,6 +84,7 @@ var spogobot_8h =
     [ "disable_data_export", "spogobot_8h.html#a115cb372d6c3ce7982c6d8df5e0f63ba", null ],
     [ "enable_data_export", "spogobot_8h.html#a7389dc0a4142b3235bc80804164a1988", null ],
     [ "FifoBuffer_typedef", "spogobot_8h.html#abda99fd607753e9fc7e285d857fb0dae", null ],
+    [ "get_nb_robots", "spogobot_8h.html#a792fa23699f20dcd9f6e58b100059ebb", null ],
     [ "init_bool_from_configuration", "spogobot_8h.html#ada62e256c57f54f07c006641caf14b34", null ],
     [ "init_double_array_from_configuration", "spogobot_8h.html#a62b6d9ab3c3e73f247d99b4e4420dda0", null ],
     [ "init_double_from_configuration", "spogobot_8h.html#a300d02b91cd3bb360f05b7d4a48f64d3", null ],
@@ -142,6 +143,7 @@ var spogobot_8h =
     [ "pogobot_timer_wait_for_expiry", "spogobot_8h.html#ac1ea548e60206ef721d4354c1874654e", null ],
     [ "pogosim_printf", "spogobot_8h.html#a9c3b5c1991444256a85842638ecc8e00", null ],
     [ "pogosim_putchar", "spogobot_8h.html#a3b529bfca844cb9f1efdd2fa68c5d7f3", null ],
+    [ "stop_simulation", "spogobot_8h.html#a1e174472a7055dfd9576f2a7b7fbf937", null ],
     [ "my_mes_fifo", "spogobot_8h.html#a0ad73567ad7c54ca81a81b9812274d43", null ],
     [ "my_mes_fifo_p", "spogobot_8h.html#a996a4795c8d3618e636ff852f4dce0ad", null ]
 ];
