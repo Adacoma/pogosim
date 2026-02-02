@@ -231,10 +231,10 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
     if (show_lateral_leds) {
         ledOffsets = {
             {0, 0},            // Center LED remains at the center
-            {0, -radius},      // Top (in simulation units)
-            {radius, 0},       // Right
-            {0, radius},       // Bottom
-            {-radius, 0}       // Left
+            {radius, 0},      // Top (in simulation units)
+            {0, radius},       // Right
+            {-radius, 0},       // Bottom
+            {0, -radius}       // Left
         };
 
         // Apply a 45° clockwise rotation to the lateral LEDs (skip index 0)
