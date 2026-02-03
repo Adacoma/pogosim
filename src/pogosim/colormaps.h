@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#define SCALE_0_255_TO_0_25(x) ((uint8_t)(((x) * (25.0f / 255.0f)) + 0.5f))
+#define SCALE_0_25_TO_0_255(x) ((uint8_t)(x*10))
+
 #ifdef __cplusplus
 extern "C" {
 #endif

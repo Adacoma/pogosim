@@ -5,7 +5,6 @@
 #include "colormaps.h"
 
 
-#define SCALE_0_255_TO_0_25(x) ((uint8_t)(((x) * (25.0f / 255.0f)) + 0.5f))
 
 void hsv_to_rgb(float h, float s, float v, uint8_t *r, uint8_t *g, uint8_t *b) {
     float c = v * s;

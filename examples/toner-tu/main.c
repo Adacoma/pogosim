@@ -424,8 +424,6 @@ static inline int build_diff_from_heading(double theta_cmd, double heading_now, 
     return diff;
 }
 
-#define SCALE_0_255_TO_0_25(x)   (uint8_t)((x) * (25.0f / 255.0f) + 0.5f)
-
 static void update_main_led(void){
     if (main_led_display_enum == SHOW_STATE) {
         if (mydata->doing_wall_avoidance) {

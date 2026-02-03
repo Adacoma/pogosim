@@ -1247,7 +1247,11 @@ void PassiveObject::render(SDL_Renderer* renderer, b2WorldId world_id) const {
     get_cmap_val(colormap, value, &r, &g, &b);
 
     // Draw the object main body
-    geom->render(renderer, world_id, pos.x, pos.y, r, g, b, 255);
+    geom->render(renderer, world_id, pos.x, pos.y, 
+            SCALE_0_25_TO_0_255(r),
+            SCALE_0_25_TO_0_255(g),
+            SCALE_0_25_TO_0_255(b),
+            255);
 }
 
 void PassiveObject::parse_configuration(Configuration const& config, Simulation* simulation) {

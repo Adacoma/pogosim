@@ -328,8 +328,6 @@ static void vicsek_update_and_build_diff(void){
     mydata->diff_cmd      = diff;
 }
 
-#define SCALE_0_255_TO_0_25(x)   (uint8_t)((x) * (25.0f / 255.0f) + 0.5f)
-
 void update_main_led(void) {
     if (main_led_display_enum == SHOW_STATE) {
         if (mydata->doing_wall_avoidance) {

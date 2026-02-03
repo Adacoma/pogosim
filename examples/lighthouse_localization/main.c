@@ -133,7 +133,6 @@ REGISTER_USERDATA(USERDATA);
 //  Helper functions
 // -----------------------------------------------------------------------------
 
-#define SCALE_0_255_TO_0_25(x)   (uint8_t)((x) * (25.0f / 255.0f) + 0.5f)
 
 static void update_led_from_position(void) {
     if (!mydata->pose_valid) {
