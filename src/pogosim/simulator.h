@@ -4,6 +4,7 @@
 #include "pogosim.h"
 #include "robot.h"
 #include "objects.h"
+#include "lights.h"
 #include "configuration.h"
 #include "data_logger.h"
 #include "SDL_FontCache.h"
