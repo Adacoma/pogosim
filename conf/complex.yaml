@@ -6,7 +6,7 @@ window_height: 600      # In pixels
 boundary_condition: solid    # Boundary conditions: 'solid' (walls of the selected arena form the boundaries) or 'periodic' (robots are on a sphere: if they go on one side they will be teleported to the other side)
 arena_file: arenas/disk.csv
 #arena_file: arenas/arena8.csv
-arena_surface: 1.0e6    # In mm²
+arena_surface: 1.5e6    # In mm²
 
 delete_old_files: true
 enable_data_logging: true
