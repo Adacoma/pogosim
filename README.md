@@ -108,6 +108,7 @@ To launch examples code you can use the following commands:
 ./examples/hanabi/hanabi -c conf/simple.yaml                            # A simple code to showcase the diffusion of information in a swarm. Immobile robots by default (uncomment "MOVING_ROBOTS" to make then move)
 ./examples/phototaxis/phototaxis -c conf/phototaxis.yaml                # An example showcasing phototaxis, with a fixed light spot in the middle of the arena
 ./examples/walls/walls -c conf/walls_and_membranes.yaml                 # An multi-controller example where robots can identify the presence of fixed walls (through Pogowalls) or mobile walls (through membranes).
+./examples/avoid_walls/avoid_walls -c conf/active_objects.yaml          # Show a simple pogowalls-avoidance system, and active objects (that can emit messages like pogowalls)
 ./examples/ssr/ssr -c conf/ssr.yaml                                     # More complex example. "Simple" implementation of the SSR algorithm from https://arxiv.org/abs/2403.17147  You can test it for a disk and annulus arena (see conf/ssr.yaml to change the arena).
 ./examples/coverage_neighbors_novelty/coverage_neighbors_novelty -c conf/coverage_neighbors_novelty.yaml   # More complex run-and-tumble example, with two objectives: neighbor novelty, and isolation avoidance (as a proxy to global coverage)
 ./examples/IMU/IMU -c conf/simple.yaml                                  # A run-and-tumble example showing how to retrieve IMU information (gyroscope, accelerometer, temperature sensor)

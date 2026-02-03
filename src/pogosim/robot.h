@@ -791,6 +791,115 @@ protected:
 
 
 
+/**
+ * @brief Class representing an active object, with a pogowall on each side.
+ */
+class ActiveObject : public PogobotObject {
+public:
+    /**
+     * Initializes a new ActiveObject with the specified identifier, user data size, initial position,
+     * radius, associated Box2D world, and message success rate. It also allows customization
+     * of the body's physical properties (linear and angular damping, density, friction, and restitution).
+     *
+     * @param _id Unique object identifier.
+     * @param x Initial x-coordinate in the simulation.
+     * @param y Initial y-coordinate in the simulation.
+     * @param geom Object's geometry.
+     * @param world_id The Box2D world identifier.
+     * @param _userdatasize Size of the memory block allocated for user data.
+     * @param _communication_radius communication radius of each IR emitter
+     * @param _msg_success_rate std::unique_ptr<MsgSuccessRate> describing the probability of successfully sending a message.
+     * @param _temporal_noise_stddev Standard deviation of the gaussian noise to apply to time on each object, or 0.0 for deterministic time
+     * @param _linear_damping Linear damping value for the physical body (default is 0.0f).
+     * @param _angular_damping Angular damping value for the physical body (default is 0.0f).
+     * @param _density Density of the body shape (default is 10.0f).
+     * @param _friction Friction coefficient of the body shape (default is 0.3f).
+     * @param _restitution Restitution (bounciness) of the body shape (default is 0.5f).
+     * @param _linear_noise_stddev Standard deviation of the gaussian noise to apply to linear velocity, or 0.0 for deterministic velocity
+     * @param _angular_noise_stddev Standard deviation of the gaussian noise to apply to angular velocity, or 0.0 for deterministic velocity
+     * @param _num_dots How many dots (≈ vertices) the membrane should have.
+     * @param _dot_radius Physical radius for each dot (Box2D units, not pixels).
+     * @param _cross_span Connect every i‑th neighbour to stiffen the sheet (≥ 1).
+     * @param _stiffness The stiffness of the joints.
+     * @param _colormap Name of the colormap to use to set the color of the object
+     * @param _category Name of the category of the object.
+     */
+    ActiveObject(uint16_t _id, float _x, float _y,
+           ObjectGeometry& geom, b2WorldId world_id,
+           size_t _userdatasize,
+           float _communication_radius = 80.0f,
+           std::unique_ptr<MsgSuccessRate> _msg_success_rate = std::make_unique<ConstMsgSuccessRate>(0.5),
+           float _temporal_noise_stddev = 0.0f,
+           float _linear_damping = 0.0f, float _angular_damping = 0.0f,
+           float _density = 10.0f, float _friction = 0.3f, float _restitution = 0.5f,
+           float _max_linear_speed = 100.0f, float _max_angular_speed = 1.0f,
+           float _linear_noise_stddev = 0.0f, float _angular_noise_stddev = 0.0f,
+           std::string _colormap = "rainbow",
+           std::string const& _category = "active_objects");
+
+    /**
+     * @brief Constructs a ActiveObject from a configuration entry.
+     *
+     * @param simulation Pointer to the underlying simulation.
+     * @param _id Unique object identifier.
+     * @param x Initial x-coordinate in the simulation.
+     * @param y Initial y-coordinate in the simulation.
+     * @param world_id The Box2D world identifier.
+     * @param _userdatasize Size of the memory block allocated for user data.
+     * @param config Configuration entry describing the object properties.
+     */
+    ActiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
+           b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+           std::string const& _category = "active_objects");
+
+    /**
+     * @brief Updates the motor speed of the robot and recalculates its velocities.
+     * Pogobjects do not move, so this method will always set the motors to 0.
+     *
+     * @param motor The identifier of the motor to update.
+     * @param speed (Ignored) speed value for the selected motor.
+     */
+    virtual void set_motor([[maybe_unused]] motor_id motor, [[maybe_unused]] int speed) override { }
+
+    /**
+     * @brief Renders the robot on the given SDL renderer.
+     *
+     * @param renderer Pointer to the SDL_Renderer.
+     * @param world_id The Box2D world identifier (unused in rendering).
+     */
+    virtual void render(SDL_Renderer*, b2WorldId) const override;
+
+    /**
+     * @brief Renders the communication channels originating from this robot.
+     *
+     * @param renderer Pointer to the SDL_Renderer.
+     * @param world_id The Box2D world identifier (unused in rendering).
+     */
+    virtual void render_communication_channels(SDL_Renderer*, b2WorldId) const override { }
+
+//    /**
+//     * @brief Move the object to a given coordinate
+//     *
+//     * @param x X coordinate.
+//     * @param y Y coordinate.
+//     * @param theta Orientation, in rad.
+//     */
+//    virtual void move(float x, float y, float theta = NAN) override;
+
+
+protected:
+    std::string colormap;
+
+    /**
+     * @brief Parse a provided configuration and set associated members values.
+     *
+     * @param config Configuration entry describing the object properties.
+     */
+    virtual void parse_configuration(Configuration const& config, Simulation* simulation) override;
+};
+
+
+
 
 //extern Robot* current_robot;
 extern PogobotObject* current_robot;

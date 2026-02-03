@@ -268,6 +268,9 @@ Object* object_factory(Simulation* simulation, uint16_t id, float x, float y, b2
     } else if (type == "membrane") {
         res = new MembraneObject(simulation, id, x, y, world_id, userdatasize, config, category);
 
+    } else if (type == "active_object") {
+        res = new ActiveObject(simulation, id, x, y, world_id, userdatasize, config, category);
+
     } else {
         throw std::runtime_error("Unknown object type '" + type + "'.");
     }

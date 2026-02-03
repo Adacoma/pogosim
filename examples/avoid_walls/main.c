@@ -74,7 +74,7 @@ static inline bool face_active(uint8_t face, uint32_t tnow) {
 static inline void update_lateral_leds(uint32_t tnow) {
     for(uint8_t face = 0; face < 4; face++) {
         bool active = face_active(face, tnow);
-        uint8_t r = active ? 255 : 0;
+        uint8_t r = active ? 25 : 0;
         pogobot_led_setColors(r, 0, 0, face + 1);
     }
 }
@@ -85,13 +85,19 @@ static inline bool is_wall_payload(const message_t *msg) {
     return (n >= 4) && (p[0]=='w' && p[1]=='a' && p[2]=='l' && p[3]=='l');
 }
 
+static inline bool is_active_object_detected(const message_t *msg) {
+    const uint8_t *p = msg->payload;
+    const uint16_t n = msg->header.payload_length;
+    return (n >= 6) && (p[0]=='O' && p[1]=='B' && p[2]=='J' && p[3]=='E' && p[4]=='C' && p[5]=='T');
+}
+
 /* ------------------------- Motion ------------------------------- */
 static inline void move_forward(void) {
     pogobot_motor_set(motorL, mydata->motorLeft);
     pogobot_motor_set(motorR, mydata->motorRight);
     pogobot_motor_dir_set(motorL, mydata->dirLeft);
     pogobot_motor_dir_set(motorR, mydata->dirRight);
-    pogobot_led_setColor(0, 100, 0); // Dim green: moving forward
+    pogobot_led_setColor(0, 25, 0); // Green: moving forward
 }
 
 static inline void spin_left(void) {
@@ -99,7 +105,7 @@ static inline void spin_left(void) {
     pogobot_motor_set(motorR, motorHalf);
     pogobot_motor_dir_set(motorL, (mydata->dirLeft + 1) % 2);
     pogobot_motor_dir_set(motorR, mydata->dirRight);
-    pogobot_led_setColor(100, 100, 255); // Blue: turning left
+    pogobot_led_setColor(25, 0, 0); // Red: turning left
 }
 
 static inline void spin_right(void) {
@@ -107,13 +113,15 @@ static inline void spin_right(void) {
     pogobot_motor_set(motorR, motorHalf);
     pogobot_motor_dir_set(motorL, mydata->dirLeft);
     pogobot_motor_dir_set(motorR, (mydata->dirRight + 1) % 2);
-    pogobot_led_setColor(255, 100, 100); // Red: turning right
+    pogobot_led_setColor(0, 0, 25); // Blue: turning right
 }
 
 /* ------------------------- IR messages ------------------------------- */
 
 static void process_message(message_t *mr) {
-    if (!is_wall_payload(mr))
+    const bool is_wall = is_wall_payload(mr);
+    const bool is_active_object = is_active_object_detected(mr);
+    if (!is_wall && !is_active_object)
         return;
     uint32_t t = current_time_milliseconds();
 
@@ -122,7 +130,11 @@ static void process_message(message_t *mr) {
         mydata->last_wall_seen_ms[face] = t;
     }
     update_lateral_leds(t);
-    printf("Wall detected! State: %d %d %d %d\n", face_active(0, t), face_active(1, t), face_active(2, t), face_active(3, t));
+    if (is_wall) {
+        printf("Wall detected! State: %d %d %d %d\n", face_active(0, t), face_active(1, t), face_active(2, t), face_active(3, t));
+    } else if (is_active_object) {
+        printf("Active object detected! State: %d %d %d %d\n", face_active(0, t), face_active(1, t), face_active(2, t), face_active(3, t));
+    }
 }
 
 
@@ -312,6 +324,44 @@ void user_step(void) {
 }
 
 
+/* ------------------------- Active objects ------------------------------- */
+
+/**
+ * @brief Function called each time the active objects send a message
+ *
+ * This function is called continuously at the frequency defined in active_objects_user_init().
+ */
+static bool ping_active_objects(void) {
+    uint8_t msg[7] = {"OBJECT"};
+    return pogobot_infrared_sendLongMessage_omniSpe(msg, sizeof(msg));
+}
+
+
+void active_objects_user_init(void) {
+#ifndef SIMULATOR
+    printf("Active object initialized\n");
+#endif
+    // Initialize the random number generator
+    srand(pogobot_helper_getRandSeed());
+    pogobot_infrared_set_power(2); // Set the power level used to send all the next messages.
+
+    // Set the main loop frequency to 10 Hz (i.e., active_objects_user_step() is called 10 times per second).
+    main_loop_hz = 10;
+
+    // Disable message reception, but enable message send by the active objects.
+    max_nb_processed_msg_per_tick = 0;
+    percent_msgs_sent_per_ticks = 75; // 75% of chance each step to send a message.
+    msg_rx_fn = NULL;
+    msg_tx_fn = ping_active_objects;
+    // Specify LED index for error codes (negative values disable this feature).
+    error_codes_led_idx = -1;
+}
+
+void active_objects_user_step(void) {
+    // ...
+}
+
+
 /* ------------------------- Main ------------------------------- */
 
 #ifdef SIMULATOR
@@ -351,6 +401,10 @@ int main(void) {
     // Init and main loop functions for the walls (pogowalls). Ignored by the robots.
     // Use the default functions provided by Pogosim. Cf examples 'walls' to see how to declare custom wall user code functions.
     pogobot_start(default_walls_user_init, default_walls_user_step, "walls");
+
+    // Init and main loop functions for the active objects (objects with IR sensors/emitter and controller, but no actuators). Ignored by the robots and the pogowalls.
+    // Cf the functions defined above, very similar to the default pogowall default functions
+    pogobot_start(active_objects_user_init, active_objects_user_step, "active_objects");
 
     // Specify the callback functions. Only called by the simulator.
     SET_CALLBACK(callback_global_setup, global_setup);

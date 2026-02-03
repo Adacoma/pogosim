@@ -1058,6 +1058,69 @@ arena_polygons_t MembraneObject::generate_contours(std::size_t points_per_contou
 }
 
 
+/************* ActiveObject *************/ // {{{1
+
+ActiveObject::ActiveObject(uint16_t _id, float _x, float _y,
+       ObjectGeometry& geom, b2WorldId world_id,
+       size_t _userdatasize,
+       float _communication_radius,
+       std::unique_ptr<MsgSuccessRate> _msg_success_rate,
+       float _temporal_noise_stddev,
+       float _linear_damping, float _angular_damping,
+       float _density, float _friction, float _restitution,
+       float _max_linear_speed, float _max_angular_speed,
+       float _linear_noise_stddev, float _angular_noise_stddev,
+       std::string _colormap,
+       std::string const& _category)
+    : PogobotObject::PogobotObject(_id, _x, _y, geom, world_id,
+      _userdatasize, _communication_radius, std::move(_msg_success_rate),
+      _temporal_noise_stddev, _linear_damping, _angular_damping,
+      _density, _friction, _restitution,
+      _max_linear_speed, _max_angular_speed,
+      _linear_noise_stddev, _angular_noise_stddev,
+      {0, 0}, {0, 0}, 0.0f, _category),
+      colormap(_colormap) {
+    // ...
+}
+
+ActiveObject::ActiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
+       b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+       std::string const& _category)
+    : PogobotObject::PogobotObject(simulation, _id, _x, _y, world_id, _userdatasize, config, _category) {
+    parse_configuration(config, simulation);
+}
+
+void ActiveObject::parse_configuration(Configuration const& config, Simulation* simulation) {
+    PogobotObject::parse_configuration(config, simulation);
+    colormap = config["colormap"].get(std::string("rainbow"));
+}
+
+
+void ActiveObject::render(SDL_Renderer* renderer, b2WorldId world_id) const {
+    // Get object's position in the physics world
+    b2Vec2 body_position = b2Body_GetPosition(body_id);
+
+    // Identify object X and Y coordinates in visualization instance
+    float screen_x = body_position.x * VISUALIZATION_SCALE;
+    float screen_y = body_position.y * VISUALIZATION_SCALE;
+    auto const pos = visualization_position(screen_x, screen_y);
+
+    // Assign color based on object initial position
+    uint8_t const value = (static_cast<int32_t>(x) + static_cast<int32_t>(y)) % 256;
+    //uint8_t const value = (reinterpret_cast<intptr_t>(this)) % 256;
+    uint8_t r, g, b;
+    get_cmap_val(colormap, value, &r, &g, &b);
+
+    // Draw the object main body
+    float const angle = get_angle();
+    geom->render(renderer, world_id, pos.x, pos.y, angle,
+            SCALE_0_25_TO_0_255(r),
+            SCALE_0_25_TO_0_255(g),
+            SCALE_0_25_TO_0_255(b),
+            255);
+}
+
+
 // MODELINE "{{{1
 // vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8
 // vim:foldmethod=marker
