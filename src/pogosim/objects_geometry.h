@@ -2,6 +2,7 @@
 #define OBJECTS_GEOMETRY_H
 
 #include <functional>
+#include <array>
 
 #include "utils.h"
 #include "configuration.h"
@@ -89,7 +90,8 @@ public:
      * @param b Blue color component
      * @param alpha Alpha color component
      */
-    virtual void render(SDL_Renderer* renderer, b2WorldId world_id, float x, float y, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha = 255) const = 0;
+    virtual void render(SDL_Renderer* renderer, b2WorldId world_id, float x, float y, float theta,
+            uint8_t r, uint8_t g, uint8_t b, uint8_t alpha = 255) const = 0;
 
     /**
      * @brief Computes the bounding disk that completely encloses the geometry.
@@ -181,7 +183,8 @@ public:
      * @param b Blue color component
      * @param alpha Alpha color component
      */
-    virtual void render(SDL_Renderer* renderer, b2WorldId world_id, float x, float y, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha = 255) const override;
+    virtual void render(SDL_Renderer* renderer, b2WorldId world_id, float x, float y, float theta,
+            uint8_t r, uint8_t g, uint8_t b, uint8_t alpha = 255) const override;
 
     /**
      * @brief Computes the bounding disk that completely encloses the geometry.
@@ -259,7 +262,7 @@ public:
      * @param b Blue color component.
      * @param alpha Alpha color component.
      */
-    virtual void render(SDL_Renderer* renderer, b2WorldId world_id, float x, float y,
+    virtual void render(SDL_Renderer* renderer, b2WorldId world_id, float x, float y, float theta,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t alpha = 255) const override;
 
     /**
@@ -303,6 +306,70 @@ public:
 protected:
     float width;   ///< Width of the rectangle.
     float height;  ///< Height of the rectangle.
+};
+
+
+class TriangleGeometry : public ObjectGeometry {
+public:
+    /**
+     * @brief Construct an equilateral TriangleGeometry.
+     *
+     * The triangle is centered at (0,0) in local coordinates (its centroid).
+     *
+     * @param _side_length The side length of the equilateral triangle.
+     */
+    explicit TriangleGeometry(float _side_length) : side_length(_side_length) {}
+
+    /**
+     * @brief Create a Box2D shape based on this geometry.
+     */
+    void create_box2d_shape(b2BodyId body_id, b2ShapeDef& shape_def) override;
+
+    /**
+     * @brief Exports a boolean 2D grid showing which bins are covered by the triangle.
+     */
+    std::vector<std::vector<bool>> export_geometry_grid(size_t num_bins_x,
+                                                        size_t num_bins_y,
+                                                        float bin_width,
+                                                        float bin_height,
+                                                        float obj_x,
+                                                        float obj_y) const override;
+
+    /**
+     * @brief Renders the triangle on the given SDL renderer.
+     */
+    void render(SDL_Renderer* renderer, b2WorldId world_id, float x, float y, float theta,
+                uint8_t r, uint8_t g, uint8_t b, uint8_t alpha = 255) const override;
+
+    /**
+     * @brief Returns the side length of the equilateral triangle.
+     */
+    float get_side_length() const { return side_length; }
+
+    /**
+     * @brief Computes the bounding disk that completely encloses the geometry.
+     */
+    BoundingDisk compute_bounding_disk() const override;
+
+    /**
+     * @brief Computes the axis-aligned bounding box that completely encloses the geometry.
+     */
+    BoundingBox compute_bounding_box() const override;
+
+    /**
+     * @brief Return one or more polygonal contours that approximate / represent
+     *        this geometry.
+     */
+    arena_polygons_t generate_contours(std::size_t points_per_contour = 0, b2Vec2 position  = {0.0f, 0.0f}) const override;
+
+private:
+    /**
+     * @brief Returns the local-space vertices of the triangle (centroid at origin),
+     *        counter-clockwise (CCW).
+     */
+    std::array<b2Vec2, 3> get_local_vertices() const;
+
+    float side_length;  ///< Side length of the equilateral triangle.
 };
 
 
@@ -352,7 +419,7 @@ public:
      * @param b Blue color component
      * @param alpha Alpha color component
      */
-    virtual void render(SDL_Renderer*, b2WorldId, float, float, uint8_t, uint8_t, uint8_t, uint8_t = 255) const override {}
+    virtual void render(SDL_Renderer*, b2WorldId, float, float, float, uint8_t, uint8_t, uint8_t, uint8_t = 255) const override {}
 
     /**
      * @brief Computes the bounding disk that completely encloses the geometry.
@@ -412,7 +479,7 @@ public:
                          float      obj_x,
                          float      obj_y) const override;
 
-    void render(SDL_Renderer*, b2WorldId, float, float,
+    void render(SDL_Renderer*, b2WorldId, float, float, float,
                 uint8_t, uint8_t, uint8_t, uint8_t = 255) const override { }
 
     BoundingDisk  compute_bounding_disk() const override;
@@ -448,6 +515,15 @@ private:
 
     const arena_polygons_t& arena_polygons_;
 };
+
+
+/**
+ * @brief Factory of ObjectGeometries
+ *
+ * @param config Configuration entry describing the object properties.
+ * @param simulation Pointer to the underlying simulation.
+ */
+ObjectGeometry* object_geometry_factory(Configuration const& config, Simulation* simulation);
 
 
 #endif

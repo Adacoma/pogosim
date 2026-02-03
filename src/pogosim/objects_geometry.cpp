@@ -9,6 +9,13 @@
 #include "SDL2_gfxPrimitives.h"
 
 
+static b2Vec2 rotate_local(b2Vec2 v, float a) {
+    float const c = std::cos(a);
+    float const s = std::sin(a);
+    return {c * v.x - s * v.y, s * v.x + c * v.y};
+}
+
+
 /************* ObjectGeometry *************/ // {{{1
 
 ObjectGeometry::~ObjectGeometry() {
@@ -55,7 +62,7 @@ std::vector<std::vector<bool>> DiskGeometry::export_geometry_grid(size_t num_bin
 }
 
 
-void DiskGeometry::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId world_id, float x, float y, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha) const {
+void DiskGeometry::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId world_id, float x, float y, [[maybe_unused]] float theta, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha) const {
     filledCircleRGBA(renderer, x, y, radius * mm_to_pixels, r, g, b, alpha);
 }
 
@@ -135,21 +142,45 @@ std::vector<std::vector<bool>> RectangleGeometry::export_geometry_grid(size_t nu
     return grid;
 }
 
-// The rectangle is drawn as a filled box centered at (x, y) converted to pixels.
-void RectangleGeometry::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId world_id,
-                               float x, float y, uint8_t r, uint8_t g, uint8_t b, uint8_t alpha) const {
-    // Calculate the pixel size and position.
-    SDL_Rect rect;
-    rect.w = static_cast<int>(width * mm_to_pixels);
-    rect.h = static_cast<int>(height * mm_to_pixels);
-    // Center the rectangle at (x, y) by offsetting by half its width and height.
-    rect.x = static_cast<int>(x - rect.w / 2);
-    rect.y = static_cast<int>(y - rect.h / 2);
 
-    // Set the drawing color and render the filled rectangle.
-    SDL_SetRenderDrawColor(renderer, r, g, b, alpha);
-    SDL_RenderFillRect(renderer, &rect);
+// The rectangle is drawn as a filled rotated box centered at (x, y).
+void RectangleGeometry::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId world_id,
+                               float x, float y, float theta,
+                               uint8_t r, uint8_t g, uint8_t b, uint8_t alpha) const {
+    float const hw = 0.5f * width;
+    float const hh = 0.5f * height;
+
+    auto rotate_local = [](float lx, float ly, float a) {
+        float const c = std::cos(a);
+        float const s = std::sin(a);
+        return b2Vec2{c * lx - s * ly, s * lx + c * ly};
+    };
+
+    // Local corners in mm, CCW
+    b2Vec2 const p0 = rotate_local(-hw, -hh, theta);
+    b2Vec2 const p1 = rotate_local( hw, -hh, theta);
+    b2Vec2 const p2 = rotate_local( hw,  hh, theta);
+    b2Vec2 const p3 = rotate_local(-hw,  hh, theta);
+
+    // Convert to pixels and translate to (x, y)
+    Sint16 const vx[4] = {
+        static_cast<Sint16>(x + p0.x * mm_to_pixels),
+        static_cast<Sint16>(x + p1.x * mm_to_pixels),
+        static_cast<Sint16>(x + p2.x * mm_to_pixels),
+        static_cast<Sint16>(x + p3.x * mm_to_pixels),
+    };
+
+    Sint16 const vy[4] = {
+        static_cast<Sint16>(y + p0.y * mm_to_pixels),
+        static_cast<Sint16>(y + p1.y * mm_to_pixels),
+        static_cast<Sint16>(y + p2.y * mm_to_pixels),
+        static_cast<Sint16>(y + p3.y * mm_to_pixels),
+    };
+
+    // Filled rotated polygon (requires SDL2_gfx)
+    filledPolygonRGBA(renderer, vx, vy, 4, r, g, b, alpha);
 }
+
 
 BoundingDisk RectangleGeometry::compute_bounding_disk() const {
     // The bounding disk must cover the entire rectangle.
@@ -206,6 +237,191 @@ arena_polygons_t RectangleGeometry::generate_contours(std::size_t n, b2Vec2 posi
 
     return contours;
 }
+
+/************* TriangleGeometry *************/ // {{{1
+
+std::array<b2Vec2, 3> TriangleGeometry::get_local_vertices() const {
+    // Equilateral triangle, centroid at origin.
+    // Let h be the height. For an equilateral triangle:
+    //   h = sqrt(3)/2 * s
+    // The centroid lies at a distance h/3 from the base and 2h/3 from the apex.
+    const float s = side_length;
+    const float h = std::sqrt(3.0f) * 0.5f * s;
+
+    // CCW order.
+    const b2Vec2 v0{0.0f, -2.0f * h / 3.0f};
+    const b2Vec2 v1{ s * 0.5f,  h / 3.0f};
+    const b2Vec2 v2{-s * 0.5f,  h / 3.0f};
+    return {v0, v1, v2};
+}
+
+void TriangleGeometry::create_box2d_shape(b2BodyId body_id, b2ShapeDef& shape_def) {
+    const auto verts_mm = get_local_vertices();
+
+    // Convert to Box2D world units.
+    b2Vec2 verts[3];
+    for (int i = 0; i < 3; ++i) {
+        verts[i] = {verts_mm[i].x / VISUALIZATION_SCALE, verts_mm[i].y / VISUALIZATION_SCALE};
+    }
+
+    b2Polygon polygon{};
+    polygon.count = 3;
+    polygon.radius = 0.0f;
+
+    // Vertices must be CCW.
+    for (int i = 0; i < 3; ++i) {
+        polygon.vertices[i] = verts[i];
+    }
+
+    auto normalize = [](b2Vec2 v) {
+        const float len2 = v.x * v.x + v.y * v.y;
+        if (len2 <= 0.0f) return b2Vec2{0.0f, 0.0f};
+        const float inv_len = 1.0f / std::sqrt(len2);
+        return b2Vec2{v.x * inv_len, v.y * inv_len};
+    };
+
+    for (int i = 0; i < 3; ++i) {
+        const int j = (i + 1) % 3;
+        const b2Vec2 e{polygon.vertices[j].x - polygon.vertices[i].x,
+                       polygon.vertices[j].y - polygon.vertices[i].y};
+        // Outward normal for CCW polygon.
+        polygon.normals[i] = normalize({e.y, -e.x});
+    }
+
+    shape_id = b2CreatePolygonShape(body_id, &shape_def, &polygon);
+    shape_created = true;
+}
+
+static bool point_in_triangle(b2Vec2 p, b2Vec2 a, b2Vec2 b, b2Vec2 c) {
+    // Barycentric technique, robust for triangles.
+    const b2Vec2 v0{c.x - a.x, c.y - a.y};
+    const b2Vec2 v1{b.x - a.x, b.y - a.y};
+    const b2Vec2 v2{p.x - a.x, p.y - a.y};
+
+    const float dot00 = v0.x * v0.x + v0.y * v0.y;
+    const float dot01 = v0.x * v1.x + v0.y * v1.y;
+    const float dot02 = v0.x * v2.x + v0.y * v2.y;
+    const float dot11 = v1.x * v1.x + v1.y * v1.y;
+    const float dot12 = v1.x * v2.x + v1.y * v2.y;
+
+    const float denom = dot00 * dot11 - dot01 * dot01;
+    if (std::abs(denom) < 1e-12f) return false;
+
+    const float inv_denom = 1.0f / denom;
+    const float u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+    const float v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
+
+    return (u >= 0.0f) && (v >= 0.0f) && (u + v <= 1.0f);
+}
+
+std::vector<std::vector<bool>> TriangleGeometry::export_geometry_grid(size_t num_bins_x,
+                                                                     size_t num_bins_y,
+                                                                     float bin_width,
+                                                                     float bin_height,
+                                                                     float obj_x,
+                                                                     float obj_y) const {
+    std::vector<std::vector<bool>> grid(num_bins_y, std::vector<bool>(num_bins_x, false));
+
+    const auto v = get_local_vertices();
+    const b2Vec2 a{obj_x + v[0].x, obj_y + v[0].y};
+    const b2Vec2 b{obj_x + v[1].x, obj_y + v[1].y};
+    const b2Vec2 c{obj_x + v[2].x, obj_y + v[2].y};
+
+    for (size_t j = 0; j < num_bins_y; ++j) {
+        for (size_t i = 0; i < num_bins_x; ++i) {
+            const float center_x = (i + 0.5f) * bin_width;
+            const float center_y = (j + 0.5f) * bin_height;
+            const b2Vec2 p{center_x, center_y};
+
+            if (point_in_triangle(p, a, b, c)) {
+                grid[j][i] = true;
+            }
+        }
+    }
+
+    return grid;
+}
+
+void TriangleGeometry::render(SDL_Renderer* renderer, b2WorldId world_id, float x, float y, float theta,
+                             uint8_t r, uint8_t g, uint8_t b, uint8_t alpha) const {
+    (void)world_id;
+
+    auto v = get_local_vertices();
+    b2Vec2 v0 = rotate_local(v[0], theta);
+    b2Vec2 v1 = rotate_local(v[1], theta);
+    b2Vec2 v2 = rotate_local(v[2], theta);
+
+    Sint16 const x1 = static_cast<Sint16>(x + v0.x * mm_to_pixels);
+    Sint16 const y1 = static_cast<Sint16>(y + v0.y * mm_to_pixels);
+    Sint16 const x2 = static_cast<Sint16>(x + v1.x * mm_to_pixels);
+    Sint16 const y2 = static_cast<Sint16>(y + v1.y * mm_to_pixels);
+    Sint16 const x3 = static_cast<Sint16>(x + v2.x * mm_to_pixels);
+    Sint16 const y3 = static_cast<Sint16>(y + v2.y * mm_to_pixels);
+
+    filledTrigonRGBA(renderer, x1, y1, x2, y2, x3, y3, r, g, b, alpha);
+}
+
+BoundingDisk TriangleGeometry::compute_bounding_disk() const {
+    // Circumradius for an equilateral triangle: R = s / sqrt(3).
+    return {0.0f, 0.0f, side_length / std::sqrt(3.0f)};
+}
+
+BoundingBox TriangleGeometry::compute_bounding_box() const {
+    const float s = side_length;
+    const float h = std::sqrt(3.0f) * 0.5f * s;
+
+    // Local vertices are:
+    //  (0, -2h/3), (-s/2, h/3), (s/2, h/3)
+    const float min_x = -s * 0.5f;
+    const float max_x =  s * 0.5f;
+    const float min_y = -2.0f * h / 3.0f;
+    const float max_y =  h / 3.0f;
+
+    return {min_x, min_y, max_x - min_x, max_y - min_y};
+}
+
+arena_polygons_t TriangleGeometry::generate_contours(std::size_t n, b2Vec2 position) const {
+    if (n == 0) {
+        n = 3;
+    }
+
+    if (n < 3) n = 3;
+
+    const auto v = get_local_vertices();
+    const std::size_t per_edge = n / 3;
+    const std::size_t extras   = n % 3;
+
+    auto edge_points = [per_edge, position](b2Vec2 a, b2Vec2 b) {
+        std::vector<b2Vec2> pts;
+        pts.reserve(per_edge + 1);
+        for (std::size_t i = 0; i < per_edge; ++i) {
+            const float t = static_cast<float>(i) / per_edge;
+            pts.push_back({position.x + a.x + t * (b.x - a.x), position.y + a.y + t * (b.y - a.y)});
+        }
+        return pts;
+    };
+
+    arena_polygons_t contours(1);
+    auto& poly = contours.front();
+
+    const b2Vec2 a{v[0].x, v[0].y};
+    const b2Vec2 b{v[1].x, v[1].y};
+    const b2Vec2 c{v[2].x, v[2].y};
+
+    auto append = [&](auto&& vec) { poly.insert(poly.end(), vec.begin(), vec.end()); };
+
+    // CCW.
+    append(edge_points(a, b));
+    append(edge_points(b, c));
+    append(edge_points(c, a));
+
+    for (std::size_t i = 0; i < extras; ++i) {
+        poly.push_back(poly[i]);
+    }
+
+    return contours;
+}
+
 
 
 /************* GlobalGeometry *************/ // {{{1
@@ -390,6 +606,28 @@ arena_polygons_t ArenaGeometry::generate_contours(std::size_t points, b2Vec2 pos
     return result;
 }
 
+
+
+ObjectGeometry* object_geometry_factory(Configuration const& config, Simulation* simulation) {
+    std::string const geometry_str = to_lowercase(config["geometry"].get(std::string("unknown")));
+    if (geometry_str == "global") {
+        return new GlobalGeometry();
+    } else if (geometry_str == "disk") {
+        float const radius = config["radius"].get(10.0);
+        return new DiskGeometry(radius);
+    } else if (geometry_str == "rectangle") {
+        float const body_width = config["body_width"].get(10.0);
+        float const body_height = config["body_height"].get(10.0);
+        return new RectangleGeometry(body_width, body_height);
+    } else if (geometry_str == "triangle") {
+        float const side_length = config["side_length"].get(10.0);
+        return new TriangleGeometry(side_length);
+    } else if (geometry_str == "arena") {
+        return new ArenaGeometry(simulation->get_arena_geometry());
+    } else {
+        throw std::runtime_error("Unknown geometry type '" + geometry_str + "'.");
+    }
+}
 
 // MODELINE "{{{1
 // vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8

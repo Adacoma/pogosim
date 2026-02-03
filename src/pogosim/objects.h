@@ -334,15 +334,6 @@ protected:
 
 
 /**
- * @brief Factory of ObjectGeometries
- *
- * @param config Configuration entry describing the object properties.
- * @param simulation Pointer to the underlying simulation.
- */
-ObjectGeometry* object_geometry_factory(Configuration const& config, Simulation* simulation);
-
-
-/**
  * @brief Factory of simulation Objects. Return a constructed object from configuration.
  *
  * @param simulation Pointer to the underlying simulation.

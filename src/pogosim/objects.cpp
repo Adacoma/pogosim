@@ -217,7 +217,8 @@ void PassiveObject::render(SDL_Renderer* renderer, b2WorldId world_id) const {
     get_cmap_val(colormap, value, &r, &g, &b);
 
     // Draw the object main body
-    geom->render(renderer, world_id, pos.x, pos.y, 
+    float const angle = get_angle();
+    geom->render(renderer, world_id, pos.x, pos.y, angle,
             SCALE_0_25_TO_0_255(r),
             SCALE_0_25_TO_0_255(g),
             SCALE_0_25_TO_0_255(b),
@@ -233,24 +234,6 @@ void PassiveObject::parse_configuration(Configuration const& config, Simulation*
 
 /************* Factories *************/ // {{{1
 
-
-ObjectGeometry* object_geometry_factory(Configuration const& config, Simulation* simulation) {
-    std::string const geometry_str = to_lowercase(config["geometry"].get(std::string("unknown")));
-    if (geometry_str == "global") {
-        return new GlobalGeometry();
-    } else if (geometry_str == "disk") {
-        float const radius = config["radius"].get(10.0);
-        return new DiskGeometry(radius);
-    } else if (geometry_str == "rectangle") {
-        float const body_width = config["body_width"].get(10.0);
-        float const body_height = config["body_height"].get(10.0);
-        return new RectangleGeometry(body_width, body_height);
-    } else if (geometry_str == "arena") {
-        return new ArenaGeometry(simulation->get_arena_geometry());
-    } else {
-        throw std::runtime_error("Unknown geometry type '" + geometry_str + "'.");
-    }
-}
 
 Object* object_factory(Simulation* simulation, uint16_t id, float x, float y, b2WorldId world_id, Configuration const& config, LightLevelMap* light_map, size_t userdatasize, std::string const& category) {
     std::string const type = to_lowercase(config["type"].get(std::string("unknown")));
