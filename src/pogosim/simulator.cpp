@@ -621,6 +621,7 @@ void Simulation::create_robots() {
             10.0f, 0.3f, 0.5f,
             100.0f, 1.0f,
             0.0f, 0.0f,
+            false,
             std::pair<int16_t,int16_t>{0, 0},
             std::pair<int16_t,int16_t>{0, 0},
             0.0f,

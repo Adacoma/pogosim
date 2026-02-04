@@ -98,6 +98,7 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
        float _density, float _friction, float _restitution,
        float _max_linear_speed, float _max_angular_speed,
        float _linear_noise_stddev, float _angular_noise_stddev,
+       bool _rotate_LEDs_45_deg,
        std::pair<int16_t, int16_t> angular_systematic_bias_domain,
        std::pair<int16_t, int16_t> photosensors_systematic_bias_domain,
        float _photosensors_noise_stddev,
@@ -109,7 +110,7 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
     communication_radius(_communication_radius), msg_success_rate(std::move(_msg_success_rate)),
     temporal_noise_stddev(_temporal_noise_stddev),
     max_linear_speed(_max_linear_speed), max_angular_speed(_max_angular_speed),
-    linear_noise_stddev(_linear_noise_stddev), angular_noise_stddev(_angular_noise_stddev),
+    linear_noise_stddev(_linear_noise_stddev), angular_noise_stddev(_angular_noise_stddev), rotate_LEDs_45_deg(_rotate_LEDs_45_deg),
     photosensors_noise_stddev(_photosensors_noise_stddev) {
     data = malloc(_userdatasize);
     initialize_time();
@@ -140,6 +141,7 @@ void PogobotObject::parse_configuration(Configuration const& config, Simulation*
     max_angular_speed     = config["max_angular_speed"].get(1.0f);
     linear_noise_stddev   = config["linear_noise_stddev"].get(0.0f);
     angular_noise_stddev  = config["angular_noise_stddev"].get(0.0f);
+    rotate_LEDs_45_deg    = config["rotate_LEDs_45_deg"].get(false);
 
     auto photosensors_systematic_bias_domain = config["photosensors_systematic_bias_domain"].get<std::pair<int16_t,int16_t>>({0, 0});
     initialize_photosensors_bias(photosensors_systematic_bias_domain);
@@ -237,16 +239,18 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
             {0, -radius}       // Left
         };
 
-        // Apply a 45° clockwise rotation to the lateral LEDs (skip index 0)
-        // const float angle = M_PI / 4;  // -45 degrees in radians
-        // const float cos45 = cos(angle);
-        // const float sin45 = sin(angle);
-        // for (size_t i = 1; i < ledOffsets.size(); ++i) {
-        //     float originalX = ledOffsets[i].x;
-        //     float originalY = ledOffsets[i].y;
-        //     ledOffsets[i].x = originalX * cos45 + originalY * sin45;
-        //     ledOffsets[i].y = -originalX * sin45 + originalY * cos45;
-        // }
+        if (rotate_LEDs_45_deg) {
+            // Apply a 45° clockwise rotation to the lateral LEDs (skip index 0)
+            const float angle = M_PI / 4;  // -45 degrees in radians
+            const float cos45 = cos(angle);
+            const float sin45 = sin(angle);
+            for (size_t i = 1; i < ledOffsets.size(); ++i) {
+                float originalX = ledOffsets[i].x;
+                float originalY = ledOffsets[i].y;
+                ledOffsets[i].x = originalX * cos45 + originalY * sin45;
+                ledOffsets[i].y = -originalX * sin45 + originalY * cos45;
+            }
+        }
     } else {
         ledOffsets = {
             {0, 0}             // Only the center LED is used
@@ -679,7 +683,7 @@ PogobjectObject::PogobjectObject(uint16_t _id, float _x, float _y,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
-      0.0f, 0.0f, 0.0f, 0.0f, {0,0}, {0,0}, 0.0f, _category) {
+      0.0f, 0.0f, 0.0f, 0.0f, false, {0,0}, {0,0}, 0.0f,  _category) {
     for (size_t i = 0; i != motorB; i++)
         set_motor(static_cast<motor_id>(i), 0);
 }
@@ -777,7 +781,7 @@ Pogowall::Pogowall(uint16_t _id, float _x, float _y,
       _density, _friction, _restitution,
       _max_linear_speed, _max_angular_speed,
       _linear_noise_stddev, _angular_noise_stddev,
-      {0, 0}, {0, 0}, 0.0f, _category) {
+      false, {0, 0}, {0, 0}, 0.0f, _category) {
     auto bd = geom->compute_bounding_disk();
     PhysicalObject::move(bd.center_x, bd.center_y);
 }
@@ -1078,7 +1082,7 @@ ActiveObject::ActiveObject(uint16_t _id, float _x, float _y,
       _density, _friction, _restitution,
       _max_linear_speed, _max_angular_speed,
       _linear_noise_stddev, _angular_noise_stddev,
-      {0, 0}, {0, 0}, 0.0f, _category),
+      false, {0, 0}, {0, 0}, 0.0f, _category),
       colormap(_colormap) {
     // ...
 }

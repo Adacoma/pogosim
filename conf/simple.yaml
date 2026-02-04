@@ -98,6 +98,7 @@ objects:
         nb: 100             # Number of objects (Pogobots) in this category
         geometry: disk                  # Pogobots are always disk-shaped
         radius: 26.5                    # In mm
+        rotate_LEDs_45_deg: true       # Rotate LEDs to avoid overlap of arrow and front LED
 
         # Physical properties
         body_linear_damping: 0.3

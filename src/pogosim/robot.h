@@ -166,6 +166,7 @@ public:
      * @param _max_angular_speed Max speed value in rad.s^-1.
      * @param _linear_noise_stddev Standard deviation of the gaussian noise to apply to linear velocity, or 0.0 for deterministic velocity.
      * @param _angular_noise_stddev Standard deviation of the gaussian noise to apply to angular velocity, or 0.0 for deterministic velocity.
+     * @param _rotate_LEDs_45_deg Whether or not the LEDs are rotated by 45 degrees to prevent the front LED from overlapping with the arrow.
      * @param category Name of the category of the object.
      */
     PogobotObject(uint16_t _id, float _x, float _y,
@@ -178,6 +179,7 @@ public:
            float _density = 10.0f, float _friction = 0.3f, float _restitution = 0.5f,
            float _max_linear_speed = 100.0f, float _max_angular_speed = 1.0f,
            float _linear_noise_stddev = 0.0f, float _angular_noise_stddev = 0.0f,
+           bool _rotate_LEDs_45_deg = false,
            std::pair<int16_t, int16_t> angular_systematic_bias_domain = {0, 0},
            std::pair<int16_t, int16_t> photosensors_systematic_bias_domain = {0, 0},
            float _photosensors_noise_stddev = 0.0f,
@@ -411,6 +413,7 @@ protected:
     float max_angular_speed;
     float linear_noise_stddev;
     float angular_noise_stddev;
+    bool rotate_LEDs_45_deg;
 
     /**
      * @brief Parse a provided configuration and set associated members values.
