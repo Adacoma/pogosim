@@ -23,7 +23,7 @@ show_time: true                     # In the GUI, show the current simulated tim
 show_scale_bar: true                # In the GUI, show a scale bar in the bottom left corner
 show_communication_channels: false           # In the GUI, can enabled/disabled using F5
 show_communication_channels_above_all: false # Flag indicating if the communication channels must be drawn above the objects (true) or below. Can be enabled/disabled using F5
-show_lateral_LEDs: false                     # In the GUI, can enabled/disabled using F6
+show_lateral_LEDs: true                     # In the GUI, can enabled/disabled using F6
 show_light_levels: false                     # In the GUI, can enabled/disabled using F6
 GUI: true
 

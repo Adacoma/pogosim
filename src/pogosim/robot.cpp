@@ -231,22 +231,22 @@ void PogobotObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId wo
     if (show_lateral_leds) {
         ledOffsets = {
             {0, 0},            // Center LED remains at the center
-            {radius, 0},      // Top (in simulation units)
+            {radius, 0},      // Front (in simulation units)
             {0, radius},       // Right
-            {-radius, 0},       // Bottom
+            {-radius, 0},       // Back
             {0, -radius}       // Left
         };
 
         // Apply a 45° clockwise rotation to the lateral LEDs (skip index 0)
-        const float angle = M_PI / 4;  // -45 degrees in radians
-        const float cos45 = cos(angle);
-        const float sin45 = sin(angle);
-        for (size_t i = 1; i < ledOffsets.size(); ++i) {
-            float originalX = ledOffsets[i].x;
-            float originalY = ledOffsets[i].y;
-            ledOffsets[i].x = originalX * cos45 + originalY * sin45;
-            ledOffsets[i].y = -originalX * sin45 + originalY * cos45;
-        }
+        // const float angle = M_PI / 4;  // -45 degrees in radians
+        // const float cos45 = cos(angle);
+        // const float sin45 = sin(angle);
+        // for (size_t i = 1; i < ledOffsets.size(); ++i) {
+        //     float originalX = ledOffsets[i].x;
+        //     float originalY = ledOffsets[i].y;
+        //     ledOffsets[i].x = originalX * cos45 + originalY * sin45;
+        //     ledOffsets[i].y = -originalX * sin45 + originalY * cos45;
+        // }
     } else {
         ledOffsets = {
             {0, 0}             // Only the center LED is used
@@ -492,10 +492,10 @@ b2Vec2 PogobotObject::get_IR_emitter_position(ir_direction dir) const {
     float sinAngle = rotation.s;
 
     std::vector<b2Vec2> irOffsets = {
-        {0, -radius},      // Front (in simulation units)
-        {radius, 0},       // Right
-        {0, radius},       // Back
-        {-radius, 0},      // Left
+        {radius, 0},      // Front (in simulation units)
+        {0, radius},       // Right
+        {-radius, 0},       // Back
+        {0, -radius},      // Left
         {0, 0}             // Middle
     };
 
@@ -514,12 +514,12 @@ float PogobotObject::get_IR_emitter_angle(ir_direction dir) const {
     float sin_t = rot.s;
 
     /* local unit vectors for each emitter (robot frame) ----------------- */
-    /*  front = ( 0,-1), right = ( 1,0), back = (0, 1), left = (-1,0)      */
+    /*  front = (1,0), right = (0, 1), back = (-1,0), left = (0,-1)      */
     static constexpr b2Vec2 local_dirs[5] = {
-        { 0.0f, -1.0f},     /* FRONT  */
-        { 1.0f,  0.0f},     /* RIGHT  */
-        { 0.0f,  1.0f},     /* BACK   */
-        {-1.0f,  0.0f},     /* LEFT   */
+        { 1.0f,  0.0f},     /* FRONT  */
+        { 0.0f,  1.0f},     /* RIGHT  */
+        {-1.0f,  0.0f},     /* BACK   */
+        { 0.0f, -1.0f},     /* LEFT   */
         { 0.0f,  0.0f}      /* MIDDLE */
     };
 
