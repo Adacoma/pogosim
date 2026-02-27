@@ -141,7 +141,7 @@ void PogobotObject::parse_configuration(Configuration const& config, Simulation*
     max_angular_speed     = config["max_angular_speed"].get(1.0f);
     linear_noise_stddev   = config["linear_noise_stddev"].get(0.0f);
     angular_noise_stddev  = config["angular_noise_stddev"].get(0.0f);
-    rotate_LEDs_45_deg    = config["rotate_LEDs_45_deg"].get(false);
+    rotate_LEDs_45_deg    = config["rotate_LEDs_45_deg"].get(true);
 
     auto photosensors_systematic_bias_domain = config["photosensors_systematic_bias_domain"].get<std::pair<int16_t,int16_t>>({0, 0});
     initialize_photosensors_bias(photosensors_systematic_bias_domain);
