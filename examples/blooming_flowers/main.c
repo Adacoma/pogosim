@@ -1,12 +1,5 @@
 // main.c — "Blooming flowers" hop-distance diffusion to a spontaneously appearing seed.
 //
-// - Same Pogobot/Pogosim API style as run_and_tumble + hanabi messaging callbacks.
-// - Robots optionally move (run&tumble) at low speed (20% motorFull).
-// - Robots sometimes become a seed (root) with WHITE LED.
-// - Robots broadcast the newest seed + hop distance; neighbors colorize by hop count (rainbow).
-// - Every update triggers a blink of the main LED, then steady display.
-//
-// Compile/run in Pogosim similarly to other examples.
 
 #include "pogobase.h"
 #include <string.h>
@@ -180,7 +173,7 @@ static bool seed_is_newer(uint32_t t_a, uint16_t id_a, uint32_t t_b, uint16_t id
 }
 
 // -----------------------------------------------------------------------------
-// Messaging callbacks (same pattern as hanabi)
+// Messaging callbacks
 // -----------------------------------------------------------------------------
 
 static void process_message(message_t *mr) {
