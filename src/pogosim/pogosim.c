@@ -25,6 +25,37 @@ uint32_t nb_msgs_sent = 0;
 uint32_t nb_msgs_recv = 0;
 
 
+void clear_IR_buffers(void) {
+#ifdef CSR_IR_RX0_BASE
+    while(!ir_rx0_rxempty_read()) {
+        ir_rx0_rx_read();
+        ir_rx0_ev_pending_write(1);
+    }
+#endif
+
+#ifdef CSR_IR_RX1_BASE
+    while(!ir_rx1_rxempty_read()) {
+        ir_rx1_rx_read();
+        ir_rx1_ev_pending_write(1);
+    }
+#endif
+
+#ifdef CSR_IR_RX2_BASE
+    while(!ir_rx2_rxempty_read()) {
+        ir_rx2_rx_read();
+        ir_rx2_ev_pending_write(1);
+    }
+#endif
+
+#ifdef CSR_IR_RX3_BASE
+    while(!ir_rx3_rxempty_read()) {
+        ir_rx3_rx_read();
+        ir_rx3_ev_pending_write(1);
+    }
+#endif
+}
+
+
 #ifndef SIMULATOR // Compiling for real robots
 void _pogobot_start(void (*user_init)(void), void (*user_step)(void)) {
     pogobot_ticks = 0;
@@ -33,6 +64,10 @@ void _pogobot_start(void (*user_init)(void), void (*user_step)(void)) {
 
     // Launch user-specified init function
     user_init();
+    // Clear IR buffer, if enabled (by default)
+#ifndef DISABLE_CLEARING_IR_BUFFERS_AT_INIT
+    clear_IR_buffers();
+#endif
     // Main loop
     for (;;) {
         pogo_main_loop_step(user_step);

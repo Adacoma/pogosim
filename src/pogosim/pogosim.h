@@ -144,6 +144,8 @@ void _pogobot_start(void (*user_init)(void), void (*user_step)(void));
 
 #endif
 
+void clear_IR_buffers(void);
+
 void pogo_main_loop_step(void (*user_step)(void));
 uint32_t current_time_milliseconds(void);
 void display_led_error_code(error_code_t const c);
