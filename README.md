@@ -103,9 +103,9 @@ Example codes are compiled every time you launch the "./build.sh" script, alongs
 
 To launch examples code you can use the following commands:
 ```shell
-./examples/helloworld/helloworld -c conf/simple.yaml                    # Hello world, just robots rotating left then right. The first robot prints "HELLO WORLD !" messages
-./examples/run_and_tumble/run_and_tumble -c conf/simple.yaml            # A very simple implementation of the run-and-tumble algorithm for locomotion
-./examples/hanabi/hanabi -c conf/simple.yaml                            # A simple code to showcase the diffusion of information in a swarm. Immobile robots by default (uncomment "MOVING_ROBOTS" to make then move)
+./examples/helloworld/helloworld -c conf/simple.yaml                    # Hello world, just robots rotating left then right. The first robot prints "HELLO WORLD !" messages.
+./examples/run_and_tumble/run_and_tumble -c conf/simple.yaml            # A very simple implementation of the run-and-tumble algorithm for locomotion.
+./examples/blooming/blooming -c conf/blooming.yaml                      # A simple code to showcase the diffusion of information in a swarm. LED colors correspond to the hop distance to a random robot seed (white LED). Immobile robots by default (set 'moving_robots').
 ./examples/phototaxis/phototaxis -c conf/phototaxis.yaml                # An example showcasing phototaxis, with a fixed light spot in the middle of the arena
 ./examples/walls/walls -c conf/walls_and_membranes.yaml                 # An multi-controller example where robots can identify the presence of fixed walls (through Pogowalls) or mobile walls (through membranes).
 ./examples/avoid_walls/avoid_walls -c conf/active_objects.yaml          # Show a simple pogowalls-avoidance system, and active objects (that can emit messages like pogowalls)
@@ -290,7 +290,7 @@ print(df)
 [1428 rows x 7 columns]
 ```
 
-Custom columns can be added into this file by using the callback mechanism. See examples "hanabi" (simple) and "ssr" (complex) for more information.
+Custom columns can be added into this file by using the callback mechanism. See examples "blooming" (simple) and "ssr" (complex) for more information.
 
 
 ## Launch several runs in Parallel, with different configuration options
@@ -311,9 +311,9 @@ cd ..
 
 Afterwards, you can use the pogobatch script to launch several runs of simulation in parallel (or in a cluster), with a given configuration:
 ```shell
-pogobatch -c conf/test.yaml -S ./examples/hanabi/hanabi -r 10 -t tmp -o results
+pogobatch -c conf/mini.yaml -S ./examples/blooming/blooming -r 10 -t tmp -o results
 ```
-This command with launch 10 runs of the Hanabi example using configuration file conf/test.yaml. Temporary files of the runs will be stored in the "tmp" directory.
+This command with launch 10 runs of the 'blooming' example using configuration file conf/mini.yaml. Temporary files of the runs will be stored in the "tmp" directory.
 After all runs are completed, the script will compile a dataframe of all results and save it into "results/result.feather". It can then be opened as described in previous section. An additional column "run" is added to the dataframe to distinguish results from the different runs.
 
 It is also possible to launch the pogobatch script on several variations of a given configuration, e.g. with a list of different numbers of robots or arena. The list of possibly configuration combination is specified in the configuration file, by adding a subkey "batch\_options" with the list of possible values.
@@ -343,7 +343,7 @@ See "conf/batch/test.yaml" for a complete example. The entry "result\_new\_colum
 
 You can use pogobatch script on this compounded configuration file to launch several runs on each configuration combination:
 ```shell
-pogobatch -c conf/batch/test.yaml -S ./examples/hanabi/hanabi -r 10 -t tmp -o results
+pogobatch -c conf/batch/test.yaml -S ./examples/run_and_tumble/run_and_tumble -r 10 -t tmp -o results
 
 Found 6 combination(s) to run.
 Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_kdmvxpzf.yaml -> Output: results/result_50.feather
