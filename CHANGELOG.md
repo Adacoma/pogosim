@@ -1,6 +1,45 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.9] - 2026-03-02
+
+### Added
+ - in Makefiles, derive POGOSIM\_SRC\_DIR and POGOUTILS\_SRC\_DIR from POGOSIM\_INCLUDE\_DIR and POGOUTILS\_INCLUDE\_DIR
+ - add Ubuntu 22.04 and 20.04 to the Github Continuous Integration system
+ - add a moving partition example, using Kuramoto moving oscillators with local diffusion + bistable potential + push-sum balancing
+ - add Axelrod cultural dissemination example
+ - add voter model example
+ - add naming game example
+ - add the 'probes' example
+ - replace the 'hanabi' example with the 'blooming' example, with a cleaner code and design
+ - add example 'phototaxis\_gradient': Phototaxis with a gradient of light: the robots are always searching for the most lighted spot by following light levels gradients
+ - the simulation can now be stopped in 'global\_step' or other simulator-only user functions/callbacks
+ - add config param to specify different log formats (cf "log\_format" in conf/simple.yaml)
+ - add triangle geometry, and allow triangle and rectangle to be rendered with rotation
+ - support for active objects, cf example avoid\_walls with config active\_objects.yaml
+ - add lateral LED rotation as config parameter
+ - define SCALE\_0\_255\_TO\_0\_25 and SCALE\_0\_25\_TO\_0\_255 macros in colormaps.h instead of .c, so that it can be used in other files
+
+### Changed
+ - split objects.{h,cpp} into several files, to improve readability
+ - SDL: disable hardware acceleration if not available, and make renderer optional
+ - CI: enable Doxygen generation + remove deprecated ubuntu-20.04
+ - avoid wall example: print when wall is detected
+
+### Fixed
+ - major fix: now clear IR buffers at start by default, to avoid communication errors on real robots
+ - major fix: ROBOT\_CATEGORY env correctly set the compiled robot category code when compiling Pogobot binaries
+ - fix led positions in render
+ - fix ir sensor positions
+ - python scripts: add required packages in setup.py
+ - remove C20 typed enums in vicsek and toner-tu examples
+ - SDL: use the dummy driver if the offscreen driver is not available. Avoid fatal errors if launching in headless mode when SDL don't include the offscreen driver
+ - adjust example codes to remove static user\_init and user\_step declarations (not compilable without FLTO)
+ - update apptainer def files to use the correct env variables internally
+ - extend complex.yaml arena\_surface, as it was too small to create all objects
+ - update conf/batch/test.yaml to include new mandatory config entries (avoid warning)
+
+
 ## [0.10.8] - 2025-11-23
 
 ### Added
