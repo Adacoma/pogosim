@@ -107,6 +107,7 @@ To launch examples code you can use the following commands:
 ./examples/run_and_tumble/run_and_tumble -c conf/simple.yaml            # A very simple implementation of the run-and-tumble algorithm for locomotion.
 ./examples/blooming/blooming -c conf/blooming.yaml                      # A simple code to showcase the diffusion of information in a swarm. LED colors correspond to the hop distance to a random robot seed (white LED). Immobile robots by default (set 'moving_robots').
 ./examples/phototaxis/phototaxis -c conf/phototaxis.yaml                # An example showcasing phototaxis, with a fixed light spot in the middle of the arena
+./examples/phototaxis_gradient//phototaxis_gradient -c conf/phototaxis_gradient.yaml   # Phototaxis with a gradient of light: the robots are always searching for the most lighted spot by following light levels gradients
 ./examples/walls/walls -c conf/walls_and_membranes.yaml                 # An multi-controller example where robots can identify the presence of fixed walls (through Pogowalls) or mobile walls (through membranes).
 ./examples/avoid_walls/avoid_walls -c conf/active_objects.yaml          # Show a simple pogowalls-avoidance system, and active objects (that can emit messages like pogowalls)
 ./examples/ssr/ssr -c conf/ssr.yaml                                     # More complex example. "Simple" implementation of the SSR algorithm from https://arxiv.org/abs/2403.17147  You can test it for a disk and annulus arena (see conf/ssr.yaml to change the arena).

@@ -99,6 +99,7 @@ examples/voter_model/voter_model
 examples/naming_game/naming_game
 examples/probes/probes
 examples/blooming/blooming
+examples/phototaxis_gradient/phototaxis_gradient
 
 # Apptainer
 *.sif
