@@ -44,8 +44,8 @@ uint8_t percent_msg_sent       = 10;    // slow-ish broadcast, helps "wavefront"
 // Visuals
 #define MAX_HOPS 250            // clamp for safety
 bool enable_blinking_when_updated = true;      // LEDs blink when state updates
-uint32_t blink_total_ms           = 400; // total blink duration when state updates
-uint32_t blink_half_period_ms     = 70;  // total blink duration when state updates
+uint32_t blink_total_ms           = 200; // total blink duration when state updates
+uint32_t blink_half_period_ms     = 50;  // total blink duration when state updates
 
 
 // -----------------------------------------------------------------------------
