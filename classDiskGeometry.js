@@ -7,6 +7,6 @@ var classDiskGeometry =
     [ "export_geometry_grid", "classDiskGeometry.html#a66c98945c2dd7e0a9a5c05893d11ec29", null ],
     [ "generate_contours", "classDiskGeometry.html#ac26764a873e78474299d929af293c1d6", null ],
     [ "get_radius", "classDiskGeometry.html#a47daa97e977c122aab08e150d0eacc84", null ],
-    [ "render", "classDiskGeometry.html#ad8f811783827bd8869532d79ad9c73d0", null ],
+    [ "render", "classDiskGeometry.html#a6747c4e38ca555564cb402dbd4960677", null ],
     [ "radius", "classDiskGeometry.html#aea0b0b39222670fc0e885004e3bbc894", null ]
 ];

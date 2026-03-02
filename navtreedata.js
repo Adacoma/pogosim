@@ -25,8 +25,31 @@
 var NAVTREE =
 [
   [ "Pogosim", "index.html", [
-    [ "Pogosim <img src=\"https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg\" alt=\"Badge CI\"/> <img src=\"https://img.shields.io/badge/version-v0.10.8-blue\" alt=\"Version\"/>", "index.html", "index" ],
     [ "Namespaces", "namespaces.html", [
+      [ "Overview", "index.html#autotoc_md120", null ],
+      [ "Install on Linux", "index.html#autotoc_md121", null ],
+      [ "Install on WSL", "index.html#autotoc_md122", null ],
+      [ "Install on MacOSX", "index.html#autotoc_md123", null ],
+      [ "Quickstart", "index.html#autotoc_md124", [
+        [ "Launch example codes", "index.html#autotoc_md125", null ],
+        [ "Simple way to create a new pogobot/pogosim project", "index.html#autotoc_md126", null ],
+        [ "Controlling the GUI", "index.html#autotoc_md127", null ],
+        [ "Compile a binary for the real Pogobots", "index.html#autotoc_md128", [
+          [ "Compiling binaries for multi-categories projects", "index.html#autotoc_md129", null ]
+        ] ],
+        [ "Headless mode", "index.html#autotoc_md130", null ],
+        [ "Command line parameters of the simulator", "index.html#autotoc_md131", null ]
+      ] ],
+      [ "Troubleshooting", "index.html#autotoc_md132", [
+        [ "In headless/Pogobatch mode, I get an SDL-related error", "index.html#autotoc_md133", null ]
+      ] ],
+      [ "Access the pose and states of the robots in Python", "index.html#autotoc_md134", null ],
+      [ "Launch several runs in Parallel, with different configuration options", "index.html#autotoc_md135", null ],
+      [ "Install and use the simulator in an Apptainer/Singularity container", "index.html#autotoc_md136", null ],
+      [ "Generate gif files of the traces", "index.html#autotoc_md137", null ],
+      [ "Development", "index.html#autotoc_md138", null ],
+      [ "Authors", "index.html#autotoc_md139", null ],
+      [ "Citing", "index.html#autotoc_md140", null ],
       [ "Namespace List", "namespaces.html", "namespaces_dup" ],
       [ "Namespace Members", "namespacemembers.html", [
         [ "All", "namespacemembers.html", null ],
@@ -64,11 +87,12 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FifoBuffer_8h.html",
-"classPogobotObject.html#afa49cf9f7a4238121567d64194fd404f",
-"globals_func_e.html",
-"spogobot_8cpp.html#a6799d5ff599821da96477fdc7e51d2f8",
-"utils_8cpp.html#a49860c517ed7dbc6ea2efb938f7be71b"
+"classPogobotObject.html#ad45d87fb8e3a0710b6104078ea3f6e13",
+"geometry_8h.html#af359853bf93f4b8dcf6e0fae04e067a5",
+"spogobot_8cpp.html#a287a8e8926a5d810bc0ac073bcbcc9e7",
+"structmessage__short__header__t.html#ad4207e438d1f1dc8f628b5c44b8d194b"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';
 var SYNCOFFMSG = 'click to enable panel synchronization';
+var LISTOFALLMEMBERS = 'List of all members';

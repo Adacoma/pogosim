@@ -8,7 +8,7 @@ var classRectangleGeometry =
     [ "generate_contours", "classRectangleGeometry.html#a08d1f2a7507fa8eee991973d180928e2", null ],
     [ "get_height", "classRectangleGeometry.html#a9d8fb2444fb19dab7c32dd7758f783c0", null ],
     [ "get_width", "classRectangleGeometry.html#a47c537a1477b8c9b1e1fd87c9014bece", null ],
-    [ "render", "classRectangleGeometry.html#aa9743606d18c4d41201150284f7e17e7", null ],
+    [ "render", "classRectangleGeometry.html#a8ffa129229fd1bce1ab0b983f6cf7696", null ],
     [ "height", "classRectangleGeometry.html#af72de7d60fc6c83c22f4b9c586322ce0", null ],
     [ "width", "classRectangleGeometry.html#a023d72d3d3a184d51245e0972f050dbf", null ]
 ];

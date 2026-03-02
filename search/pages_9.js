@@ -1,7 +1,26 @@
 var searchData=
 [
-  ['shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_0',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['src_20https_3a_20github_20com_20adacoma_20pogosim_20actions_20workflows_20ci_20yaml_20badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_1',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_2',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_3',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]]
+  ['i_20get_20an_20sdl_20related_20error_0',['In headless/Pogobatch mode, I get an SDL-related error',['../index.html#autotoc_md133',1,'']]],
+  ['id_20definition_1',['Photosensor id definition',['../spogobot_8h.html#autotoc_md59',1,'']]],
+  ['id_20definition_20_3a_2',['Motor id definition :',['../spogobot_8h.html#autotoc_md72',1,'']]],
+  ['id_20list_3',['IR direction id list',['../spogobot_8h.html#autotoc_md16',1,'']]],
+  ['imu_20api_4',['IMU API',['../spogobot_8h.html#autotoc_md5',1,'IMU API'],['../spogobot_8h.html#autotoc_md63',1,'IMU API']]],
+  ['in_20a_20ir_20message_5',['Maximum size of a payload in a IR message',['../spogobot_8h.html#autotoc_md13',1,'']]],
+  ['in_20an_20apptainer_20singularity_20container_6',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md136',1,'']]],
+  ['in_20headless_20pogobatch_20mode_20i_20get_20an_20sdl_20related_20error_7',['In headless/Pogobatch mode, I get an SDL-related error',['../index.html#autotoc_md133',1,'']]],
+  ['in_20one_20step_8',['Maximum number of word from IR recovers in one step',['../spogobot_8h.html#autotoc_md14',1,'']]],
+  ['in_20parallel_20with_20different_20configuration_20options_9',['Launch several runs in Parallel, with different configuration options',['../index.html#autotoc_md135',1,'']]],
+  ['in_20python_10',['Access the pose and states of the robots in Python',['../index.html#autotoc_md134',1,'']]],
+  ['infrared_20communication_20api_20functions_11',['Infrared communication API Functions',['../spogobot_8h.html#autotoc_md2',1,'Infrared communication API Functions'],['../spogobot_8h.html#autotoc_md22',1,'Infrared communication API Functions']]],
+  ['install_20and_20use_20the_20simulator_20in_20an_20apptainer_20singularity_20container_12',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md136',1,'']]],
+  ['install_20on_20linux_13',['Install on Linux',['../index.html#autotoc_md121',1,'']]],
+  ['install_20on_20macosx_14',['Install on MacOSX',['../index.html#autotoc_md123',1,'']]],
+  ['install_20on_20wsl_15',['Install on WSL',['../index.html#autotoc_md122',1,'']]],
+  ['ir_20direction_20id_20list_16',['IR direction id list',['../spogobot_8h.html#autotoc_md16',1,'']]],
+  ['ir_20message_17',['Maximum size of a payload in a IR message',['../spogobot_8h.html#autotoc_md13',1,'']]],
+  ['ir_20message_20header_20structure_18',['IR message header structure',['../spogobot_8h.html#autotoc_md17',1,'IR message header structure'],['../spogobot_8h.html#autotoc_md18',1,'IR message header structure']]],
+  ['ir_20power_20level_20values_3a_19',['IR power level values:',['../spogobot_8h.html#autotoc_md15',1,'']]],
+  ['ir_20recovers_20in_20one_20step_20',['Maximum number of word from IR recovers in one step',['../spogobot_8h.html#autotoc_md14',1,'']]],
+  ['ir_20short_20message_20header_20structure_21',['IR short message header structure',['../spogobot_8h.html#autotoc_md19',1,'IR short message header structure'],['../spogobot_8h.html#autotoc_md20',1,'IR short message header structure']]],
+  ['ir_20type_20message_20list_22',['IR type message list',['../spogobot_8h.html#autotoc_md21',1,'']]]
 ];

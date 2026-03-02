@@ -7,5 +7,6 @@ var searchData=
   ['right_4',['right',['../unionemitting__power__list__t.html#a3f5b19763e72e31cc195f1733eeedf76',1,'emitting_power_list_t']]],
   ['right_5fmotor_5fspeed_5',['right_motor_speed',['../classPogobotObject.html#a91f4168e516828c12bfb651ada5376b5',1,'PogobotObject']]],
   ['rnd_5fgen_6',['rnd_gen',['../utils_8h.html#a7b994282ee590affc1ec339c4cbcacc3',1,'utils.h']]],
-  ['robotlogger_7',['robotlogger',['../utils_8cpp.html#a5c76f33a47b6c5b29562212de7ee2757',1,'robotlogger:&#160;utils.cpp'],['../utils_8h.html#a5c76f33a47b6c5b29562212de7ee2757',1,'robotlogger:&#160;utils.cpp']]]
+  ['robotlogger_7',['robotlogger',['../utils_8cpp.html#a5c76f33a47b6c5b29562212de7ee2757',1,'robotlogger:&#160;utils.cpp'],['../utils_8h.html#a5c76f33a47b6c5b29562212de7ee2757',1,'robotlogger:&#160;utils.cpp']]],
+  ['rotate_5fleds_5f45_5fdeg_8',['rotate_LEDs_45_deg',['../classPogobotObject.html#a30d5225b4e621d792fc09e8163c3fb3e',1,'PogobotObject']]]
 ];

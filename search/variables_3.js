@@ -7,7 +7,7 @@ var searchData=
   ['category_4',['category',['../classObject.html#a825bc49801a582130e3e95ea8b732b1f',1,'Object']]],
   ['center_5fx_5',['center_x',['../structBoundingDisk.html#a310e8dce8af0b157aa5dafda89ff60ed',1,'BoundingDisk']]],
   ['center_5fy_6',['center_y',['../structBoundingDisk.html#a1f7b9091baf389e9868adf7060c72ff8',1,'BoundingDisk']]],
-  ['colormap_7',['colormap',['../classPassiveObject.html#a5a1fc9fc71559a60bf873b7dfad64dfa',1,'PassiveObject::colormap'],['../classMembraneObject.html#a7fe161488ae4ad27db7d7d12ab91c4e7',1,'MembraneObject::colormap']]],
+  ['colormap_7',['colormap',['../classPassiveObject.html#a5a1fc9fc71559a60bf873b7dfad64dfa',1,'PassiveObject::colormap'],['../classMembraneObject.html#a7fe161488ae4ad27db7d7d12ab91c4e7',1,'MembraneObject::colormap'],['../classActiveObject.html#a4e355e69dc46ea92234190d8cb2f2210',1,'ActiveObject::colormap']]],
   ['communication_5fradius_8',['communication_radius',['../classPogobotObject.html#a0e1f8009ab5a65fb5e6d3a5249dc75b3',1,'PogobotObject']]],
   ['crc_5fmismatch_5fcounter_9',['crc_mismatch_counter',['../structslip__error__counter__s.html#a9546852fca3c18650b1eb27b049b7e17',1,'slip_error_counter_s']]],
   ['cross_5fspan_10',['cross_span',['../classMembraneObject.html#a9479871b3679833b22aa781088cba356',1,'MembraneObject']]],

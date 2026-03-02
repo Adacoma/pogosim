@@ -1,5 +1,7 @@
 var searchData=
 [
-  ['pogosim_20actions_20workflows_20ci_20yaml_20badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_0',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['pogosim_20img_20src_20https_3a_20github_20com_20adacoma_20pogosim_20actions_20workflows_20ci_20yaml_20badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_1',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]]
+  ['header_20structure_0',['header structure',['../spogobot_8h.html#autotoc_md17',1,'IR message header structure'],['../spogobot_8h.html#autotoc_md18',1,'IR message header structure'],['../spogobot_8h.html#autotoc_md19',1,'IR short message header structure'],['../spogobot_8h.html#autotoc_md20',1,'IR short message header structure']]],
+  ['headless_20mode_1',['Headless mode',['../index.html#autotoc_md130',1,'']]],
+  ['headless_20pogobatch_20mode_20i_20get_20an_20sdl_20related_20error_2',['In headless/Pogobatch mode, I get an SDL-related error',['../index.html#autotoc_md133',1,'']]],
+  ['helper_20api_3',['Helper API',['../spogobot_8h.html#autotoc_md8',1,'Helper API'],['../spogobot_8h.html#autotoc_md89',1,'Helper API']]]
 ];

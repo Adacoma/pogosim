@@ -8,5 +8,5 @@ var classArenaGeometry =
     [ "generate_contours", "classArenaGeometry.html#a8f4e9b3cbe515fc4f1c7f10e5e7bd115", null ],
     [ "get_arena_polygons", "classArenaGeometry.html#a388a5912097ed2f69dc8d6e2a86505b2", null ],
     [ "get_distance_to", "classArenaGeometry.html#a566682ecd769ff5cc11b62e9be6f7b71", null ],
-    [ "render", "classArenaGeometry.html#a3616eb645be9b78ffd28beceb550fd63", null ]
+    [ "render", "classArenaGeometry.html#a2f908320c044c2bd2f6f117f42beeb39", null ]
 ];

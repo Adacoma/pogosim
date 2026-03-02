@@ -1,5 +1,6 @@
 var pogosim_8c =
 [
+    [ "clear_IR_buffers", "pogosim_8c.html#aaa000f5474e273d0c027f157de76b32a", null ],
     [ "current_time_milliseconds", "pogosim_8c.html#aa42bd6126904b6e087a805d6f2b2641b", null ],
     [ "default_walls_user_init", "pogosim_8c.html#abdf8c6baabb0fae15a4526f74e813a90", null ],
     [ "default_walls_user_step", "pogosim_8c.html#ab29b5f8ccd2f1ca1374e8a38efd3605d", null ],

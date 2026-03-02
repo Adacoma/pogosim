@@ -3,6 +3,7 @@ var annotated_dup =
     [ "angles", "namespaceangles.html", [
       [ "Interval", "structangles_1_1Interval.html", "structangles_1_1Interval" ]
     ] ],
+    [ "ActiveObject", "classActiveObject.html", "classActiveObject" ],
     [ "AlternatingDualRayOfLightObject", "classAlternatingDualRayOfLightObject.html", "classAlternatingDualRayOfLightObject" ],
     [ "ArenaGeometry", "classArenaGeometry.html", "classArenaGeometry" ],
     [ "BoundingBox", "structBoundingBox.html", "structBoundingBox" ],
@@ -38,5 +39,6 @@ var annotated_dup =
     [ "Simulation", "classSimulation.html", "classSimulation" ],
     [ "slip_error_counter_s", "structslip__error__counter__s.html", "structslip__error__counter__s" ],
     [ "StaticLightObject", "classStaticLightObject.html", "classStaticLightObject" ],
-    [ "time_reference_t", "structtime__reference__t.html", "structtime__reference__t" ]
+    [ "time_reference_t", "structtime__reference__t.html", "structtime__reference__t" ],
+    [ "TriangleGeometry", "classTriangleGeometry.html", "classTriangleGeometry" ]
 ];

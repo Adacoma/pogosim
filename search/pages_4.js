@@ -1,6 +1,8 @@
 var searchData=
 [
-  ['ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_0',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['ci_20yaml_20badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_1',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['com_20adacoma_20pogosim_20actions_20workflows_20ci_20yaml_20badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_2',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]]
+  ['definition_0',['Photosensor id definition',['../spogobot_8h.html#autotoc_md59',1,'']]],
+  ['definition_20_3a_1',['Motor id definition :',['../spogobot_8h.html#autotoc_md72',1,'']]],
+  ['development_2',['Development',['../index.html#autotoc_md138',1,'']]],
+  ['different_20configuration_20options_3',['Launch several runs in Parallel, with different configuration options',['../index.html#autotoc_md135',1,'']]],
+  ['direction_20id_20list_4',['IR direction id list',['../spogobot_8h.html#autotoc_md16',1,'']]]
 ];

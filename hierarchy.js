@@ -26,6 +26,7 @@ var hierarchy =
       [ "PhysicalObject", "classPhysicalObject.html", [
         [ "PassiveObject", "classPassiveObject.html", null ],
         [ "PogobotObject", "classPogobotObject.html", [
+          [ "ActiveObject", "classActiveObject.html", null ],
           [ "PogobjectObject", "classPogobjectObject.html", null ],
           [ "Pogowall", "classPogowall.html", [
             [ "MembraneObject", "classMembraneObject.html", null ]
@@ -39,7 +40,8 @@ var hierarchy =
       [ "ArenaGeometry", "classArenaGeometry.html", null ],
       [ "DiskGeometry", "classDiskGeometry.html", null ],
       [ "GlobalGeometry", "classGlobalGeometry.html", null ],
-      [ "RectangleGeometry", "classRectangleGeometry.html", null ]
+      [ "RectangleGeometry", "classRectangleGeometry.html", null ],
+      [ "TriangleGeometry", "classTriangleGeometry.html", null ]
     ] ],
     [ "short_message_t", "structshort__message__t.html", null ],
     [ "Simulation", "classSimulation.html", null ],

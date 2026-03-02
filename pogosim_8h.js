@@ -15,6 +15,7 @@ var pogosim_8h =
       [ "error_code_t_last_entry", "pogosim_8h.html#a7d80c3b410035aed9cd8484552186f92a23a153abdaa0ef8dbc25319110600239", null ]
     ] ],
     [ "_pogobot_start", "pogosim_8h.html#ae703e5f669a9e4f3cecfd8360aa367d2", null ],
+    [ "clear_IR_buffers", "pogosim_8h.html#aaa000f5474e273d0c027f157de76b32a", null ],
     [ "current_robot_category_is", "pogosim_8h.html#acf7f2b7ed7a3caf41c433ef33db40999", null ],
     [ "current_time_milliseconds", "pogosim_8h.html#aa42bd6126904b6e087a805d6f2b2641b", null ],
     [ "default_walls_user_init", "pogosim_8h.html#abdf8c6baabb0fae15a4526f74e813a90", null ],

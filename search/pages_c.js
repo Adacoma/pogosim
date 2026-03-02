@@ -1,4 +1,6 @@
 var searchData=
 [
-  ['yaml_20badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_0',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]]
+  ['new_20pogobot_20pogosim_20project_0',['Simple way to create a new pogobot/pogosim project',['../index.html#autotoc_md126',1,'']]],
+  ['number_20of_20word_20from_20ir_20recovers_20in_20one_20step_1',['Maximum number of word from IR recovers in one step',['../spogobot_8h.html#autotoc_md14',1,'']]],
+  ['numerical_20accuracy_2',['Numerical accuracy',['../colormaps_8h.html#autotoc_md1',1,'']]]
 ];

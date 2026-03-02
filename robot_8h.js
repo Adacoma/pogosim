@@ -9,6 +9,7 @@ var robot_8h =
     [ "MembraneObject", "classMembraneObject.html", "classMembraneObject" ],
     [ "MembraneObject::Dot", "structMembraneObject_1_1Dot.html", "structMembraneObject_1_1Dot" ],
     [ "MembraneObject::Joint", "structMembraneObject_1_1Joint.html", "structMembraneObject_1_1Joint" ],
+    [ "ActiveObject", "classActiveObject.html", "classActiveObject" ],
     [ "ShapeType", "robot_8h.html#a5a4538eeab397888d88a4eefcc5a1345", [
       [ "Circle", "robot_8h.html#a5a4538eeab397888d88a4eefcc5a1345a30954d90085f6eaaf5817917fc5fecb3", null ],
       [ "Ellipse", "robot_8h.html#a5a4538eeab397888d88a4eefcc5a1345a119518c2134c46108179369f0ce81fa2", null ],

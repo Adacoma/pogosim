@@ -1,7 +1,14 @@
 var searchData=
 [
-  ['badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_0',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['badge_20svg_20alt_20badge_20ci_20img_20src_20https_3a_20img_20shields_20io_20badge_20version_20v0_2010_208_20blue_20alt_20version_1',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['badge_20version_20v0_2010_208_20blue_20alt_20version_2',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]],
-  ['blue_20alt_20version_3',['Pogosim &lt;img src=&quot;https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg&quot; alt=&quot;Badge CI&quot;/&gt; &lt;img src=&quot;https://img.shields.io/badge/version-v0.10.8-blue&quot; alt=&quot;Version&quot;/&gt;',['../index.html',1,'']]]
+  ['categories_20projects_0',['Compiling binaries for multi-categories projects',['../index.html#autotoc_md129',1,'']]],
+  ['citing_1',['Citing',['../index.html#autotoc_md140',1,'']]],
+  ['codes_2',['Launch example codes',['../index.html#autotoc_md125',1,'']]],
+  ['command_20line_20parameters_20of_20the_20simulator_3',['Command line parameters of the simulator',['../index.html#autotoc_md131',1,'']]],
+  ['communication_20api_20functions_4',['communication API Functions',['../spogobot_8h.html#autotoc_md2',1,'Infrared communication API Functions'],['../spogobot_8h.html#autotoc_md22',1,'Infrared communication API Functions']]],
+  ['compile_20a_20binary_20for_20the_20real_20pogobots_5',['Compile a binary for the real Pogobots',['../index.html#autotoc_md128',1,'']]],
+  ['compiling_20binaries_20for_20multi_20categories_20projects_6',['Compiling binaries for multi-categories projects',['../index.html#autotoc_md129',1,'']]],
+  ['configuration_20options_7',['Launch several runs in Parallel, with different configuration options',['../index.html#autotoc_md135',1,'']]],
+  ['container_8',['Install and use the simulator in an Apptainer/Singularity container',['../index.html#autotoc_md136',1,'']]],
+  ['controlling_20the_20gui_9',['Controlling the GUI',['../index.html#autotoc_md127',1,'']]],
+  ['create_20a_20new_20pogobot_20pogosim_20project_10',['Simple way to create a new pogobot/pogosim project',['../index.html#autotoc_md126',1,'']]]
 ];

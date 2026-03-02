@@ -1,6 +1,6 @@
 var classPogobotObject =
 [
-    [ "PogobotObject", "classPogobotObject.html#addb4907910a747cd021225dade421a8b", null ],
+    [ "PogobotObject", "classPogobotObject.html#ac5f76e97d83f7429f8d530fc9980e718", null ],
     [ "PogobotObject", "classPogobotObject.html#a7f79823f0980b7701be55383576e9e6a", null ],
     [ "create_robot_body", "classPogobotObject.html#ad45d87fb8e3a0710b6104078ea3f6e13", null ],
     [ "disable_stop_watches", "classPogobotObject.html#ae9d4a9989dc9a73bfd4e0956db635fbb", null ],
@@ -57,6 +57,7 @@ var classPogobotObject =
     [ "pogobot_ticks", "classPogobotObject.html#a342dd8292700a00f572e8734b472bd2b", null ],
     [ "radius", "classPogobotObject.html#ab0f4ae522471b91c22d26e065132edaf", null ],
     [ "right_motor_speed", "classPogobotObject.html#a91f4168e516828c12bfb651ada5376b5", null ],
+    [ "rotate_LEDs_45_deg", "classPogobotObject.html#a30d5225b4e621d792fc09e8163c3fb3e", null ],
     [ "show_lateral_leds", "classPogobotObject.html#ae396790993c20b4763c4bf4580052161", null ],
     [ "stop_watches", "classPogobotObject.html#a84244be6d2ca5aaacf5b72f228641051", null ],
     [ "temporal_noise", "classPogobotObject.html#a659632a5776d3d3eb472086cb8ce2b91", null ],
