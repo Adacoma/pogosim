@@ -184,6 +184,7 @@ void Simulation::create_objects() {
     std::vector<b2Vec2> points;
     std::vector<float> thetas(objects_to_move.size());
     std::uniform_real_distribution<float> angle_distrib(0.0f, 2.0f * M_PI);
+    b2Vec2 formation_center_vec = {initial_formation_center.first, initial_formation_center.second};
     try {
         if (initial_formation == "random") {
             points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
@@ -198,7 +199,14 @@ void Simulation::create_objects() {
             points = generate_random_points_layered(arena_polygons, objects_radii, formation_attempts_per_point, formation_max_restarts);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "disk") {
-            points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);
+            glogger->info("DEBUG1 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
+            if (isnan(formation_center_vec.x) || isnan(formation_center_vec.y)) {
+            glogger->info("DEBUG2 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
+                points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);
+            } else {
+            glogger->info("DEBUG3 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
+                points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii, formation_center_vec);
+            }
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "lloyd") {
             points = generate_points_voronoi_lloyd(arena_polygons, objects_radii.size());
@@ -454,6 +462,7 @@ void Simulation::init_config() {
     show_light_levels = config["show_light_levels"].get(false);
 
     initial_formation = config["initial_formation"].get(std::string("power_lloyd"));
+    initial_formation_center = config["initial_formation_center"].get<decltype(initial_formation_center)>({NAN, NAN});
     formation_min_space_between_neighbors = config["formation_min_space_between_neighbors"].get(0.0f);
     formation_max_space_between_neighbors = config["formation_max_space_between_neighbors"].get(INFINITY);
     chessboard_distance_between_neighbors = config["chessboard_distance_between_neighbors"].get(100.0f);

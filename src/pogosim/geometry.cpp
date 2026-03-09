@@ -1197,154 +1197,164 @@ float point_to_line_segment_distance(const b2Vec2& p,
 
 std::vector<b2Vec2> generate_regular_disk_points_in_polygon(
         const std::vector<std::vector<b2Vec2>>& polygons,
-        const std::vector<float>& reserve_radii) {
-    /* ---------- 1. sanity checks -------------------------------------- */
-    if (polygons.empty()) {
-        throw std::runtime_error("No polygons provided.");
-    }
-    const auto& outer_poly = polygons.front();
-    if (outer_poly.size() < 3) {
-        throw std::runtime_error("Polygon must have at least 3 vertices.");
-    }
-    const std::size_t n_points = reserve_radii.size();
-    if (n_points == 0U) { return {}; }
+        const std::vector<float>& reserve_radii,
+        const b2Vec2& disk_center) {
+    using std::size_t;
 
-    // Count how many valid (non-NaN) radii we have
-    std::size_t valid_points_count = 0;
-    for (const float& r : reserve_radii) {
-        if (!std::isnan(r)) {
-            valid_points_count++;
-        }
-    }
+    const auto make_nan_vec2 = []() -> b2Vec2 {
+        const float nan = std::numeric_limits<float>::quiet_NaN();
+        return b2Vec2{nan, nan};
+    };
 
-    // Find min/max of valid radii only
-    float r_max = 0.0f;
-    float r_min = std::numeric_limits<float>::max();
-    bool has_valid_radius = false;
-
-    for (const float& r : reserve_radii) {
-        if (!std::isnan(r)) {
-            r_max = std::max(r_max, r);
-            r_min = std::min(r_min, r);
-            has_valid_radius = true;
-        }
-    }
-
-    // If all radii are NaN, return a vector of NaN points
-    if (!has_valid_radius) {
-        std::vector<b2Vec2> nan_points(n_points, b2Vec2{std::numeric_limits<float>::quiet_NaN(),
-                                                      std::numeric_limits<float>::quiet_NaN()});
-        return nan_points;
-    }
-
-    if (r_min <= 0.0f) {
-        throw std::runtime_error("Reserve radii must be strictly positive.");
-    }
-
-    /* ---------- 2. centroid & admissible radius ----------------------- */
-    const b2Vec2 centroid = polygon_centroid(outer_poly);
-    float max_edge_dist = std::numeric_limits<float>::lowest();
-    for (std::size_t i = 0; i < outer_poly.size(); ++i) {
-        max_edge_dist = std::max(
-            max_edge_dist,
-            point_to_line_segment_distance(centroid,
-                                           outer_poly[i],
-                                           outer_poly[(i + 1) % outer_poly.size()]));
-    }
-    const float allowed_radius = max_edge_dist - r_max;
-    if (allowed_radius <= 0.0f) {
-        throw std::runtime_error("Polygon too small or some reserve radius too large.");
-    }
-
-    /* ---------- 3. helper lambda -------------------------------------- */
-    const auto fits = [&](const b2Vec2& c, float r_curr,
-                          const std::vector<std::pair<b2Vec2, size_t>>& accepted) -> bool
-    {
-        if (!is_point_within_polygon(outer_poly, c.x, c.y)) { return false; }
-        for (std::size_t h = 1; h < polygons.size(); ++h) {
-            if (is_point_within_polygon(polygons[h], c.x, c.y)) { return false; }
-        }
-        if (euclidean_distance(centroid, c) + r_curr > allowed_radius + 1e-5f) {
+    const auto is_valid_position = [&](const b2Vec2& p) -> bool {
+        if (!is_point_within_polygon(polygons.front(), p.x, p.y)) {
             return false;
         }
-        for (const auto& [point, idx] : accepted) {
-            if (euclidean_distance(point, c) < reserve_radii[idx] + r_curr) {
+        for (size_t h = 1; h < polygons.size(); ++h) {
+            if (is_point_within_polygon(polygons[h], p.x, p.y)) {
                 return false;
             }
         }
         return true;
     };
 
-    /* ---------- 4. place points --------------------------------------- */
-    // Track placed points with their original indices
-    std::vector<std::pair<b2Vec2, size_t>> placed_with_indices;
-    placed_with_indices.reserve(valid_points_count);
-
-    // Final result vector (will have NaN for unplaced points)
-    std::vector<b2Vec2> result(n_points, b2Vec2{std::numeric_limits<float>::quiet_NaN(),
-                                              std::numeric_limits<float>::quiet_NaN()});
-
-    // First try placing at centroid for the first valid radius
-    for (size_t i = 0; i < n_points; ++i) {
-        if (!std::isnan(reserve_radii[i])) {
-            if (fits(centroid, reserve_radii[i], placed_with_indices)) {
-                placed_with_indices.push_back({centroid, i});
-                result[i] = centroid;
+    const auto compute_search_radius = [&](const std::vector<std::vector<b2Vec2>>& polys,
+                                           const b2Vec2& center,
+                                           float r_max) -> float {
+        float max_dist = 0.0f;
+        for (const auto& poly : polys) {
+            for (const auto& v : poly) {
+                max_dist = std::max(max_dist, euclidean_distance(center, v));
             }
-            break;
+        }
+        return max_dist + 2.0f * r_max;
+    };
+
+    /* ---------- 1. sanity checks -------------------------------------- */
+    if (polygons.empty()) {
+        throw std::runtime_error("No polygons provided.");
+    }
+
+    const auto& outer_poly = polygons.front();
+    if (outer_poly.size() < 3) {
+        throw std::runtime_error("Outer polygon must have at least 3 vertices.");
+    }
+
+    const size_t n_points = reserve_radii.size();
+    if (n_points == 0U) {
+        return {};
+    }
+
+    size_t valid_points_count = 0;
+    float r_max = 0.0f;
+    float r_min = std::numeric_limits<float>::max();
+    bool has_valid_radius = false;
+
+    for (float r : reserve_radii) {
+        if (!std::isnan(r)) {
+            if (r <= 0.0f) {
+                throw std::runtime_error("Reserve radii must be strictly positive.");
+            }
+            ++valid_points_count;
+            r_max = std::max(r_max, r);
+            r_min = std::min(r_min, r);
+            has_valid_radius = true;
         }
     }
 
-    float ring_radius = r_min;                  // start one full step out
-    const float radial_step = r_min;
+    if (!has_valid_radius) {
+        return std::vector<b2Vec2>(n_points, make_nan_vec2());
+    }
 
-    // Add a safety counter to prevent infinite loops
-    const size_t max_iterations = 1000; // Adjust based on expected complexity
-    size_t iteration_count = 0;
+    /* ---------- 2. helper: collision + geometric validity ------------ */
+    const auto fits = [&](const b2Vec2& c,
+                          float r_curr,
+                          const std::vector<std::pair<b2Vec2, size_t>>& accepted) -> bool {
+        if (!is_valid_position(c)) {
+            return false;
+        }
+
+        for (const auto& [point, idx] : accepted) {
+            if (euclidean_distance(point, c) < reserve_radii[idx] + r_curr) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    /* ---------- 3. place points -------------------------------------- */
+    std::vector<std::pair<b2Vec2, size_t>> placed_with_indices;
+    placed_with_indices.reserve(valid_points_count);
+
+    std::vector<b2Vec2> result(n_points, make_nan_vec2());
+
+    // Try disk_center first for the first valid point, even if disk_center is inside a hole
+    // it will simply fail fits() and we continue with rings.
+    for (size_t i = 0; i < n_points; ++i) {
+        if (std::isnan(reserve_radii[i])) {
+            continue;
+        }
+
+        if (fits(disk_center, reserve_radii[i], placed_with_indices)) {
+            placed_with_indices.push_back({disk_center, i});
+            result[i] = disk_center;
+        }
+        break;
+    }
+
+    const float search_radius_limit = compute_search_radius(polygons, disk_center, r_max);
+    const float radial_step = r_min;
+    float ring_radius = r_min;
+
+    const size_t max_stalled_rings = 1000;
+    size_t stalled_ring_count = 0;
 
     while (placed_with_indices.size() < valid_points_count &&
-           ring_radius <= allowed_radius &&
-           iteration_count < max_iterations) {
-
-        /* angular step so that neighbouring *small* points are ≈2 r_min apart */
-        const float d_theta = 2.0f * r_min / ring_radius;
+           ring_radius <= search_radius_limit &&
+           stalled_ring_count < max_stalled_rings) {
         bool placed_any_this_ring = false;
+
+        // Keep neighbours on the ring about 2*r_min apart, but ensure a reasonable minimum sampling.
+        float d_theta = 2.0f * r_min / ring_radius;
+        d_theta = std::min(d_theta, 2.0f * float(M_PI));
+        d_theta = std::max(d_theta, 0.15f); // avoid absurdly dense angular sampling
 
         for (float theta = 0.0f;
              theta < 2.0f * float(M_PI) && placed_with_indices.size() < valid_points_count;
-             theta += d_theta)
-        {
-            // Find the next point with valid radius that needs placement
+             theta += d_theta) {
             for (size_t i = 0; i < n_points && placed_with_indices.size() < valid_points_count; ++i) {
-                // Skip if already placed or if radius is NaN
-                if (!std::isnan(result[i].x) || std::isnan(reserve_radii[i])) {
+                if (std::isnan(reserve_radii[i])) {
+                    continue;
+                }
+                if (!std::isnan(result[i].x)) {
                     continue;
                 }
 
                 const float r_cur = reserve_radii[i];
                 const b2Vec2 cand{
-                    centroid.x + ring_radius * std::cos(theta),
-                    centroid.y + ring_radius * std::sin(theta)
+                    disk_center.x + ring_radius * std::cos(theta),
+                    disk_center.y + ring_radius * std::sin(theta)
                 };
 
                 if (fits(cand, r_cur, placed_with_indices)) {
                     placed_with_indices.push_back({cand, i});
                     result[i] = cand;
                     placed_any_this_ring = true;
-                    break; // Move to next angle after successful placement
+                    break;
                 }
             }
         }
 
-        // If we completed a full ring and couldn't place any points, we may be stuck
-        if (!placed_any_this_ring) {
-            iteration_count++;
+        if (placed_any_this_ring) {
+            stalled_ring_count = 0;
+        } else {
+            ++stalled_ring_count;
         }
 
         ring_radius += radial_step;
     }
 
-    // Check if we managed to place all valid points
     if (placed_with_indices.size() < valid_points_count) {
         throw std::runtime_error(
             "Impossible to place all requested points with the given reserve_radii.");
@@ -1353,6 +1363,22 @@ std::vector<b2Vec2> generate_regular_disk_points_in_polygon(
     return result;
 }
 
+/* ---------- backward-compatible overload ------------------------------ */
+std::vector<b2Vec2> generate_regular_disk_points_in_polygon(
+        const std::vector<std::vector<b2Vec2>>& polygons,
+        const std::vector<float>& reserve_radii) {
+    if (polygons.empty()) {
+        throw std::runtime_error("No polygons provided.");
+    }
+    if (polygons.front().size() < 3) {
+        throw std::runtime_error("Outer polygon must have at least 3 vertices.");
+    }
+
+    return generate_regular_disk_points_in_polygon(
+        polygons,
+        reserve_radii,
+        polygon_centroid(polygons.front()));
+}
 
 
 //////////////////////////////////// IMPORT FROM FILE //////////////////////////////////// {{{1

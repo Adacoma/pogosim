@@ -88,6 +88,7 @@ class Simulation {
     std::vector<std::shared_ptr<Object>> non_robots;                        ///< Vector of objects that are not robots in the simulation.
     std::unique_ptr<LightLevelMap> light_map;                               ///< Light map of the arena.
     std::string initial_formation;                                          ///< Type of initial formation of the objects.
+    std::pair<float, float> initial_formation_center;                       ///< X, Y coordinates of the center of the initial formation, for formations that requires it.
     float formation_min_space_between_neighbors;                            ///< Min space between neighbors when creating the initial formation.
     float formation_max_space_between_neighbors;                            ///< Max space between neighbors when creating the initial formation.
     float chessboard_distance_between_neighbors;                            ///< In the chessboard formations, the euclidean distance between two connected points of the grid.

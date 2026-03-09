@@ -321,9 +321,29 @@ float point_to_line_segment_distance(const b2Vec2& p, const b2Vec2& a, const b2V
  *
  * @param  polygons        polygons[0] is the main area; polygons[1…] are holes.
  * @param  reserve_radii   exclusion radii for each requested point (size N).
+ * @param  disk_center     Coordinates of the disk center
  * @return vector<b2Vec2>  the generated points (size == reserve_radii.size()).
  */
-std::vector<b2Vec2> generate_regular_disk_points_in_polygon( const std::vector<std::vector<b2Vec2>>& polygons, const std::vector<float>& reserve_radii);
+std::vector<b2Vec2> generate_regular_disk_points_in_polygon(
+        const std::vector<std::vector<b2Vec2>>& polygons,
+        const std::vector<float>& reserve_radii,
+        const b2Vec2& disk_center);
+
+/**
+ * @brief  Place points on (approximate) concentric rings inside polygons[0]
+ *         so that:
+ *           • point i stays ≥ reserve_radii[i] from every polygon edge,
+ *           • point i stays ≥ reserve_radii[i] + reserve_radii[j]
+ *             from every previously accepted point j,
+ *           • no point falls inside a hole (polygons[1…]).
+ *
+ * @param  polygons        polygons[0] is the main area; polygons[1…] are holes.
+ * @param  reserve_radii   exclusion radii for each requested point (size N).
+ * @return vector<b2Vec2>  the generated points (size == reserve_radii.size()).
+ */
+std::vector<b2Vec2> generate_regular_disk_points_in_polygon(
+        const std::vector<std::vector<b2Vec2>>& polygons,
+        const std::vector<float>& reserve_radii);
 
 
 /**
