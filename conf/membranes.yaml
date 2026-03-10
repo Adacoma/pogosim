@@ -103,7 +103,8 @@ objects:
 
     # An object category describing a membrane, a special type of Pogowalls apposed on flexible membranes
     membranes:
-        type: membrane        # Category type for membranes
+        #type: membrane        # Category type for membranes
+        type: rectmembrane        # Category type for membranes
         nb: 1                 # Number of membranes to create
         geometry: disk        # Initial geometry of the membranes -- they are flexible, so the shape will change during the simulation. Can be "disk" or "rectangle"
         colormap: qualitative # Colormap used to assign a random color to the object. Can be "rainbow" or "qualitative"
@@ -117,11 +118,13 @@ objects:
         #body_height: 400       # In mm, if geometry is a rectangle
 
         # Membrane dots and joints
-        num_dots: 40            # Number of dots of the membrane, i.e. of disk-shaped elements.
+        num_dots: 10            # Number of dots of the membrane, i.e. of disk-shaped elements.
                                 # Only the dots are used to handle collisions in membranes, so the number should be enough
                                 # (elsewise robots can pass through the membrane)
         dot_radius: 20          # Radius of the dots, in mm
-        cross_span: 2           # Connect every i‑th neighbour to stiffen the sheet (if > 1)
+        cross_span: 1           # Connect every i‑th neighbour to stiffen the sheet (if > 1)
+
+        rect_thickness: 10
 
         communication_radius: 50.0  # The communication ratius of the membrane, in mm
         msg_success_rate:

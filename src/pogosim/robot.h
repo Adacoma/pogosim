@@ -823,6 +823,57 @@ protected:
 };
 
 
+class RectMembraneObject : public MembraneObject {
+public:
+    struct Rect {
+        b2BodyId body_id;
+        float half_length;
+        float half_thickness;
+    };
+
+    struct Hinge {
+        b2JointId joint_id;
+    };
+
+    RectMembraneObject(uint16_t _id, float _x, float _y,
+        ObjectGeometry& geom,
+        size_t _userdatasize,
+        float _communication_radius = 80.0f,
+        std::unique_ptr<MsgSuccessRate> _msg_success_rate = std::make_unique<ConstMsgSuccessRate>(0.5),
+        float _temporal_noise_stddev = 0.0f,
+        float _linear_damping = 0.0f, float _angular_damping = 0.0f,
+        float _density = 10.0f, float _friction = 0.3f, float _restitution = 0.5f,
+        float _max_linear_speed = 100.0f, float _max_angular_speed = 1.0f,
+        float _linear_noise_stddev = 0.0f, float _angular_noise_stddev = 0.0f,
+        unsigned int _num_dots = 100,
+        float _rect_thickness = 10.0f,
+        int _cross_span = 3,
+        float _stiffness = 30.0f,
+        std::string _colormap = "rainbow",
+        std::string const& _category = "robots");
+
+    RectMembraneObject(Simulation* simulation, uint16_t _id, float _x, float _y,
+        size_t _userdatasize, Configuration const& config,
+        std::string const& _category = "robots");
+
+    virtual b2Vec2 get_position() const override;
+    virtual void render(SDL_Renderer* renderer, b2WorldId world_id) const override;
+    virtual void move(float x, float y, float theta = NAN) override;
+    virtual arena_polygons_t generate_contours(std::size_t points_per_contour = 0) const override;
+
+protected:
+    virtual void do_init(b2WorldId world_id) override;
+    virtual void parse_configuration(Configuration const& config, Simulation* simulation) override;
+
+    void create_rect_membrane(b2WorldId world_id);
+    void make_revolute_joint(b2WorldId world_id, b2BodyId a, b2BodyId b, b2Vec2 anchor_world);
+    void make_center_distance_joint(b2WorldId world_id, b2BodyId a, b2BodyId b, float stiffness_scale = 1.0f);
+
+    float rect_thickness;
+    std::vector<Rect> rects;
+    std::vector<Hinge> hinges;
+};
+
 
 /**
  * @brief Class representing an active object, with a pogowall on each side.

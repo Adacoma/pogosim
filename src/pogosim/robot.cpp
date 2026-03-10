@@ -1068,6 +1068,300 @@ arena_polygons_t MembraneObject::generate_contours(std::size_t points_per_contou
 }
 
 
+RectMembraneObject::RectMembraneObject(uint16_t _id, float _x, float _y,
+    ObjectGeometry& geom,
+    size_t _userdatasize,
+    float _communication_radius,
+    std::unique_ptr<MsgSuccessRate> _msg_success_rate,
+    float _temporal_noise_stddev,
+    float _linear_damping, float _angular_damping,
+    float _density, float _friction, float _restitution,
+    float _max_linear_speed, float _max_angular_speed,
+    float _linear_noise_stddev, float _angular_noise_stddev,
+    unsigned int _num_dots,
+    float _rect_thickness,
+    int _cross_span,
+    float _stiffness,
+    std::string _colormap,
+    std::string const& _category)
+    : MembraneObject(_id, _x, _y, geom,
+          _userdatasize, _communication_radius, std::move(_msg_success_rate),
+          _temporal_noise_stddev, _linear_damping, _angular_damping,
+          _density, _friction, _restitution,
+          _max_linear_speed, _max_angular_speed,
+          _linear_noise_stddev, _angular_noise_stddev,
+          _num_dots, _rect_thickness, _cross_span,
+          _stiffness, _colormap, _category),
+      rect_thickness(_rect_thickness) { }
+
+RectMembraneObject::RectMembraneObject(Simulation* simulation, uint16_t _id, float _x, float _y,
+    size_t _userdatasize, Configuration const& config,
+    std::string const& _category)
+    : MembraneObject(simulation, _id, _x, _y, _userdatasize, config, _category) {
+    parse_configuration(config, simulation);
+}
+
+void RectMembraneObject::parse_configuration(Configuration const& config, Simulation* simulation) {
+    MembraneObject::parse_configuration(config, simulation);
+    rect_thickness = config["rect_thickness"].get(dot_radius);
+}
+
+void RectMembraneObject::do_init(b2WorldId world_id) {
+    PogobotObject::do_init(world_id);
+
+    create_rect_membrane(world_id);
+
+    for (size_t i = 0; i != motorB; i++) {
+        set_motor(static_cast<motor_id>(i), 0);
+    }
+}
+
+void RectMembraneObject::create_rect_membrane(b2WorldId world_id) {
+    b2DestroyBody(body_id);
+
+    rects.clear();
+    hinges.clear();
+    dots.clear();
+    joints.clear();
+    size_contours.clear();
+
+    arena_polygons_t contours = geom->generate_contours(num_dots);
+
+    for (const auto& contour : contours) {
+        const std::size_t first_idx = rects.size();
+        const std::size_t n = contour.size();
+        if (n < 2) {
+            continue;
+        }
+
+        size_contours.push_back(n);
+
+        for (std::size_t i = 0; i < n; ++i) {
+            const b2Vec2 a_local = contour[i];
+            const b2Vec2 b_local = contour[(i + 1) % n];
+
+            const float ax = (x + a_local.x) / VISUALIZATION_SCALE;
+            const float ay = (y + a_local.y) / VISUALIZATION_SCALE;
+            const float bx = (x + b_local.x) / VISUALIZATION_SCALE;
+            const float by = (y + b_local.y) / VISUALIZATION_SCALE;
+
+            const b2Vec2 a_world = {ax, ay};
+            const b2Vec2 b_world = {bx, by};
+
+            const b2Vec2 center = {(ax + bx) * 0.5f, (ay + by) * 0.5f};
+
+            const float dx = bx - ax;
+            const float dy = by - ay;
+            const float len = std::sqrt(dx * dx + dy * dy);
+
+            if (len <= 1e-6f) {
+                continue;
+            }
+
+            const float angle = std::atan2(dy, dx);
+
+            b2BodyDef body_def = b2DefaultBodyDef();
+            body_def.type = b2_dynamicBody;
+            body_def.position = center;
+            body_def.rotation = b2MakeRot(angle);
+            body_def.linearDamping = linear_damping;
+            body_def.angularDamping = angular_damping;
+
+            b2BodyId rect_body_id = b2CreateBody(world_id, &body_def);
+
+            b2ShapeDef shape_def = b2DefaultShapeDef();
+            shape_def.density = density;
+            shape_def.friction = friction;
+            shape_def.restitution = restitution;
+
+            const float half_length = 0.5f * len;
+            const float half_thickness = 0.5f * rect_thickness / VISUALIZATION_SCALE;
+
+            b2Polygon box = b2MakeBox(half_length, half_thickness);
+            b2CreatePolygonShape(rect_body_id, &shape_def, &box);
+
+            b2Body_SetLinearVelocity(rect_body_id, {0.0f, 0.0f});
+            b2Body_SetAngularVelocity(rect_body_id, 0.0f);
+
+            rects.push_back({rect_body_id, half_length, half_thickness});
+        }
+
+        const std::size_t created_n = rects.size() - first_idx;
+        if (created_n < 2) {
+            continue;
+        }
+
+        for (std::size_t i = 0; i < created_n; ++i) {
+            const b2Vec2 v_local = contour[(i + 1) % n];
+            const b2Vec2 anchor_world = {
+                (x + v_local.x) / VISUALIZATION_SCALE,
+                (y + v_local.y) / VISUALIZATION_SCALE
+            };
+
+            make_revolute_joint(
+                world_id,
+                rects[first_idx + i].body_id,
+                rects[first_idx + (i + 1) % created_n].body_id,
+                anchor_world
+            );
+        }
+
+        if (cross_span > 1) {
+            for (std::size_t i = 0; i < created_n; ++i) {
+                make_center_distance_joint(
+                    world_id,
+                    rects[first_idx + i].body_id,
+                    rects[first_idx + (i + cross_span) % created_n].body_id,
+                    0.4f
+                );
+            }
+        }
+    }
+}
+
+void RectMembraneObject::make_revolute_joint(b2WorldId world_id, b2BodyId a, b2BodyId b, b2Vec2 anchor_world) {
+    b2RevoluteJointDef jd = b2DefaultRevoluteJointDef();
+    jd.bodyIdA = a;
+    jd.bodyIdB = b;
+    jd.localAnchorA = b2Body_GetLocalPoint(a, anchor_world);
+    jd.localAnchorB = b2Body_GetLocalPoint(b, anchor_world);
+    jd.enableLimit = false;
+    jd.collideConnected = false;
+
+    b2JointId joint_id = b2CreateRevoluteJoint(world_id, &jd);
+    hinges.push_back({joint_id});
+}
+
+void RectMembraneObject::make_center_distance_joint(b2WorldId world_id, b2BodyId a, b2BodyId b, float stiffness_scale) {
+    const b2Vec2 pA = b2Body_GetPosition(a);
+    const b2Vec2 pB = b2Body_GetPosition(b);
+
+    const float dx = pA.x - pB.x;
+    const float dy = pA.y - pB.y;
+    const float len = std::sqrt(dx * dx + dy * dy);
+
+    b2DistanceJointDef jd = b2DefaultDistanceJointDef();
+    jd.bodyIdA = a;
+    jd.bodyIdB = b;
+    jd.localAnchorA = {0.0f, 0.0f};
+    jd.localAnchorB = {0.0f, 0.0f};
+    jd.length = len;
+    jd.hertz = stiffness * stiffness_scale;
+    jd.dampingRatio = linear_damping;
+    jd.collideConnected = false;
+
+    b2JointId joint_id = b2CreateDistanceJoint(world_id, &jd);
+    joints.push_back({joint_id});
+}
+
+b2Vec2 RectMembraneObject::get_position() const {
+    if (rects.empty()) {
+        return {NAN, NAN};
+    }
+    if (b2Body_IsValid(rects[0].body_id)) {
+        return b2Body_GetPosition(rects[0].body_id);
+    }
+    return {NAN, NAN};
+}
+
+void RectMembraneObject::move(float _x, float _y, float _theta) {
+    const float dx = (_x - x) / VISUALIZATION_SCALE;
+    const float dy = (_y - y) / VISUALIZATION_SCALE;
+
+    for (const Rect& r : rects) {
+        b2Vec2 pos = b2Body_GetPosition(r.body_id);
+        pos.x += dx;
+        pos.y += dy;
+
+        const b2Rot rot = b2Body_GetRotation(r.body_id);
+        b2Body_SetTransform(r.body_id, pos, rot);
+    }
+
+    PogobotObject::move(_x, _y, _theta);
+}
+
+void RectMembraneObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId world_id) const {
+    uint8_t const value = static_cast<uint32_t>(id) % 256;
+    uint8_t r, g, b;
+    get_cmap_val(colormap, value, &r, &g, &b);
+
+    for (const Rect& rect : rects) {
+        const b2Vec2 c = b2Body_GetPosition(rect.body_id);
+        const b2Rot q = b2Body_GetRotation(rect.body_id);
+
+        const b2Vec2 local[4] = {
+            {-rect.half_length, -rect.half_thickness},
+            { rect.half_length, -rect.half_thickness},
+            { rect.half_length,  rect.half_thickness},
+            {-rect.half_length,  rect.half_thickness}
+        };
+
+        Sint16 vx[4];
+        Sint16 vy[4];
+
+        for (int i = 0; i < 4; ++i) {
+            const b2Vec2 p = b2TransformPoint({c, q}, local[i]);
+            const auto vis = visualization_position(
+                p.x * VISUALIZATION_SCALE,
+                p.y * VISUALIZATION_SCALE
+            );
+            vx[i] = static_cast<Sint16>(vis.x);
+            vy[i] = static_cast<Sint16>(vis.y);
+        }
+
+        filledPolygonRGBA(renderer, vx, vy, 4, r, g, b, 255);
+    }
+
+    for (const Hinge& h : hinges) {
+        if (!b2Joint_IsValid(h.joint_id)) {
+            continue;
+        }
+
+        b2Vec2 base_pA = b2Body_GetPosition(b2Joint_GetBodyA(h.joint_id));
+        b2Vec2 base_pB = b2Body_GetPosition(b2Joint_GetBodyB(h.joint_id));
+        auto const pA = visualization_position(base_pA.x * VISUALIZATION_SCALE, base_pA.y * VISUALIZATION_SCALE);
+        auto const pB = visualization_position(base_pB.x * VISUALIZATION_SCALE, base_pB.y * VISUALIZATION_SCALE);
+
+        thickLineRGBA(renderer, pA.x, pA.y, pB.x, pB.y, 2, 255, 0, 0, 100);
+    }
+}
+
+arena_polygons_t RectMembraneObject::generate_contours(std::size_t points_per_contour) const {
+    arena_polygons_t contours;
+    contours.reserve(size_contours.size());
+
+    std::size_t rect_index = 0;
+
+    for (std::size_t contour_idx = 0; contour_idx < size_contours.size(); ++contour_idx) {
+        const std::size_t n = size_contours[contour_idx];
+        std::vector<b2Vec2> poly;
+        poly.reserve(n);
+
+        for (std::size_t k = 0; k < n; ++k, ++rect_index) {
+            const Rect& rect = rects[rect_index];
+            const b2Vec2 c = b2Body_GetPosition(rect.body_id);
+            const b2Rot q = b2Body_GetRotation(rect.body_id);
+
+            const b2Vec2 end_local = {rect.half_length, 0.0f};
+            const b2Vec2 end_world = b2TransformPoint({c, q}, end_local);
+
+            poly.push_back({
+                end_world.x * VISUALIZATION_SCALE,
+                end_world.y * VISUALIZATION_SCALE
+            });
+        }
+
+        if (points_per_contour != 0 && points_per_contour != poly.size()) {
+            contours.push_back(resample_polygon(poly, points_per_contour));
+        } else {
+            contours.push_back(std::move(poly));
+        }
+    }
+
+    return contours;
+}
+
+
 /************* ActiveObject *************/ // {{{1
 
 ActiveObject::ActiveObject(uint16_t _id, float _x, float _y,
