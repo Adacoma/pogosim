@@ -75,7 +75,6 @@ pogobot
 # Example binaries
 template_prj/template_prj
 examples/helloworld/helloworld
-examples/hanabi/hanabi
 examples/ssr/ssr
 examples/run_and_tumble/run_and_tumble
 examples/phototaxis/phototaxis
