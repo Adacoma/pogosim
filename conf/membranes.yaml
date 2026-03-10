@@ -179,7 +179,6 @@ objects:
             delta: 1.1897
 
 
-
 ########### Parameters used to directly initialize variables from the C code of the robots ###########
 parameters:
     # Configuration parameters for the run_and_tumble example
@@ -188,6 +187,8 @@ parameters:
     tumble_duration_min: 100
     tumble_duration_max: 1100
     test_vect: [42., 23., 11., 18.]
+
+    moving_robots: false
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8

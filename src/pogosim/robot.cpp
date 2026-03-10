@@ -849,7 +849,7 @@ MembraneObject::MembraneObject(Simulation* simulation, uint16_t _id, float _x, f
 }
 
 void MembraneObject::do_init([[maybe_unused]] b2WorldId world_id) {
-    Pogowall::do_init(world_id);
+    PogobotObject::do_init(world_id);
     create_robot_body(world_id);
     for (size_t i = 0; i != motorB; i++)
         set_motor(static_cast<motor_id>(i), 0);
