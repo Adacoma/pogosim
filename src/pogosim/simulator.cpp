@@ -180,59 +180,75 @@ void Simulation::create_objects() {
             objects[name] = std::move(obj_vec);
     }
 
-    // Generate random coordinates for all objects of all categories
+    // Get polygons of the initial formation boundaries
+    arena_polygons_t initial_formation_boundaries;
+    if (initial_formation_root_object_name == "" || initial_formation_root_object_name == "null" || initial_formation_root_object_name == "arena") {
+        initial_formation_boundaries = arena_polygons;
+    } else {
+        // Find object class with the provided name
+        if (objects.find(initial_formation_root_object_name) == objects.end()) {
+            // Not found. Error.
+            glogger->error("Configuration key 'initial_formation_root_object_name' set to unknown object class '{}'.", initial_formation_root_object_name);
+            throw std::runtime_error("Invalid configuration key 'initial_formation_root_object_name': set to unknown object class.");
+        } else {
+            // Found object, get boundaries
+            initial_formation_boundaries = objects[initial_formation_root_object_name].front()->generate_contours();
+        }
+    }
+
+    // Generate random coordinates for objects of all categories that don't already have a coordinate
     std::vector<b2Vec2> points;
     std::vector<float> thetas(objects_to_move.size());
     std::uniform_real_distribution<float> angle_distrib(0.0f, 2.0f * M_PI);
     b2Vec2 formation_center_vec = {initial_formation_center.first, initial_formation_center.second};
     try {
         if (initial_formation == "random") {
-            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            points = generate_random_points_within_polygon_safe(initial_formation_boundaries, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "aligned_random") {
-            points = generate_random_points_within_polygon_safe(arena_polygons, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
+            points = generate_random_points_within_polygon_safe(initial_formation_boundaries, objects_radii, formation_max_space_between_neighbors, formation_attempts_per_point, formation_max_restarts);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "random_near_walls") {
-            points = generate_random_points_layered(arena_polygons, objects_radii, formation_attempts_per_point, formation_max_restarts);
+            points = generate_random_points_layered(initial_formation_boundaries, objects_radii, formation_attempts_per_point, formation_max_restarts);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "aligned_random_near_walls") {
-            points = generate_random_points_layered(arena_polygons, objects_radii, formation_attempts_per_point, formation_max_restarts);
+            points = generate_random_points_layered(initial_formation_boundaries, objects_radii, formation_attempts_per_point, formation_max_restarts);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "disk") {
             glogger->info("DEBUG1 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
             if (isnan(formation_center_vec.x) || isnan(formation_center_vec.y)) {
             glogger->info("DEBUG2 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
-                points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii);
+                points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii);
             } else {
             glogger->info("DEBUG3 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
-                points = generate_regular_disk_points_in_polygon(arena_polygons, objects_radii, formation_center_vec);
+                points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii, formation_center_vec);
             }
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "lloyd") {
-            points = generate_points_voronoi_lloyd(arena_polygons, objects_radii.size());
+            points = generate_points_voronoi_lloyd(initial_formation_boundaries, objects_radii.size());
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "power_lloyd") {
-            points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
+            points = generate_random_points_power_lloyd(initial_formation_boundaries, objects_radii);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "chessboard") {
-            //points = generate_chessboard_points(arena_polygons, objects_radii.size(), max_comm_radius, {formation_offset.first, formation_offset.second}, formation_rotation);
-            //points = generate_chessboard_points(arena_polygons, objects_radii.size(), 0.1);
-            points = generate_chessboard_points(arena_polygons, objects_radii.size(), chessboard_distance_between_neighbors, formation_cluster_at_center);
+            //points = generate_chessboard_points(initial_formation_boundaries, objects_radii.size(), max_comm_radius, {formation_offset.first, formation_offset.second}, formation_rotation);
+            //points = generate_chessboard_points(initial_formation_boundaries, objects_radii.size(), 0.1);
+            points = generate_chessboard_points(initial_formation_boundaries, objects_radii.size(), chessboard_distance_between_neighbors, formation_cluster_at_center);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         } else if (initial_formation == "aligned_chessboard") {
-            //points = generate_chessboard_points(arena_polygons, objects_radii.size(), max_comm_radius, {formation_offset.first, formation_offset.second}, formation_rotation);
-            //points = generate_chessboard_points(arena_polygons, objects_radii.size(), 0.1);
-            points = generate_chessboard_points(arena_polygons, objects_radii.size(), chessboard_distance_between_neighbors, formation_cluster_at_center);
+            //points = generate_chessboard_points(initial_formation_boundaries, objects_radii.size(), max_comm_radius, {formation_offset.first, formation_offset.second}, formation_rotation);
+            //points = generate_chessboard_points(initial_formation_boundaries, objects_radii.size(), 0.1);
+            points = generate_chessboard_points(initial_formation_boundaries, objects_radii.size(), chessboard_distance_between_neighbors, formation_cluster_at_center);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "imported") {
             if (formation_filename == "") {
                 throw std::runtime_error("Parameter 'formation_filename' is empty!");
             }
-            std::tie(points, thetas) = import_points_from_file(arena_polygons, objects_radii.size(), formation_filename, imported_formation_min_coords, imported_formation_max_coords);
+            std::tie(points, thetas) = import_points_from_file(initial_formation_boundaries, objects_radii.size(), formation_filename, imported_formation_min_coords, imported_formation_max_coords);
             //glogger->info("DEBUG imported: {}, {}", points.size(), thetas.size());
         } else {
             glogger->error("Unknown 'initial_formation' value: '{}'. Assuming 'power_lloyd' formation...", initial_formation);
-            points = generate_random_points_power_lloyd(arena_polygons, objects_radii);
+            points = generate_random_points_power_lloyd(initial_formation_boundaries, objects_radii);
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
         }
     } catch (const std::exception& e) {
@@ -463,6 +479,7 @@ void Simulation::init_config() {
 
     initial_formation = config["initial_formation"].get(std::string("power_lloyd"));
     initial_formation_center = config["initial_formation_center"].get<decltype(initial_formation_center)>({NAN, NAN});
+    initial_formation_root_object_name = config["initial_formation_root_object"].get(std::string("arena"));
     formation_min_space_between_neighbors = config["formation_min_space_between_neighbors"].get(0.0f);
     formation_max_space_between_neighbors = config["formation_max_space_between_neighbors"].get(INFINITY);
     chessboard_distance_between_neighbors = config["chessboard_distance_between_neighbors"].get(100.0f);

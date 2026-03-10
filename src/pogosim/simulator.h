@@ -89,6 +89,7 @@ class Simulation {
     std::unique_ptr<LightLevelMap> light_map;                               ///< Light map of the arena.
     std::string initial_formation;                                          ///< Type of initial formation of the objects.
     std::pair<float, float> initial_formation_center;                       ///< X, Y coordinates of the center of the initial formation, for formations that requires it.
+    std::string initial_formation_root_object_name;                         ///< Name of the object class used to define bounds of the initial formation (e.g. passive object or membrane).
     float formation_min_space_between_neighbors;                            ///< Min space between neighbors when creating the initial formation.
     float formation_max_space_between_neighbors;                            ///< Max space between neighbors when creating the initial formation.
     float chessboard_distance_between_neighbors;                            ///< In the chessboard formations, the euclidean distance between two connected points of the grid.
