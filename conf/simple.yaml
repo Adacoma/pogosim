@@ -67,7 +67,7 @@ GUI_speed_up: 10.0         # How much the visualisation in the GUI should be spe
 initial_formation: random
 
 # The object class that will contain other objects (e.g. robots). "arena" by default, to create objects within the entire arena.
-initial_formation_root_object: membranes
+initial_formation_root_object: arena
 
 # In the chessboard formations, the euclidean distance between two connected points of the grid.
 chessboard_distance_between_neighbors: 110
