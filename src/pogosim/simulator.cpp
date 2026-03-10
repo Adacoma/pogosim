@@ -638,7 +638,7 @@ void Simulation::create_robots() {
 
     // Create a dummy global robot handle
     dummy_global_robot = std::make_unique<PogobotObject>(0, 0.0f, 0.0f,
-            dummy_global_robot_geom, worldId,
+            dummy_global_robot_geom,
             UserdataSize,
             0,
             std::make_unique<ConstMsgSuccessRate>(0.0),
@@ -653,6 +653,7 @@ void Simulation::create_robots() {
             0.0f,
             std::string{"__system"},
             true);
+    dummy_global_robot->init(worldId);
     set_current_robot(*dummy_global_robot.get());
     _pogobot_start(dummy_global_robot_init, callback_global_step, "__system");
 }

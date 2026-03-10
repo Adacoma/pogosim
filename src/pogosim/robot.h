@@ -152,7 +152,6 @@ public:
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param _communication_radius communication radius of each IR emitter
      * @param _msg_success_rate std::unique_ptr<MsgSuccessRate> describing the probability of successfully sending a message.
@@ -170,7 +169,7 @@ public:
      * @param category Name of the category of the object.
      */
     PogobotObject(uint16_t _id, float _x, float _y,
-           ObjectGeometry& geom, b2WorldId world_id,
+           ObjectGeometry& geom,
            size_t _userdatasize,
            float _communication_radius = 80.0f,
            std::unique_ptr<MsgSuccessRate> _msg_success_rate = std::make_unique<ConstMsgSuccessRate>(0.5),
@@ -193,18 +192,18 @@ public:
      * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param config Configuration entry describing the object properties.
      */
     PogobotObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-           b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+           size_t _userdatasize, Configuration const& config,
            std::string const& _category = "robots");
 
 
     //virtual ~Robot();
 
     // Base info
+    size_t userdatasize;
     void* data = nullptr;                ///< Pointer to user data.
     void (*user_init)(void) = nullptr;   ///< Pointer to a user-defined initialization function.
     void (*user_step)(void) = nullptr;   ///< Pointer to a user-defined step function.
@@ -393,6 +392,14 @@ public:
 
 protected:
     /**
+     * @brief Perform the base initialization (e.g. create Box2D objects).
+     *  Called once by `init(world_id)`.
+     *
+     * @param world_id The Box2D world identifier.
+     */
+    virtual void do_init([[maybe_unused]] b2WorldId world_id) override;
+
+    /**
      * @brief Creates the object's physical body in the simulation.
      *
      * @param world_id The Box2D world identifier.
@@ -414,6 +421,9 @@ protected:
     float linear_noise_stddev;
     float angular_noise_stddev;
     bool rotate_LEDs_45_deg;
+
+    // Dummy?
+    bool dummy = false;
 
     /**
      * @brief Parse a provided configuration and set associated members values.
@@ -456,7 +466,6 @@ public:
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param _communication_radius communication radius of each IR emitter
      * @param _msg_success_rate std::unique_ptr<MsgSuccessRate> describing the probability of successfully sending a message.
@@ -469,7 +478,7 @@ public:
      * @param category Name of the category of the object.
      */
     PogobjectObject(uint16_t _id, float _x, float _y,
-           ObjectGeometry& geom, b2WorldId world_id,
+           ObjectGeometry& geom,
            size_t _userdatasize,
            float _communication_radius = 80.0f,
            std::unique_ptr<MsgSuccessRate> _msg_success_rate = std::make_unique<ConstMsgSuccessRate>(0.5),
@@ -485,12 +494,11 @@ public:
      * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param config Configuration entry describing the object properties.
      */
     PogobjectObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-           b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+           size_t _userdatasize, Configuration const& config,
            std::string const& _category = "robots");
 
     /**
@@ -518,6 +526,15 @@ public:
      * @param world_id The Box2D world identifier (unused in rendering).
      */
     virtual void render(SDL_Renderer*, b2WorldId) const override;
+
+protected:
+    /**
+     * @brief Perform the base initialization (e.g. create Box2D objects).
+     *  Called once by `init(world_id)`.
+     *
+     * @param world_id The Box2D world identifier.
+     */
+    virtual void do_init([[maybe_unused]] b2WorldId world_id) override;
 };
 
 
@@ -535,7 +552,6 @@ public:
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param _communication_radius communication radius of each IR emitter
      * @param _msg_success_rate std::unique_ptr<MsgSuccessRate> describing the probability of successfully sending a message.
@@ -550,7 +566,7 @@ public:
      * @param category Name of the category of the object.
      */
     Pogowall(uint16_t _id, float _x, float _y,
-           ObjectGeometry& geom, b2WorldId world_id,
+           ObjectGeometry& geom,
            size_t _userdatasize,
            float _communication_radius = 80.0f,
            std::unique_ptr<MsgSuccessRate> _msg_success_rate = std::make_unique<ConstMsgSuccessRate>(0.5),
@@ -568,12 +584,11 @@ public:
      * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param config Configuration entry describing the object properties.
      */
     Pogowall(Simulation* simulation, uint16_t _id, float _x, float _y,
-           b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+           size_t _userdatasize, Configuration const& config,
            std::string const& _category = "robots");
 
     /**
@@ -633,6 +648,15 @@ public:
      * @param theta Orientation, in rad.
      */
     virtual void move([[maybe_unused]] float x, [[maybe_unused]] float y, [[maybe_unused]] float theta = NAN) override { }
+
+protected:
+    /**
+     * @brief Perform the base initialization (e.g. create Box2D objects).
+     *  Called once by `init(world_id)`.
+     *
+     * @param world_id The Box2D world identifier.
+     */
+    virtual void do_init([[maybe_unused]] b2WorldId world_id) override;
 };
 
 
@@ -654,7 +678,6 @@ public:
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param _communication_radius communication radius of each IR emitter
      * @param _msg_success_rate std::unique_ptr<MsgSuccessRate> describing the probability of successfully sending a message.
@@ -674,7 +697,7 @@ public:
      * @param _category Name of the category of the object.
      */
     MembraneObject(uint16_t _id, float _x, float _y,
-           ObjectGeometry& geom, b2WorldId world_id,
+           ObjectGeometry& geom,
            size_t _userdatasize,
            float _communication_radius = 80.0f,
            std::unique_ptr<MsgSuccessRate> _msg_success_rate = std::make_unique<ConstMsgSuccessRate>(0.5),
@@ -695,12 +718,11 @@ public:
      * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param config Configuration entry describing the object properties.
      */
     MembraneObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-           b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+           size_t _userdatasize, Configuration const& config,
            std::string const& _category = "robots");
 
     /**
@@ -762,6 +784,14 @@ public:
 
 protected:
     /**
+     * @brief Perform the base initialization (e.g. create Box2D objects).
+     *  Called once by `init(world_id)`.
+     *
+     * @param world_id The Box2D world identifier.
+     */
+    virtual void do_init([[maybe_unused]] b2WorldId world_id) override;
+
+    /**
      * @brief Creates the object's physical body in the simulation.
      *
      * @param world_id The Box2D world identifier.
@@ -808,7 +838,6 @@ public:
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param _communication_radius communication radius of each IR emitter
      * @param _msg_success_rate std::unique_ptr<MsgSuccessRate> describing the probability of successfully sending a message.
@@ -828,7 +857,7 @@ public:
      * @param _category Name of the category of the object.
      */
     ActiveObject(uint16_t _id, float _x, float _y,
-           ObjectGeometry& geom, b2WorldId world_id,
+           ObjectGeometry& geom,
            size_t _userdatasize,
            float _communication_radius = 80.0f,
            std::unique_ptr<MsgSuccessRate> _msg_success_rate = std::make_unique<ConstMsgSuccessRate>(0.5),
@@ -847,12 +876,11 @@ public:
      * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
-     * @param world_id The Box2D world identifier.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param config Configuration entry describing the object properties.
      */
     ActiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-           b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+           size_t _userdatasize, Configuration const& config,
            std::string const& _category = "active_objects");
 
     /**

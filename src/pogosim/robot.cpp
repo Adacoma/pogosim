@@ -89,7 +89,7 @@ MsgSuccessRate* msg_success_rate_factory(Configuration const& config) {
 
 
 PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
-       ObjectGeometry& geom, b2WorldId world_id,
+       ObjectGeometry& geom,
        size_t _userdatasize,
        float _communication_radius,
        std::unique_ptr<MsgSuccessRate> _msg_success_rate,
@@ -103,33 +103,38 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
        std::pair<int16_t, int16_t> photosensors_systematic_bias_domain,
        float _photosensors_noise_stddev,
        std::string const& _category,
-       bool dummy)
-    : PhysicalObject(_id, _x, _y, geom, world_id,
+       bool _dummy)
+    : PhysicalObject(_id, _x, _y, geom,
       _linear_damping, _angular_damping,
       _density, _friction, _restitution, _category),
+    userdatasize(_userdatasize),
     communication_radius(_communication_radius), msg_success_rate(std::move(_msg_success_rate)),
     temporal_noise_stddev(_temporal_noise_stddev),
     max_linear_speed(_max_linear_speed), max_angular_speed(_max_angular_speed),
     linear_noise_stddev(_linear_noise_stddev), angular_noise_stddev(_angular_noise_stddev), rotate_LEDs_45_deg(_rotate_LEDs_45_deg),
+    dummy(_dummy),
     photosensors_noise_stddev(_photosensors_noise_stddev) {
-    data = malloc(_userdatasize);
-    initialize_time();
-    create_robot_body(world_id);
     initialize_photosensors_bias(photosensors_systematic_bias_domain);
     initialize_angular_bias(angular_systematic_bias_domain);
-    if (dummy) {
-        b2Body_Disable(body_id);
-    }
 }
 
 PogobotObject::PogobotObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-       b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+       size_t _userdatasize, Configuration const& config,
        std::string const& _category)
-    : PhysicalObject(simulation, _id, _x, _y, world_id, config, _category) {
+    : PhysicalObject(simulation, _id, _x, _y, config, _category),
+    userdatasize(_userdatasize) {
     parse_configuration(config, simulation);
-    data = malloc(_userdatasize);
+}
+
+void PogobotObject::do_init([[maybe_unused]] b2WorldId world_id) {
+    PhysicalObject::do_init(world_id);
+    data = malloc(userdatasize);
     initialize_time();
     create_robot_body(world_id);
+
+    if (dummy) {
+        b2Body_Disable(body_id);
+    }
 }
 
 void PogobotObject::parse_configuration(Configuration const& config, Simulation* simulation) {
@@ -668,10 +673,10 @@ void PogobotObject::sleep_µs(uint64_t microseconds) {
 }
 
 
-/************* Pogobot Objects *************/ // {{{1
+/************* Pogobject Objects *************/ // {{{1
 
 PogobjectObject::PogobjectObject(uint16_t _id, float _x, float _y,
-       ObjectGeometry& geom, b2WorldId world_id,
+       ObjectGeometry& geom,
        size_t _userdatasize,
        float _communication_radius,
        std::unique_ptr<MsgSuccessRate> _msg_success_rate,
@@ -679,19 +684,19 @@ PogobjectObject::PogobjectObject(uint16_t _id, float _x, float _y,
        float _linear_damping, float _angular_damping,
        float _density, float _friction, float _restitution,
        std::string const& _category)
-    : PogobotObject::PogobotObject(_id, _x, _y, geom, world_id,
+    : PogobotObject::PogobotObject(_id, _x, _y, geom,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
-      0.0f, 0.0f, 0.0f, 0.0f, false, {0,0}, {0,0}, 0.0f,  _category) {
-    for (size_t i = 0; i != motorB; i++)
-        set_motor(static_cast<motor_id>(i), 0);
-}
+      0.0f, 0.0f, 0.0f, 0.0f, false, {0,0}, {0,0}, 0.0f,  _category) { }
 
 PogobjectObject::PogobjectObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-       b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+       size_t _userdatasize, Configuration const& config,
        std::string const& _category)
-    : PogobotObject::PogobotObject(simulation, _id, _x, _y, world_id, _userdatasize, config, _category) {
+    : PogobotObject::PogobotObject(simulation, _id, _x, _y, _userdatasize, config, _category) { }
+
+void PogobjectObject::do_init([[maybe_unused]] b2WorldId world_id) {
+    PogobotObject::do_init(world_id);
     for (size_t i = 0; i != motorB; i++)
         set_motor(static_cast<motor_id>(i), 0);
 }
@@ -765,7 +770,7 @@ void PogobjectObject::render(SDL_Renderer* renderer, [[maybe_unused]] b2WorldId 
 /************* Pogowalls *************/ // {{{1
 
 Pogowall::Pogowall(uint16_t _id, float _x, float _y,
-       ObjectGeometry& _geom, b2WorldId world_id,
+       ObjectGeometry& _geom,
        size_t _userdatasize,
        float _communication_radius,
        std::unique_ptr<MsgSuccessRate> _msg_success_rate,
@@ -775,29 +780,30 @@ Pogowall::Pogowall(uint16_t _id, float _x, float _y,
        float _max_linear_speed, float _max_angular_speed,
        float _linear_noise_stddev, float _angular_noise_stddev,
        std::string const& _category)
-    : PogobotObject::PogobotObject(_id, _x, _y, _geom, world_id,
+    : PogobotObject::PogobotObject(_id, _x, _y, _geom,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
       _max_linear_speed, _max_angular_speed,
       _linear_noise_stddev, _angular_noise_stddev,
-      false, {0, 0}, {0, 0}, 0.0f, _category) {
-    auto bd = geom->compute_bounding_disk();
-    PhysicalObject::move(bd.center_x, bd.center_y);
-}
+      false, {0, 0}, {0, 0}, 0.0f, _category) { }
 
 Pogowall::Pogowall(Simulation* simulation, uint16_t _id, float _x, float _y,
-       b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+       size_t _userdatasize, Configuration const& config,
        std::string const& _category)
-    : PogobotObject::PogobotObject(simulation, _id, _x, _y, world_id, _userdatasize, config, _category) {
-    auto bd = geom->compute_bounding_disk();
-    PhysicalObject::move(bd.center_x, bd.center_y);
+    : PogobotObject::PogobotObject(simulation, _id, _x, _y, _userdatasize, config, _category) {
 
     if (dynamic_cast<ArenaGeometry*>(geom) != nullptr && simulation->get_boundary_condition() == boundary_condition_t::periodic) {
         // Arena geometry and periodic boundary condition. Disable pogowall by default
         glogger->warn("PogoWall: detected both an ArenaGeometry and periodic BC, disabling associated user program/user steps execution.");
         _enable_user_steps = false;
     }
+}
+
+void Pogowall::do_init([[maybe_unused]] b2WorldId world_id) {
+    PogobotObject::do_init(world_id);
+    auto bd = geom->compute_bounding_disk();
+    PhysicalObject::move(bd.center_x, bd.center_y);
 }
 
 b2Vec2 Pogowall::get_IR_emitter_position([[maybe_unused]] ir_direction dir) const {
@@ -812,7 +818,7 @@ float Pogowall::get_IR_emitter_angle([[maybe_unused]] ir_direction dir) const {
 /************* MembraneObject *************/ // {{{1
 
 MembraneObject::MembraneObject(uint16_t _id, float _x, float _y,
-       ObjectGeometry& geom, b2WorldId world_id,
+       ObjectGeometry& geom,
        size_t _userdatasize,
        float _communication_radius,
        std::unique_ptr<MsgSuccessRate> _msg_success_rate,
@@ -825,7 +831,7 @@ MembraneObject::MembraneObject(uint16_t _id, float _x, float _y,
        float _stiffness,
        std::string _colormap,
        std::string const& _category)
-    : Pogowall::Pogowall(_id, _x, _y, geom, world_id,
+    : Pogowall::Pogowall(_id, _x, _y, geom,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
@@ -833,20 +839,20 @@ MembraneObject::MembraneObject(uint16_t _id, float _x, float _y,
       _linear_noise_stddev, _angular_noise_stddev, _category),
       num_dots(_num_dots), dot_radius(_dot_radius), cross_span(_cross_span),
       stiffness(_stiffness),
-      colormap(_colormap) {
-    for (size_t i = 0; i != motorB; i++)
-        set_motor(static_cast<motor_id>(i), 0);
-    create_robot_body(world_id);
-}
+      colormap(_colormap) { }
 
 MembraneObject::MembraneObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-       b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+       size_t _userdatasize, Configuration const& config,
        std::string const& _category)
-    : Pogowall::Pogowall(simulation, _id, _x, _y, world_id, _userdatasize, config, _category) {
+    : Pogowall::Pogowall(simulation, _id, _x, _y, _userdatasize, config, _category) {
+    parse_configuration(config, simulation);
+}
+
+void MembraneObject::do_init([[maybe_unused]] b2WorldId world_id) {
+    Pogowall::do_init(world_id);
+    create_robot_body(world_id);
     for (size_t i = 0; i != motorB; i++)
         set_motor(static_cast<motor_id>(i), 0);
-    parse_configuration(config, simulation);
-    create_robot_body(world_id);
 }
 
 void MembraneObject::parse_configuration(Configuration const& config, Simulation* simulation) {
@@ -1065,7 +1071,7 @@ arena_polygons_t MembraneObject::generate_contours(std::size_t points_per_contou
 /************* ActiveObject *************/ // {{{1
 
 ActiveObject::ActiveObject(uint16_t _id, float _x, float _y,
-       ObjectGeometry& geom, b2WorldId world_id,
+       ObjectGeometry& geom,
        size_t _userdatasize,
        float _communication_radius,
        std::unique_ptr<MsgSuccessRate> _msg_success_rate,
@@ -1076,7 +1082,7 @@ ActiveObject::ActiveObject(uint16_t _id, float _x, float _y,
        float _linear_noise_stddev, float _angular_noise_stddev,
        std::string _colormap,
        std::string const& _category)
-    : PogobotObject::PogobotObject(_id, _x, _y, geom, world_id,
+    : PogobotObject::PogobotObject(_id, _x, _y, geom,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
@@ -1088,9 +1094,9 @@ ActiveObject::ActiveObject(uint16_t _id, float _x, float _y,
 }
 
 ActiveObject::ActiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-       b2WorldId world_id, size_t _userdatasize, Configuration const& config,
+       size_t _userdatasize, Configuration const& config,
        std::string const& _category)
-    : PogobotObject::PogobotObject(simulation, _id, _x, _y, world_id, _userdatasize, config, _category) {
+    : PogobotObject::PogobotObject(simulation, _id, _x, _y, _userdatasize, config, _category) {
     parse_configuration(config, simulation);
 }
 

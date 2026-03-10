@@ -54,7 +54,7 @@ arena_polygons_t Object::generate_contours(std::size_t points_per_contour) const
 /************* PhysicalObject *************/ // {{{1
 
 PhysicalObject::PhysicalObject(uint16_t _id, float _x, float _y,
-       ObjectGeometry& geom, b2WorldId world_id,
+       ObjectGeometry& geom,
        float _linear_damping, float _angular_damping,
        float _density, float _friction, float _restitution,
        std::string const& _category)
@@ -64,15 +64,16 @@ PhysicalObject::PhysicalObject(uint16_t _id, float _x, float _y,
       angular_damping(_angular_damping),
       density(_density),
       friction(_friction),
-      restitution(_restitution) {
-    create_body(world_id);
-}
+      restitution(_restitution) { }
 
 PhysicalObject::PhysicalObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-       b2WorldId world_id, Configuration const& config,
+       Configuration const& config,
        std::string const& _category)
     : Object(simulation, _x, _y, config, _category), id(_id) {
     parse_configuration(config, simulation);
+}
+
+void PhysicalObject::do_init([[maybe_unused]] b2WorldId world_id) {
     create_body(world_id);
 }
 
@@ -181,12 +182,12 @@ arena_polygons_t PhysicalObject::generate_contours(std::size_t points_per_contou
 /************* PassiveObject *************/ // {{{1
 
 PassiveObject::PassiveObject(uint16_t _id, float _x, float _y,
-       ObjectGeometry& geom, b2WorldId world_id,
+       ObjectGeometry& geom,
        float _linear_damping, float _angular_damping,
        float _density, float _friction, float _restitution,
        std::string _colormap,
        std::string const& _category)
-    : PhysicalObject(_id, _x, _y, geom, world_id,
+    : PhysicalObject(_id, _x, _y, geom,
       _linear_damping, _angular_damping,
       _density, _friction, _restitution, _category),
       colormap(_colormap) {
@@ -194,9 +195,9 @@ PassiveObject::PassiveObject(uint16_t _id, float _x, float _y,
 }
 
 PassiveObject::PassiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-       b2WorldId world_id, Configuration const& config,
+       Configuration const& config,
        std::string const& _category)
-    : PhysicalObject(simulation, _id, _x, _y, world_id, config, _category) {
+    : PhysicalObject(simulation, _id, _x, _y, config, _category) {
     parse_configuration(config, simulation);
     // ...
 }
@@ -249,30 +250,38 @@ Object* object_factory(Simulation* simulation, uint16_t id, float x, float y, b2
         res = new AlternatingDualRayOfLightObject(simulation, x, y, light_map, config, category);
 
     } else if (type == "passive_object") {
-        res = new PassiveObject(simulation, id, x, y, world_id, config, category);
+        res = new PassiveObject(simulation, id, x, y, config, category);
 
     } else if (type == "pogobot") {
-        res = new PogobotObject(simulation, id, x, y, world_id, userdatasize, config, category);
+        res = new PogobotObject(simulation, id, x, y, userdatasize, config, category);
 
     } else if (type == "pogobject") {
-        res = new PogobjectObject(simulation, id, x, y, world_id, userdatasize, config, category);
+        res = new PogobjectObject(simulation, id, x, y, userdatasize, config, category);
 
     } else if (type == "pogowall") {
         if (simulation->get_boundary_condition() == boundary_condition_t::periodic) {
             // Disable pogowall creation with periodic BC
             res = nullptr;
         } else {
-            res = new Pogowall(simulation, id, x, y, world_id, userdatasize, config, category);
+            res = new Pogowall(simulation, id, x, y, userdatasize, config, category);
         }
 
     } else if (type == "membrane") {
-        res = new MembraneObject(simulation, id, x, y, world_id, userdatasize, config, category);
+        res = new MembraneObject(simulation, id, x, y, userdatasize, config, category);
 
     } else if (type == "active_object") {
-        res = new ActiveObject(simulation, id, x, y, world_id, userdatasize, config, category);
+        res = new ActiveObject(simulation, id, x, y, userdatasize, config, category);
 
     } else {
         throw std::runtime_error("Unknown object type '" + type + "'.");
+    }
+
+    try {
+        res->init(world_id);
+    } catch (...) {
+        delete res;
+        glogger->error("Error while creating object type '{}'.", type);
+        throw std::runtime_error("Error while creating object type '" + type + "'.");
     }
 
     return res;

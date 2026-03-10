@@ -48,6 +48,25 @@ public:
 
 
     /**
+     * @brief Launch virtual function 'do_init' that will perform base initialization (e.g. create Box2D objects)
+     */
+    void init(b2WorldId world_id) {
+        if (initialized) {
+            throw std::runtime_error("Object::init() called twice.");
+        }
+        do_init(world_id);
+        initialized = true;
+    }
+
+    /**
+     * @brief Check if the object was correctly initialized yet
+     */
+    bool is_initialized() const noexcept {
+        return initialized;
+    }
+
+
+    /**
      * @brief Renders the object on the given SDL renderer.
      *
      * @param renderer Pointer to the SDL_Renderer.
@@ -104,6 +123,14 @@ public:
 
 protected:
     /**
+     * @brief Perform the base initialization (e.g. create Box2D objects).
+     *  Called once by `init(world_id)`.
+     *
+     * @param world_id The Box2D world identifier.
+     */
+    virtual void do_init([[maybe_unused]] b2WorldId world_id) { }
+
+    /**
      * @brief Parse a provided configuration and set associated members values.
      *
      * @param config Configuration entry describing the object properties.
@@ -111,6 +138,9 @@ protected:
     virtual void parse_configuration(Configuration const& config, Simulation* simulation);
 
     ObjectGeometry* geom;                ///< Geometry of the object.
+
+private:
+    bool initialized = false;
 };
 
 
@@ -128,7 +158,6 @@ public:
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
-     * @param world_id The Box2D world identifier.
      * @param _linear_damping Linear damping value for the physical body (default is 0.0f).
      * @param _angular_damping Angular damping value for the physical body (default is 0.0f).
      * @param _density Density of the body shape (default is 10.0f).
@@ -137,7 +166,7 @@ public:
      * @param category Name of the category of the object.
      */
     PhysicalObject(uint16_t _id, float _x, float _y,
-           ObjectGeometry& geom, b2WorldId world_id,
+           ObjectGeometry& geom,
            float _linear_damping = 0.0f, float _angular_damping = 0.0f,
            float _density = 10.0f, float _friction = 0.3f, float _restitution = 0.5f,
            std::string const& _category = "objects");
@@ -149,12 +178,11 @@ public:
      * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
-     * @param world_id The Box2D world identifier.
      * @param config Configuration entry describing the object properties.
      * @param category Name of the category of the object.
      */
     PhysicalObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-           b2WorldId world_id, Configuration const& config,
+           Configuration const& config,
            std::string const& _category = "objects");
 
     /**
@@ -236,6 +264,14 @@ public:
 
 protected:
     /**
+     * @brief Perform the base initialization (e.g. create Box2D objects).
+     *  Called once by `init(world_id)`.
+     *
+     * @param world_id The Box2D world identifier.
+     */
+    virtual void do_init([[maybe_unused]] b2WorldId world_id) override;
+
+    /**
      * @brief Parse a provided configuration and set associated members values.
      *
      * @param config Configuration entry describing the object properties.
@@ -282,7 +318,6 @@ public:
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
      * @param geom Object's geometry.
-     * @param world_id The Box2D world identifier.
      * @param _linear_damping Linear damping value for the physical body (default is 0.0f).
      * @param _angular_damping Angular damping value for the physical body (default is 0.0f).
      * @param _density Density of the body shape (default is 10.0f).
@@ -292,7 +327,7 @@ public:
      * @param category Name of the category of the object.
      */
     PassiveObject(uint16_t _id, float _x, float _y,
-           ObjectGeometry& geom, b2WorldId world_id,
+           ObjectGeometry& geom,
            float _linear_damping = 0.0f, float _angular_damping = 0.0f,
            float _density = 10.0f, float _friction = 0.3f, float _restitution = 0.5f,
            std::string _colormap = "rainbow",
@@ -305,12 +340,11 @@ public:
      * @param _id Unique object identifier.
      * @param x Initial x-coordinate in the simulation.
      * @param y Initial y-coordinate in the simulation.
-     * @param world_id The Box2D world identifier.
      * @param config Configuration entry describing the object properties.
      * @param category Name of the category of the object.
      */
     PassiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
-           b2WorldId world_id, Configuration const& config,
+           Configuration const& config,
            std::string const& _category = "objects");
 
     /**
