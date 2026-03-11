@@ -134,7 +134,12 @@ int main(int argc, char** argv) {
 
         // Launch simulation
         simulation->main_loop();
+
+        // Explicit destruction before late process teardown
+        simulation.reset();
     } catch (const std::exception& e) {
+        // Also destroy it on error if it was partially created
+        simulation.reset();
         std::cerr << "Error: " << e.what() << std::endl;
         return 2;
     }

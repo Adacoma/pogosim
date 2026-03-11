@@ -82,6 +82,11 @@ Simulation::Simulation(Configuration& _config)
 }
 
 Simulation::~Simulation() {
+    // Reset data logger so that it knows it must flush all buffers into feather files before the simulation object is destroyed
+    if (data_logger) {
+        data_logger.reset();
+    }
+
     // XXX Disable some free/destroy/quit functions, as they can crash with older versions of SDL2
     //FC_FreeFont(font);
     //TTF_Quit();

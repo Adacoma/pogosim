@@ -7,6 +7,7 @@
 #include <arrow/ipc/api.h>
 #include <arrow/util/compression.h>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 /**
@@ -15,26 +16,41 @@
  * This class allows dynamic creation of a schema by adding fields prior to opening the file.
  * Once the schema is defined, data rows can be built by setting individual column values and
  * saved row-by-row into a Feather file using Zstd compression.
+ *
+ * Internally, rows are buffered and written in larger record batches so that compression is
+ * applied on larger chunks of data, which significantly reduces file size and improves write
+ * performance compared with writing one record batch per row.
  */
 class DataLogger {
 public:
     /**
      * @brief Default constructor.
+     *
+     * Uses a default buffered batch size.
      */
     DataLogger() = default;
 
     /**
+     * @brief Constructor with explicit buffered batch size.
+     *
+     * @param flush_row_count Number of rows to buffer before writing a record batch.
+     *
+     * @throw std::runtime_error if flush_row_count is zero.
+     */
+    explicit DataLogger(int64_t flush_row_count);
+
+    /**
      * @brief Destructor.
      *
-     * Closes the Feather writer and the output file if they are open. Warnings are logged if either
-     * the writer or the file cannot be closed properly.
+     * Flushes any remaining buffered rows, then closes the Feather writer and the output file
+     * if they are open. Warnings are logged if flushing or closing fails.
      */
     virtual ~DataLogger();
 
     /**
      * @brief Adds arbitrary string metadata to be embedded in the Feather file.
      *
-     * This can be called any time **before** `open_file()`.  
+     * This can be called any time **before** `open_file()`.
      * If the same key is supplied more than once the value is overwritten.
      *
      * @param key   The metadata key (UTF-8, non-empty).
@@ -62,7 +78,8 @@ public:
      *
      * Constructs the schema from the added fields, attaches custom metadata (such as the program version),
      * ensures that the parent directory exists, and opens the file for writing. A Feather writer is then
-     * created with Zstd compression. The current row values are initialized.
+     * created with Zstd compression. Internal persistent builders are initialized, and the current row values
+     * are reset.
      *
      * @param filename The path to the file to be written.
      *
@@ -154,30 +171,38 @@ public:
      */
     void set_value(const std::string& column_name, bool value);
 
-
     /**
      * @brief Sets the value for a specified column in the current row.
      *
      * Not overloaded method (like set_value methods), to avoid automatic promotions to double
      *
      * @param column_name The name of the column.
-     * @param value The boolean value to set.
+     * @param value The float value to convert to Arrow float16 raw payload.
      *
      * @throw std::runtime_error if the file is not open or the column does not exist.
      */
     void set_value_float16(const std::string& column_name, float value);
 
-
     /**
      * @brief Saves the current row to the Feather file.
      *
-     * Constructs Arrow array builders for each column based on the field type, appends the current row's
-     * values (or nulls if missing), finalizes the arrays, and creates a record batch which is then written
-     * to the file. After writing, the row is reset to its default state.
+     * Appends the current row's values (or nulls if missing) to persistent Arrow array builders.
+     * Once enough rows have been accumulated, a record batch is finalized and written to the file.
+     * After appending, the row is reset to its default state.
      *
-     * @throw std::runtime_error if any step in appending data, finalizing arrays, or writing the record batch fails.
+     * @throw std::runtime_error if any step in appending data or writing the record batch fails.
      */
     void save_row();
+
+    /**
+     * @brief Flushes all currently buffered rows to the Feather file.
+     *
+     * If no rows are buffered, this is a no-op. This may be called manually, but is also called
+     * automatically by the destructor before closing the file.
+     *
+     * @throw std::runtime_error if finalizing arrays or writing the record batch fails.
+     */
+    void flush();
 
 private:
     // Store Arrow float16 values as their raw 16-bit representation
@@ -191,6 +216,8 @@ private:
     std::shared_ptr<arrow::io::OutputStream> outfile_;
     /// Feather writer for writing record batches.
     std::shared_ptr<arrow::ipc::RecordBatchWriter> writer_;
+    /// Persistent builders used to buffer multiple rows before writing.
+    std::vector<std::shared_ptr<arrow::ArrayBuilder>> builders_;
     /// Mapping from column names to their index positions in the schema.
     std::unordered_map<std::string, size_t> column_indices_;
     /// Current row values stored as a variant of supported types.
@@ -199,6 +226,10 @@ private:
     bool file_opened_ = false;
     /// Stores user-supplied metadata until the file is opened.
     std::unordered_map<std::string, std::string> user_metadata_;
+    /// Number of rows to buffer before flushing a record batch.
+    int64_t flush_row_count_ = 1024;
+    /// Number of rows currently accumulated in builders_.
+    int64_t buffered_row_count_ = 0;
 
     /**
      * @brief Checks if the specified column exists and if the file is open.
@@ -214,14 +245,31 @@ private:
     /**
      * @brief Resets the current row values to default.
      *
-     * Initializes all row values for each field to a default value (zero for numeric types).
+     * Clears all row values so that missing values in the next row are written as null.
      */
     void reset_row();
+
+    /**
+     * @brief Creates persistent builders matching the schema.
+     *
+     * Allocates one builder per field and reserves capacity according to the configured flush size.
+     *
+     * @throw std::runtime_error if an unsupported type is encountered.
+     */
+    void initialize_builders();
+
+    /**
+     * @brief Appends the current row to the persistent builders.
+     *
+     * For each field, appends either the current row value or a null if the value is missing.
+     *
+     * @throw std::runtime_error if an append operation fails.
+     */
+    void append_current_row_to_builders();
 
     // Convert float32 -> IEEE-754 half payload (16-bit)
     static half_float_t float_to_half_bits(float f);
 };
-
 
 #endif // DATA_LOGGER_H
 
