@@ -1145,8 +1145,8 @@ void RectMembraneObject::create_rect_membrane(b2WorldId world_id) {
             const float bx = (x + b_local.x) / VISUALIZATION_SCALE;
             const float by = (y + b_local.y) / VISUALIZATION_SCALE;
 
-            const b2Vec2 a_world = {ax, ay};
-            const b2Vec2 b_world = {bx, by};
+            //const b2Vec2 a_world = {ax, ay};
+            //const b2Vec2 b_world = {bx, by};
 
             const b2Vec2 center = {(ax + bx) * 0.5f, (ay + by) * 0.5f};
 
