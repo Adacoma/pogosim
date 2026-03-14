@@ -888,7 +888,6 @@ void Simulation::init_data_logger() {
     data_logger->add_metadata("arena_polygons", polygons_to_yaml(scaled_arena_polygons));
 
     // Init base schema
-    data_logger->add_field("time", arrow::float64());
     for (auto obj : phys_objects) {
         obj->create_serialization_fields(data_logger.get());
     }
@@ -1029,9 +1028,8 @@ void Simulation::export_data() {
                 continue;
         }
 
-        data_logger->set_value("time", t);
-        obj->serialize_base_values(data_logger.get());
-        data_logger->save_row();
+        obj->serialize_base_values(data_logger.get(), t);
+        //data_logger->save_row();
     }
 }
 

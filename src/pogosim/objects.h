@@ -107,7 +107,7 @@ public:
      *
      * @param data_logger Pointer to a DataLogger used to serialize base values
      */
-    virtual void serialize_base_values(DataLogger* data_logger);
+    virtual void serialize_base_values(DataLogger* data_logger, double t);
 
     /**
      * @brief Create serialization fields of the data logger
@@ -273,7 +273,7 @@ public:
      *
      * @param data_logger Pointer to a DataLogger used to serialize base values
      */
-    virtual void serialize_base_values(DataLogger* data_logger) override;
+    virtual void serialize_base_values(DataLogger* data_logger, double t) override;
 
     /**
      * @brief Return one or more polygonal contours that represent the geometry of the object.

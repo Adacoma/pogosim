@@ -125,6 +125,7 @@ objects:
         cross_span: 1           # Connect every i‑th neighbour to stiffen the sheet (if > 1)
 
         rect_thickness: 10
+        serialize_dot_pose: true    # Whether to include the X,Y coordinates of each dot/section of the membrane in exported feather files (default: false)
 
         communication_radius: 50.0  # The communication ratius of the membrane, in mm
         msg_success_rate:

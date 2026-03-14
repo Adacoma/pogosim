@@ -162,9 +162,9 @@ void PogobotObject::create_serialization_fields(DataLogger* data_logger) {
     data_logger->add_field("pogobot_ticks", arrow::int64(), true);
 }
 
-void PogobotObject::serialize_base_values(DataLogger* data_logger) {
-    PhysicalObject::serialize_base_values(data_logger);
+void PogobotObject::serialize_base_values(DataLogger* data_logger, double t) {
     data_logger->set_value("pogobot_ticks", (int64_t) pogobot_ticks);
+    PhysicalObject::serialize_base_values(data_logger, t);
 }
 
 
@@ -841,6 +841,7 @@ MembraneObject::MembraneObject(uint16_t _id, float _x, float _y,
        float _linear_noise_stddev, float _angular_noise_stddev,
        unsigned int _num_dots, float _dot_radius, int _cross_span,
        float _stiffness,
+       bool _serialize_dot_pose,
        std::string _colormap,
        std::string const& _category)
     : Pogowall::Pogowall(_id, _x, _y, geom,
@@ -851,6 +852,7 @@ MembraneObject::MembraneObject(uint16_t _id, float _x, float _y,
       _linear_noise_stddev, _angular_noise_stddev, _category),
       num_dots(_num_dots), dot_radius(_dot_radius), cross_span(_cross_span),
       stiffness(_stiffness),
+      serialize_dot_pose(_serialize_dot_pose),
       colormap(_colormap) { }
 
 MembraneObject::MembraneObject(Simulation* simulation, uint16_t _id, float _x, float _y,
@@ -873,7 +875,36 @@ void MembraneObject::parse_configuration(Configuration const& config, Simulation
     dot_radius = config["dot_radius"].get(10.0f);
     cross_span = config["cross_span"].get(3);
     stiffness = config["stiffness"].get(30.0f);
+    serialize_dot_pose = config["serialize_dot_pose"].get(false);
     colormap = config["colormap"].get(std::string("rainbow"));
+}
+
+
+void MembraneObject::create_serialization_fields(DataLogger* data_logger) {
+    Pogowall::create_serialization_fields(data_logger);
+    if (!serialize_dot_pose)
+        return;
+    data_logger->add_field("subpart_id", arrow::int32(), true);
+}
+
+void MembraneObject::serialize_base_values(DataLogger* data_logger, double t) {
+    // Serialize the base membrane object
+    Pogowall::serialize_base_values(data_logger, t);
+
+    // Now serialize each dot, if needed
+    if (!serialize_dot_pose)
+        return;
+
+    for (size_t i = 0; i < dots.size(); ++i) {
+        b2Vec2 p = b2Body_GetPosition(dots[i].body_id);
+        data_logger->set_value("subpart_id", (int32_t) i);
+        data_logger->set_value("robot_id", (int32_t) id);
+        data_logger->set_value("x", p.x * VISUALIZATION_SCALE);
+        data_logger->set_value("y", p.y * VISUALIZATION_SCALE);
+        data_logger->set_value("angle", NAN);
+        data_logger->set_value("pogobot_ticks", (int64_t) pogobot_ticks);
+        Object::serialize_base_values(data_logger, t);
+    }
 }
 
 
@@ -1094,6 +1125,7 @@ RectMembraneObject::RectMembraneObject(uint16_t _id, float _x, float _y,
     float _rect_thickness,
     int _cross_span,
     float _stiffness,
+    bool _serialize_dot_pose,
     std::string _colormap,
     std::string const& _category)
     : MembraneObject(_id, _x, _y, geom,
@@ -1103,7 +1135,7 @@ RectMembraneObject::RectMembraneObject(uint16_t _id, float _x, float _y,
           _max_linear_speed, _max_angular_speed,
           _linear_noise_stddev, _angular_noise_stddev,
           _num_dots, _rect_thickness, _cross_span,
-          _stiffness, _colormap, _category),
+          _stiffness, _serialize_dot_pose, _colormap, _category),
       rect_thickness(_rect_thickness) { }
 
 RectMembraneObject::RectMembraneObject(Simulation* simulation, uint16_t _id, float _x, float _y,
@@ -1125,6 +1157,26 @@ void RectMembraneObject::do_init(b2WorldId world_id) {
 
     for (size_t i = 0; i != motorB; i++) {
         set_motor(static_cast<motor_id>(i), 0);
+    }
+}
+
+void RectMembraneObject::serialize_base_values(DataLogger* data_logger, double t) {
+    // Serialize the base membrane object
+    Pogowall::serialize_base_values(data_logger, t);
+
+    // Now serialize each section, if needed
+    if (!serialize_dot_pose)
+        return;
+
+    for (size_t i = 0; i < rects.size(); ++i) {
+        b2Vec2 p = b2Body_GetPosition(rects[i].body_id);
+        data_logger->set_value("subpart_id", (int32_t) i);
+        data_logger->set_value("robot_id", (int32_t) id);
+        data_logger->set_value("x", p.x * VISUALIZATION_SCALE);
+        data_logger->set_value("y", p.y * VISUALIZATION_SCALE);
+        data_logger->set_value("angle", NAN);
+        data_logger->set_value("pogobot_ticks", (int64_t) pogobot_ticks);
+        Object::serialize_base_values(data_logger, t);
     }
 }
 

@@ -46,11 +46,14 @@ void Object::move(float _x, float _y, float _theta) {
 }
 
 void Object::create_serialization_fields(DataLogger* data_logger) {
+    data_logger->add_field("time", arrow::float64(), true);
     data_logger->add_field("robot_category", arrow::utf8(), true);
 }
 
-void Object::serialize_base_values(DataLogger* data_logger) {
+void Object::serialize_base_values(DataLogger* data_logger, double t) {
+    data_logger->set_value("time", t);
     data_logger->set_value("robot_category", category);
+    data_logger->save_row();
 }
 
 arena_polygons_t Object::generate_contours(std::size_t points_per_contour) const {
@@ -190,8 +193,7 @@ void PhysicalObject::create_serialization_fields(DataLogger* data_logger) {
     data_logger->add_field("angle", arrow::float64(), true);
 }
 
-void PhysicalObject::serialize_base_values(DataLogger* data_logger) {
-    Object::serialize_base_values(data_logger);
+void PhysicalObject::serialize_base_values(DataLogger* data_logger, double t) {
     data_logger->set_value("robot_id", (int32_t) id);
     auto const pos = get_position();
     if (is_tangible()) {
@@ -203,6 +205,7 @@ void PhysicalObject::serialize_base_values(DataLogger* data_logger) {
         data_logger->set_value("y", NAN);
         data_logger->set_value("angle", NAN);
     }
+    Object::serialize_base_values(data_logger, t);
 }
 
 arena_polygons_t PhysicalObject::generate_contours(std::size_t points_per_contour) const {

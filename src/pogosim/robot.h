@@ -211,7 +211,7 @@ public:
      *
      * @param data_logger Pointer to a DataLogger used to serialize base values
      */
-    virtual void serialize_base_values(DataLogger* data_logger) override;
+    virtual void serialize_base_values(DataLogger* data_logger, double t) override;
 
 
 
@@ -723,6 +723,7 @@ public:
            float _linear_noise_stddev = 0.0f, float _angular_noise_stddev = 0.0f,
            unsigned int _num_dots = 100, float _dot_radius = 10.0f, int _cross_span = 3,
            float _stiffness = 30.f,
+           bool _serialize_dot_pose = false,
            std::string _colormap = "rainbow",
            std::string const& _category = "robots");
 
@@ -739,6 +740,20 @@ public:
     MembraneObject(Simulation* simulation, uint16_t _id, float _x, float _y,
            size_t _userdatasize, Configuration const& config,
            std::string const& _category = "robots");
+
+    /**
+     * @brief Create serialization fields of the data logger
+     *
+     * @param data_logger Pointer to a DataLogger used for serialization
+     */
+    virtual void create_serialization_fields(DataLogger* data_logger) override;
+
+    /**
+     * @brief Save base values of the object into a data logger row.
+     *
+     * @param data_logger Pointer to a DataLogger used to serialize base values
+     */
+    virtual void serialize_base_values(DataLogger* data_logger, double t) override;
 
     /**
      * @brief Updates the motor speed of the robot and recalculates its velocities.
@@ -832,6 +847,7 @@ protected:
     float dot_radius;
     int cross_span;
     float stiffness;
+    bool serialize_dot_pose;
     std::string colormap;
     std::vector<Dot> dots;
     std::vector<Joint> joints;
@@ -864,12 +880,20 @@ public:
         float _rect_thickness = 10.0f,
         int _cross_span = 3,
         float _stiffness = 30.0f,
+        bool _serialize_dot_pose = false,
         std::string _colormap = "rainbow",
         std::string const& _category = "robots");
 
     RectMembraneObject(Simulation* simulation, uint16_t _id, float _x, float _y,
         size_t _userdatasize, Configuration const& config,
         std::string const& _category = "robots");
+
+    /**
+     * @brief Save base values of the object into a data logger row.
+     *
+     * @param data_logger Pointer to a DataLogger used to serialize base values
+     */
+    virtual void serialize_base_values(DataLogger* data_logger, double t) override;
 
     virtual b2Vec2 get_position() const override;
     virtual void render(SDL_Renderer* renderer, b2WorldId world_id) const override;
