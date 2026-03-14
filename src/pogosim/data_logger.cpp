@@ -109,11 +109,13 @@ void DataLogger::add_metadata(const std::string& key, const std::string& value) 
 }
 
 // Add fields dynamically before opening the file
-void DataLogger::add_field(const std::string& name, std::shared_ptr<arrow::DataType> type) {
+void DataLogger::add_field(const std::string& name, std::shared_ptr<arrow::DataType> type, bool ignore_existing_name) {
     if (file_opened_) {
         throw std::runtime_error("Cannot add fields after the file has been opened.");
     }
     if (column_indices_.find(name) != column_indices_.end()) {
+        if (ignore_existing_name)
+            return;
         throw std::runtime_error("Field '" + name + "' already exists in the schema.");
     }
     fields_.push_back(arrow::field(name, type));

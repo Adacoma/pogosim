@@ -68,10 +68,12 @@ public:
      *
      * @param name The name of the field.
      * @param type The Arrow data type for the field.
+     * @param ignore_existing_name Whether to ignore an existing field with the same name. If False, throw std::runtime_error.
      *
      * @throw std::runtime_error if called after the file has been opened.
+     * @throw std::runtime_error if ignore_existing_name==false and field name already exists
      */
-    void add_field(const std::string& name, std::shared_ptr<arrow::DataType> type);
+    void add_field(const std::string& name, std::shared_ptr<arrow::DataType> type, bool ignore_existing_name = false);
 
     /**
      * @brief Opens the output file for writing.

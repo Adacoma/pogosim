@@ -157,6 +157,18 @@ void PogobotObject::parse_configuration(Configuration const& config, Simulation*
 }
 
 
+void PogobotObject::create_serialization_fields(DataLogger* data_logger) {
+    PhysicalObject::create_serialization_fields(data_logger);
+    data_logger->add_field("pogobot_ticks", arrow::int64(), true);
+}
+
+void PogobotObject::serialize_base_values(DataLogger* data_logger) {
+    PhysicalObject::serialize_base_values(data_logger);
+    data_logger->set_value("pogobot_ticks", (int64_t) pogobot_ticks);
+}
+
+
+
 void PogobotObject::initialize_photosensors_bias(std::pair<int16_t, int16_t>& domain) {
     if (domain.first == 0 && domain.second == 0) {
         photosensors_biases = {0, 0, 0};

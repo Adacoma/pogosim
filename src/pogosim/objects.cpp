@@ -45,6 +45,14 @@ void Object::move(float _x, float _y, float _theta) {
         theta = _theta;
 }
 
+void Object::create_serialization_fields(DataLogger* data_logger) {
+    data_logger->add_field("robot_category", arrow::utf8(), true);
+}
+
+void Object::serialize_base_values(DataLogger* data_logger) {
+    data_logger->set_value("robot_category", category);
+}
+
 arena_polygons_t Object::generate_contours(std::size_t points_per_contour) const {
     return geom->generate_contours(points_per_contour, {x, y});
 }
@@ -170,6 +178,30 @@ void PhysicalObject::move(float _x, float _y, float _theta) {
             rotation = b2Body_GetRotation(body_id);
         }
         b2Body_SetTransform(body_id, position, rotation);
+    }
+}
+
+
+void PhysicalObject::create_serialization_fields(DataLogger* data_logger) {
+    Object::create_serialization_fields(data_logger);
+    data_logger->add_field("robot_id", arrow::int32(), true);
+    data_logger->add_field("x", arrow::float64(), true);
+    data_logger->add_field("y", arrow::float64(), true);
+    data_logger->add_field("angle", arrow::float64(), true);
+}
+
+void PhysicalObject::serialize_base_values(DataLogger* data_logger) {
+    Object::serialize_base_values(data_logger);
+    data_logger->set_value("robot_id", (int32_t) id);
+    auto const pos = get_position();
+    if (is_tangible()) {
+        data_logger->set_value("x", pos.x * VISUALIZATION_SCALE);
+        data_logger->set_value("y", pos.y * VISUALIZATION_SCALE);
+        data_logger->set_value("angle", get_angle());
+    } else {
+        data_logger->set_value("x", NAN);
+        data_logger->set_value("y", NAN);
+        data_logger->set_value("angle", NAN);
     }
 }
 

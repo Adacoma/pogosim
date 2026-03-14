@@ -7,7 +7,9 @@
 #include "configuration.h"
 #include "render.h"
 #include "colormaps.h"
+#include "geometry.h"
 #include "objects_geometry.h"
+#include "data_logger.h"
 
 
 class Simulation;
@@ -99,6 +101,20 @@ public:
      * @brief Returns whether this object is tangible (e.g. collisions, etc) or not.
      */
     virtual bool is_tangible() const { return false; };
+
+    /**
+     * @brief Save base values of the object into a data logger row.
+     *
+     * @param data_logger Pointer to a DataLogger used to serialize base values
+     */
+    virtual void serialize_base_values(DataLogger* data_logger);
+
+    /**
+     * @brief Create serialization fields of the data logger
+     *
+     * @param data_logger Pointer to a DataLogger used for serialization
+     */
+    virtual void create_serialization_fields(DataLogger* data_logger);
 
     /**
      * @brief Return one or more polygonal contours that represent the geometry of the object.
@@ -244,6 +260,20 @@ public:
      * @brief Returns whether this object is tangible (e.g. collisions, etc) or not.
      */
     virtual bool is_tangible() const override { return true; };
+
+    /**
+     * @brief Create serialization fields of the data logger
+     *
+     * @param data_logger Pointer to a DataLogger used for serialization
+     */
+    virtual void create_serialization_fields(DataLogger* data_logger) override;
+
+    /**
+     * @brief Save base values of the object into a data logger row.
+     *
+     * @param data_logger Pointer to a DataLogger used to serialize base values
+     */
+    virtual void serialize_base_values(DataLogger* data_logger) override;
 
     /**
      * @brief Return one or more polygonal contours that represent the geometry of the object.

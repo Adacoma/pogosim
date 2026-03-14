@@ -889,12 +889,9 @@ void Simulation::init_data_logger() {
 
     // Init base schema
     data_logger->add_field("time", arrow::float64());
-    data_logger->add_field("robot_category", arrow::utf8());
-    data_logger->add_field("robot_id", arrow::int32());
-    data_logger->add_field("pogobot_ticks", arrow::int64());
-    data_logger->add_field("x", arrow::float64());
-    data_logger->add_field("y", arrow::float64());
-    data_logger->add_field("angle", arrow::float64());
+    for (auto obj : phys_objects) {
+        obj->create_serialization_fields(data_logger.get());
+    }
 
     // Init user-defined schema
     if (robots.size() > 0 && callback_create_data_schema != nullptr) {
@@ -1024,9 +1021,6 @@ void Simulation::export_data() {
     for (auto obj : phys_objects) {
         // User-defined values
         if (auto robot = std::dynamic_pointer_cast<PogobotObject>(obj)) {
-            // For robots
-            data_logger->set_value("pogobot_ticks", (int64_t) robot->pogobot_ticks);
-
             if (robot->callback_export_data != nullptr) {
                 set_current_robot(*robot.get());
                 robot->callback_export_data();
@@ -1036,19 +1030,7 @@ void Simulation::export_data() {
         }
 
         data_logger->set_value("time", t);
-        data_logger->set_value("robot_category", obj->category);
-        data_logger->set_value("robot_id", (int32_t) obj->id);
-        auto const pos = obj->get_position();
-        if (obj->is_tangible()) {
-            data_logger->set_value("x", pos.x * VISUALIZATION_SCALE);
-            data_logger->set_value("y", pos.y * VISUALIZATION_SCALE);
-            data_logger->set_value("angle", obj->get_angle());
-        } else {
-            data_logger->set_value("x", NAN);
-            data_logger->set_value("y", NAN);
-            data_logger->set_value("angle", NAN);
-        }
-
+        obj->serialize_base_values(data_logger.get());
         data_logger->save_row();
     }
 }

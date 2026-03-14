@@ -199,6 +199,21 @@ public:
            size_t _userdatasize, Configuration const& config,
            std::string const& _category = "robots");
 
+    /**
+     * @brief Create serialization fields of the data logger
+     *
+     * @param data_logger Pointer to a DataLogger used for serialization
+     */
+    virtual void create_serialization_fields(DataLogger* data_logger) override;
+
+    /**
+     * @brief Save base values of the object into a data logger row.
+     *
+     * @param data_logger Pointer to a DataLogger used to serialize base values
+     */
+    virtual void serialize_base_values(DataLogger* data_logger) override;
+
+
 
     //virtual ~Robot();
 
