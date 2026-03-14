@@ -270,7 +270,7 @@ save_data_period: 1.0       # In s          # Save data every 1.0 second
 
 The data is stored as an Apache Arrow Feather file, a standard and convenient format to store large dataframes.
 As such, it can easily be imported in Python by using Pandas:
-```yaml
+```python
 import pandas as pd
 df = pd.read_feather("frames/data.feather")
 print(df)
@@ -289,6 +289,30 @@ print(df)
 1427  14.13         robots        99            883  9.031286  1.299344   -0.168437  
 
 [1428 rows x 7 columns]
+```
+
+Or alternatively, using the "pogosim" python package:
+```python
+import pogosim.utils as pu
+df, meta = pu.load_dataframe("frames/data.feather")
+print(df)
+
+       time robot_category  robot_id  pogobot_ticks         x         y       angle  
+0      1.00          walls     65535             63  5.001000  5.001000    0.000000  
+1      1.00      membranes     65534             63  6.824879  4.867349         NaN  
+2      1.00         robots         0             63  4.038734  0.959281    1.953128  
+3      1.00         robots         1             63  1.023770  8.115510    1.303922  
+4      1.00         robots         2             63  1.965905  3.455247   -2.005039  
+...     ...            ...       ...            ...       ...       ...         ...  
+1423  14.13         robots        95            884  0.654096  9.729611   -0.386542  
+1424  14.13         robots        96            884  8.011082  6.353422    1.812981  
+1425  14.13         robots        97            884  4.807075  7.854455    1.177420  
+1426  14.13         robots        98            884  4.021065  9.730083    1.626796  
+1427  14.13         robots        99            883  9.031286  1.299344   -0.168437  
+
+[1428 rows x 7 columns]
+
+# "meta" (metadata) contains a dict with the program version, the arena polygons and the YAML configuration used.
 ```
 
 Custom columns can be added into this file by using the callback mechanism. See examples "blooming" (simple) and "ssr" (complex) for more information.
