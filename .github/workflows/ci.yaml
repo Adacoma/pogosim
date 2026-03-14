@@ -192,12 +192,12 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           source .venv/bin/activate
-          ./examples/hanabi/hanabi -c conf/pair.yaml -g -nr
+          ./examples/blooming/blooming -c conf/pair.yaml -g -nr
           ./examples/IMU/IMU -c conf/pair.yaml -g -nr
           ./examples/neighbor_counter/neighbor_counter -c conf/pair.yaml -g -nr
           ./examples/walls/walls -c conf/pair.yaml -g -nr
           ./examples/cpp_helloworld/cpp_helloworld -c conf/pair.yaml -g -nr
-          ./scripts/pogosim/pogobatch.py -c conf/pair.yaml -S examples/hanabi/hanabi -r 1 -t tmp -o results/tmp
+          ./scripts/pogosim/pogobatch.py -c conf/pair.yaml -S examples/blooming/blooming -r 1 -t tmp -o results/tmp
           cd template_prj && make clean sim && ./template_prj -c conf/test.yaml -g -nr && cd ..
 
       # Step 4: Run tests
@@ -209,12 +209,12 @@ jobs:
           REPO="$(wslpath -u '${{ github.workspace }}')"
           cd "$REPO"
           source .venv/bin/activate
-          ./examples/hanabi/hanabi -c conf/pair.yaml -g -nr
+          ./examples/blooming/blooming -c conf/pair.yaml -g -nr
           ./examples/IMU/IMU -c conf/pair.yaml -g -nr
           ./examples/neighbor_counter/neighbor_counter -c conf/pair.yaml -g -nr
           ./examples/walls/walls -c conf/pair.yaml -g -nr
           ./examples/cpp_helloworld/cpp_helloworld -c conf/pair.yaml -g -nr
-          python ./scripts/pogosim/pogobatch.py -c conf/pair.yaml -S examples/hanabi/hanabi -r 1 -t tmp -o results/tmp
+          python ./scripts/pogosim/pogobatch.py -c conf/pair.yaml -S examples/blooming/blooming -r 1 -t tmp -o results/tmp
           cd template_prj && make clean sim && ./template_prj -c conf/test.yaml -g -nr && cd ..
 
 #      # Step 4: Run tests
