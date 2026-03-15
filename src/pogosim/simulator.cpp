@@ -220,12 +220,9 @@ void Simulation::create_objects() {
             points = generate_random_points_layered(initial_formation_boundaries, objects_radii, formation_attempts_per_point, formation_max_restarts);
             std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "disk") {
-            glogger->info("DEBUG1 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
             if (isnan(formation_center_vec.x) || isnan(formation_center_vec.y)) {
-            glogger->info("DEBUG2 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
                 points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii);
             } else {
-            glogger->info("DEBUG3 formation_center_vec {}, {}", formation_center_vec.x, formation_center_vec.y);
                 points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii, formation_center_vec);
             }
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
