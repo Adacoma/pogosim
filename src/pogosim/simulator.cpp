@@ -499,6 +499,8 @@ void Simulation::init_config() {
     enable_gui = config["GUI"].get(true);
     GUI_speed_up = config["GUI_speed_up"].get(1.0f);
 
+    data_logger_flush_row_count = config["data_logger_flush_row_count"].get(8192);
+
     std::srand(std::time(nullptr));
 }
 
@@ -876,7 +878,7 @@ void Simulation::init_data_logger() {
         throw std::runtime_error("'enable_data_logging' is set to true, but 'data_filename' is empty.");
     }
 
-    data_logger = std::make_unique<DataLogger>();
+    data_logger = std::make_unique<DataLogger>(data_logger_flush_row_count);
 
     // Save configuration as metadata
     data_logger->add_metadata("configuration", config.summary());

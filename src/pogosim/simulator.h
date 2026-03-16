@@ -119,6 +119,7 @@ class Simulation {
     // Data logger
     bool enable_data_logging;                ///< Flag to enable data logging.
     std::unique_ptr<DataLogger> data_logger; ///< DataLogger instance.
+    uint64_t data_logger_flush_row_count;    ///< Number of rows to buffer before writing a record batch with the data logger.
 
     // Dummy robot used as current robot in the global_step callback
     std::unique_ptr<PogobotObject> dummy_global_robot;
