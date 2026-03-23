@@ -499,7 +499,7 @@ void Simulation::init_config() {
     enable_gui = config["GUI"].get(true);
     GUI_speed_up = config["GUI_speed_up"].get(1.0f);
 
-    data_logger_flush_row_count = config["data_logger_flush_row_count"].get(8192);
+    data_logger_flush_row_count = config["data_logger_flush_row_count"].get(1048576);
 
     std::srand(std::time(nullptr));
 }
