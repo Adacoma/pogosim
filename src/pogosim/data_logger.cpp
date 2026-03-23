@@ -192,6 +192,11 @@ void DataLogger::set_value(const std::string& column_name, int8_t value) {
     row_values_[column_name] = value;
 }
 
+void DataLogger::set_value(const std::string& column_name, float value) {
+    check_column(column_name);
+    row_values_[column_name] = value;
+}
+
 void DataLogger::set_value(const std::string& column_name, double value) {
     check_column(column_name);
     row_values_[column_name] = value;
@@ -281,6 +286,15 @@ void DataLogger::flush() {
     buffered_row_count_ = 0;
 }
 
+bool DataLogger::column_exists(const std::string& column_name) {
+    return column_indices_.find(column_name) != column_indices_.end();
+}
+
+bool DataLogger::column_value_already_set(const std::string& column_name) {
+    check_column(column_name);
+    return row_values_.find(column_name) != row_values_.end();
+}
+
 void DataLogger::check_column(const std::string& column_name) {
     if (!file_opened_) {
         throw std::runtime_error("File must be opened before setting values.");
@@ -320,6 +334,11 @@ void DataLogger::initialize_builders() {
             builders_[i] = std::make_shared<arrow::Int8Builder>();
             if (!std::static_pointer_cast<arrow::Int8Builder>(builders_[i])->Reserve(flush_row_count_).ok()) {
                 throw std::runtime_error("Failed to reserve INT8 builder capacity.");
+            }
+        } else if (field_type->id() == arrow::Type::FLOAT) {
+            builders_[i] = std::make_shared<arrow::FloatBuilder>();
+            if (!std::static_pointer_cast<arrow::FloatBuilder>(builders_[i])->Reserve(flush_row_count_).ok()) {
+                throw std::runtime_error("Failed to reserve FLOAT builder capacity.");
             }
         } else if (field_type->id() == arrow::Type::DOUBLE) {
             builders_[i] = std::make_shared<arrow::DoubleBuilder>();
@@ -364,6 +383,8 @@ void DataLogger::append_current_row_to_builders() {
                 status = std::static_pointer_cast<arrow::Int16Builder>(builders_[i])->AppendNull();
             } else if (field_type->id() == arrow::Type::INT8) {
                 status = std::static_pointer_cast<arrow::Int8Builder>(builders_[i])->AppendNull();
+            } else if (field_type->id() == arrow::Type::FLOAT) {
+                status = std::static_pointer_cast<arrow::FloatBuilder>(builders_[i])->AppendNull();
             } else if (field_type->id() == arrow::Type::DOUBLE) {
                 status = std::static_pointer_cast<arrow::DoubleBuilder>(builders_[i])->AppendNull();
             } else if (field_type->id() == arrow::Type::STRING) {
@@ -392,6 +413,10 @@ void DataLogger::append_current_row_to_builders() {
             } else if (field_type->id() == arrow::Type::INT8) {
                 status = std::static_pointer_cast<arrow::Int8Builder>(builders_[i])->Append(
                     std::get<int8_t>(row_values_[field_name])
+                );
+            } else if (field_type->id() == arrow::Type::FLOAT) {
+                status = std::static_pointer_cast<arrow::FloatBuilder>(builders_[i])->Append(
+                    std::get<float>(row_values_[field_name])
                 );
             } else if (field_type->id() == arrow::Type::DOUBLE) {
                 status = std::static_pointer_cast<arrow::DoubleBuilder>(builders_[i])->Append(

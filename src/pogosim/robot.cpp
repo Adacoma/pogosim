@@ -884,7 +884,7 @@ void MembraneObject::create_serialization_fields(DataLogger* data_logger) {
     Pogowall::create_serialization_fields(data_logger);
     if (!serialize_dot_pose)
         return;
-    data_logger->add_field("subpart_id", arrow::int32(), true);
+    data_logger->add_field("subpart_id", arrow::int16(), true);
 }
 
 void MembraneObject::serialize_base_values(DataLogger* data_logger, double t) {
@@ -897,7 +897,7 @@ void MembraneObject::serialize_base_values(DataLogger* data_logger, double t) {
 
     for (size_t i = 0; i < dots.size(); ++i) {
         b2Vec2 p = b2Body_GetPosition(dots[i].body_id);
-        data_logger->set_value("subpart_id", (int32_t) i);
+        data_logger->set_value("subpart_id", (int16_t) i);
         data_logger->set_value("robot_id", (int32_t) id);
         data_logger->set_value("x", p.x * VISUALIZATION_SCALE);
         data_logger->set_value("y", p.y * VISUALIZATION_SCALE);
@@ -1170,7 +1170,7 @@ void RectMembraneObject::serialize_base_values(DataLogger* data_logger, double t
 
     for (size_t i = 0; i < rects.size(); ++i) {
         b2Vec2 p = b2Body_GetPosition(rects[i].body_id);
-        data_logger->set_value("subpart_id", (int32_t) i);
+        data_logger->set_value("subpart_id", (int16_t) i);
         data_logger->set_value("robot_id", (int32_t) id);
         data_logger->set_value("x", p.x * VISUALIZATION_SCALE);
         data_logger->set_value("y", p.y * VISUALIZATION_SCALE);

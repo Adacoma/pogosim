@@ -46,13 +46,19 @@ void Object::move(float _x, float _y, float _theta) {
 }
 
 void Object::create_serialization_fields(DataLogger* data_logger) {
-    data_logger->add_field("time", arrow::float64(), true);
+    data_logger->add_field("time", arrow::float32(), true);
     data_logger->add_field("robot_category", arrow::utf8(), true);
 }
 
 void Object::serialize_base_values(DataLogger* data_logger, double t) {
-    data_logger->set_value("time", t);
+    data_logger->set_value("time", (float)t);
     data_logger->set_value("robot_category", category);
+
+    // If subpart_id is a column ensure it has a default value
+    if (data_logger->column_exists("subpart_id") && !data_logger->column_value_already_set("subpart_id")) {
+        data_logger->set_value("subpart_id", (int16_t) -1);
+    }
+
     data_logger->save_row();
 }
 
@@ -188,18 +194,18 @@ void PhysicalObject::move(float _x, float _y, float _theta) {
 void PhysicalObject::create_serialization_fields(DataLogger* data_logger) {
     Object::create_serialization_fields(data_logger);
     data_logger->add_field("robot_id", arrow::int32(), true);
-    data_logger->add_field("x", arrow::float64(), true);
-    data_logger->add_field("y", arrow::float64(), true);
-    data_logger->add_field("angle", arrow::float64(), true);
+    data_logger->add_field("x", arrow::float32(), true);
+    data_logger->add_field("y", arrow::float32(), true);
+    data_logger->add_field("angle", arrow::float32(), true);
 }
 
 void PhysicalObject::serialize_base_values(DataLogger* data_logger, double t) {
     data_logger->set_value("robot_id", (int32_t) id);
     auto const pos = get_position();
     if (is_tangible()) {
-        data_logger->set_value("x", pos.x * VISUALIZATION_SCALE);
-        data_logger->set_value("y", pos.y * VISUALIZATION_SCALE);
-        data_logger->set_value("angle", get_angle());
+        data_logger->set_value("x", (float)pos.x * VISUALIZATION_SCALE);
+        data_logger->set_value("y", (float)pos.y * VISUALIZATION_SCALE);
+        data_logger->set_value("angle", (float)get_angle());
     } else {
         data_logger->set_value("x", NAN);
         data_logger->set_value("y", NAN);

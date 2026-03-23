@@ -48,6 +48,25 @@ public:
     virtual ~DataLogger();
 
     /**
+     * @brief Checks if the specified column exists
+     *
+     * @param column_name The name of the column to check.
+     *
+     * @return whether the column exists
+     */
+    bool column_exists(const std::string& column_name);
+
+    /**
+     * @brief Checks if the specified column value has been set for the current row
+     *
+     * @param column_name The name of the column to check.
+     *
+     * @return whether the column value has been set for the current row
+     * @throw std::runtime_error if the file is not open or the column does not exist.
+     */
+    bool column_value_already_set(const std::string& column_name);
+
+    /**
      * @brief Adds arbitrary string metadata to be embedded in the Feather file.
      *
      * This can be called any time **before** `open_file()`.
@@ -152,6 +171,18 @@ public:
     /**
      * @brief Sets the value for a specified column in the current row.
      *
+     * Overloaded method for float values.
+     *
+     * @param column_name The name of the column.
+     * @param value The float value to set.
+     *
+     * @throw std::runtime_error if the file is not open or the column does not exist.
+     */
+    void set_value(const std::string& column_name, float value);
+
+    /**
+     * @brief Sets the value for a specified column in the current row.
+     *
      * Overloaded method for string values.
      *
      * @param column_name The name of the column.
@@ -223,7 +254,7 @@ private:
     /// Mapping from column names to their index positions in the schema.
     std::unordered_map<std::string, size_t> column_indices_;
     /// Current row values stored as a variant of supported types.
-    std::unordered_map<std::string, std::variant<int64_t, int32_t, int16_t, int8_t, double, std::string, bool, half_float_t>> row_values_;
+    std::unordered_map<std::string, std::variant<int64_t, int32_t, int16_t, int8_t, float, double, std::string, bool, half_float_t>> row_values_;
     /// Flag indicating whether the file has been opened.
     bool file_opened_ = false;
     /// Stores user-supplied metadata until the file is opened.
