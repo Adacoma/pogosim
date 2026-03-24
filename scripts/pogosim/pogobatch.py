@@ -245,7 +245,7 @@ class PogobotBatchRunner:
     """
     def __init__(self, multi_config_file, runs, simulator_binary, temp_base, output_dir,
                  backend="multiprocessing", keep_temp=False, verbose=False, retries: int = 5,
-                 gui: bool = False):
+                 gui: bool = False, only_output: str = ""):
         self.multi_config_file = multi_config_file
         self.runs = runs
         self.simulator_binary = simulator_binary
@@ -256,6 +256,7 @@ class PogobotBatchRunner:
         self.verbose = verbose
         self.retries = retries
         self.gui = gui
+        self.only_output = only_output
 
 #        # Initialize logging via utils.
 #        utils.init_logging(self.verbose)
@@ -350,6 +351,21 @@ class PogobotBatchRunner:
             combos.append(cfg)
         return combos
 
+    def list_outputs(self) -> list[str]:
+        """
+        Compute and return all output filenames without writing temp YAMLs
+        and without launching any simulations.
+        """
+        with open(self.multi_config_file, "r") as f:
+            multi_config = yaml.safe_load(f)
+
+        combinations = self.get_combinations(multi_config)
+        if not combinations:
+            logger.error("No combinations found in the configuration.")
+            sys.exit(1)
+
+        outputs = [self.compute_output_filename(comb) for comb in combinations]
+        return sorted(set(outputs))
 
     def write_temp_yaml(self, comb_config):
         """
@@ -512,6 +528,30 @@ class PogobotBatchRunner:
             tasks.append((temp_yaml, output_file, comb))
             logger.debug(f"Task: Config file {temp_yaml} -> Output: {output_file}")
 
+        if self.only_output:
+            requested = self.only_output
+            requested_base = os.path.basename(requested)
+
+            filtered_tasks = []
+            for temp_yaml, output_file, comb in tasks:
+                output_base = os.path.basename(output_file)
+                if output_file == requested or output_base == requested_base:
+                    filtered_tasks.append((temp_yaml, output_file, comb))
+                else:
+                    try:
+                        os.remove(temp_yaml)
+                    except FileNotFoundError:
+                        pass
+
+            tasks = filtered_tasks
+
+            if not tasks:
+                logger.error("No combination matched --only-output=%s", self.only_output)
+                sys.exit(1)
+
+            logger.info("Filtered to %d task(s) matching --only-output=%s",
+                        len(tasks), self.only_output)
+
         # Remove any pre-existing result_*.feather before first append
         for outfile in {t[1] for t in tasks}:                   # unique names
             if os.path.exists(outfile):
@@ -551,6 +591,10 @@ def main():
     parser.add_argument("-v", "--verbose", default=False, action="store_true", help="Verbose mode")
     parser.add_argument("-V", "--version", default=False, action="store_true", help="Return version")
     parser.add_argument("-R", "--retries", type=int, default=5, help="How many times to relaunch a run when the simulator crashes (default: 5).")
+    parser.add_argument( "--only-output", type=str, default="", help=( "Run only the combination(s) whose computed output filename matches this value. "
+            "You can pass either the basename (e.g. result_x.feather) or the full path."),
+    )
+    parser.add_argument( "--list-outputs", action="store_true", help="Print all computed output Feather filenames and exit.",)
     args = parser.parse_args()
 
     if args.version:
@@ -569,6 +613,7 @@ def main():
     plog.propagate = True
     plog.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
+    # Create PogobotBatchRunner
     runner = PogobotBatchRunner(
         multi_config_file=args.config,
         runs=args.runs,
@@ -579,8 +624,17 @@ def main():
         keep_temp=args.keep_temp,
         verbose=args.verbose,
         retries=args.retries,
-        gui=args.gui
+        gui=args.gui,
+        only_output=args.only_output,
     )
+
+    # Check if we are in 'list_outputs' mode
+    if args.list_outputs:
+        for output_file in runner.list_outputs():
+            print(output_file)
+        sys.exit(0)
+
+    # Launch PogobotBatchRunner
     runner.run_all()
 
 if __name__ == "__main__":

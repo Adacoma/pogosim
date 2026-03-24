@@ -8,8 +8,9 @@
 result_filename_format: "result_{objects.robots.nb}.feather"
 
 # List of new columns to add in the generated dataframes
-#result_new_columns: ["objects.robots.nb", "arena_file"]
-result_new_columns: ["arena_file"]
+result_new_columns: ["objects.robots.nb", "arena_file"]
+# If a configuration entry is included both in result_new_columns and result_filename_format (here "objects.robots.nb"),
+#   it will be appended as a column with a single value consistent with the values in the corresponding feather filename.
 
 
 window_width: 600       # In pixels
