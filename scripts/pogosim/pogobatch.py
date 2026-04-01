@@ -16,6 +16,8 @@ from typing import Any, Dict, Iterable, List
 import uuid
 import pyarrow as pa
 import pyarrow.feather as paw
+import math
+import numbers
 
 from pogosim import utils
 from pogosim import __version__
@@ -68,6 +70,127 @@ def get_by_dotted_path(node: dict, dotted: str, sep: str = "."):
     for part in dotted.split(sep):
         node = node[part]
     return node
+
+
+def expand_batch_options(node: dict, dotted_path: str = "") -> list[Any]:
+    """
+    Return the list of batch values for a node.
+
+    Supported forms:
+      1. Literal list:
+           batch_options: [1, 2, 3]
+
+      2. Range spec:
+           batch_options_range:
+             start: 1
+             stop: 5
+             step: 1
+
+         which expands like Python's range semantics on the numeric axis:
+           -> [1, 2, 3, 4]
+
+      3. Inclusive range spec:
+           batch_options_range:
+             start: 1
+             stop: 5
+             step: 1
+             inclusive: true
+
+           -> [1, 2, 3, 4, 5]
+
+    If type is omitted, it is inferred:
+      - all integer-like -> ints
+      - otherwise -> floats
+    """
+    if "batch_options" in node:
+        vals = node["batch_options"]
+        if not isinstance(vals, list):
+            raise RuntimeError(
+                f"{dotted_path or '<root>'}: 'batch_options' must be a list"
+            )
+        return vals
+
+    if "batch_options_range" not in node:
+        raise KeyError(f"{dotted_path or '<root>'}: no batch options found")
+
+    spec = node["batch_options_range"]
+    if not isinstance(spec, dict):
+        raise RuntimeError(
+            f"{dotted_path or '<root>'}: 'batch_options_range' must be a mapping"
+        )
+
+    required = ("start", "stop", "step")
+    missing = [k for k in required if k not in spec]
+    if missing:
+        raise RuntimeError(
+            f"{dotted_path or '<root>'}: missing keys in batch_options_range: {missing}"
+        )
+
+    start = spec["start"]
+    stop = spec["stop"]
+    step = spec["step"]
+    inclusive = bool(spec.get("inclusive", False))
+    value_type = spec.get("type", None)  # optional: "int" or "float"
+
+    if not all(isinstance(x, numbers.Real) for x in (start, stop, step)):
+        raise RuntimeError(
+            f"{dotted_path or '<root>'}: start/stop/step must be numeric"
+        )
+
+    if step == 0:
+        raise RuntimeError(
+            f"{dotted_path or '<root>'}: step must be non-zero"
+        )
+
+    # infer type if not given
+    if value_type is None:
+        int_like = all(float(x).is_integer() for x in (start, stop, step))
+        value_type = "int" if int_like else "float"
+
+    if value_type not in ("int", "float"):
+        raise RuntimeError(
+            f"{dotted_path or '<root>'}: type must be 'int' or 'float'"
+        )
+
+    values: list[Any] = []
+
+    if value_type == "int":
+        start_i = int(round(start))
+        stop_i = int(round(stop))
+        step_i = int(round(step))
+        if step_i == 0:
+            raise RuntimeError(
+                f"{dotted_path or '<root>'}: integer step became zero after rounding"
+            )
+
+        if inclusive:
+            stop_i = stop_i + (1 if step_i > 0 else -1)
+
+        values = list(range(start_i, stop_i, step_i))
+    else:
+        start_f = float(start)
+        stop_f = float(stop)
+        step_f = float(step)
+
+        eps = 1e-12
+        x = start_f
+
+        def keep_going(v: float) -> bool:
+            if step_f > 0:
+                return v <= stop_f + eps if inclusive else v < stop_f - eps
+            return v >= stop_f - eps if inclusive else v > stop_f + eps
+
+        while keep_going(x):
+            # round to limit floating point artifacts such as 0.30000000000000004
+            values.append(round(x, 12))
+            x += step_f
+
+    if not values:
+        raise RuntimeError(
+            f"{dotted_path or '<root>'}: batch_options_range produced no values"
+        )
+
+    return values
 
 
 class PogobotLauncher:
@@ -265,50 +388,53 @@ class PogobotBatchRunner:
     def get_combinations(self, config: dict) -> list[dict]:
         """
         Return every configuration obtained by choosing **exactly one** value
-        from each *batch_options* list found anywhere in the YAML tree, and from
-        each *batch_hierarchical_options* mapping.
-        For hierarchical options, the chosen alternative's key/values are merged
-        into the parent dict, and the key is removed. We also record the chosen
-        alternative name so that `result_new_columns` can expose it later.
+        from each batch parameter found anywhere in the YAML tree.
+
+        Supported batch parameter forms:
+          - batch_options: [...]
+          - batch_options_range: {start: ..., stop: ..., step: ..., inclusive: ...}
+
+        Also supports batch_hierarchical_options.
         """
         option_paths: list[str] = []
         option_values: list[list] = []
 
-        hier_paths: list[str] = []           # dotted path to parent dict
-        hier_maps: list[dict] = []           # mapping name->{...}
+        hier_paths: list[str] = []
+        hier_maps: list[dict] = []
         hier_choice_names: list[list[str]] = []
-        hier_aliases: list[str | None] = []   # optional alias from "name"
+        hier_aliases: list[str | None] = []
 
         def recurse(node: dict | list | Any, prefix: str = "") -> None:
             if isinstance(node, dict):
-                # list-based options
-                if "batch_options" in node and isinstance(node["batch_options"], list):
+                # simple batch options: literal list OR generated range
+                if "batch_options" in node or "batch_options_range" in node:
                     option_paths.append(prefix.rstrip("."))
-                    option_values.append(node["batch_options"])
+                    option_values.append(
+                        expand_batch_options(node, dotted_path=prefix.rstrip("."))
+                    )
                     return
-                # hierarchical options (accept both spellings)
+
+                # hierarchical options
                 key_candidates = ("batch_hierarchical_options",)
                 present_key = next((k for k in key_candidates if k in node), None)
                 if present_key is not None and isinstance(node[present_key], dict):
                     mapping = node[present_key]
-                    # exclude control keys from the choice set
                     names = [k for k in mapping.keys() if k not in ("default", "name")]
                     if names:
                         hier_paths.append(prefix.rstrip("."))
                         hier_maps.append(mapping)
                         hier_choice_names.append(names)
                         hier_aliases.append(mapping.get("name"))
-                # IMPORTANT: do NOT return here; we still need to scan siblings
+
                 for k, v in node.items():
-                    if k == present_key:        # skip the alternatives mapping itself
+                    if k == present_key:
                         continue
                     recurse(v, f"{prefix}{k}.")
-            # NOTE: plain lists are ignored intentionally
 
         recurse(config)
 
         have_simple = len(option_paths) > 0
-        have_hier   = len(hier_paths) > 0
+        have_hier = len(hier_paths) > 0
         if not (have_simple or have_hier):
             return [config]
 
@@ -330,26 +456,26 @@ class PogobotBatchRunner:
 
             if have_hier:
                 hier_choices = prod[offset:offset + len(hier_paths)]
-                for path, mapping, choice_name, alias in zip(hier_paths, hier_maps, hier_choices, hier_aliases, strict=True):
+                for path, mapping, choice_name, alias in zip(
+                    hier_paths, hier_maps, hier_choices, hier_aliases, strict=True
+                ):
                     parent = get_by_dotted_path(cfg, path)
                     parent.pop("batch_hierarchical_options", None)
                     chosen = mapping[choice_name]
                     for k, v in chosen.items():
                         parent[k] = copy.deepcopy(v)
                     choice_names[path] = choice_name
-                    # If an alias is provided, expose it at the top level so
-                    # result_new_columns and result_filename_format can use it.
                     if alias and isinstance(alias, str) and len(alias):
-                        # top-level alias holds the chosen alternative name
                         cfg[alias] = choice_name
-                        # also record it so run_launcher_for_combination can replace dicts by names
                         choice_names[alias] = choice_name
 
             if choice_names:
                 cfg.setdefault("_batch_choice_names", {}).update(choice_names)
 
             combos.append(cfg)
+
         return combos
+
 
     def list_outputs(self) -> list[str]:
         """
