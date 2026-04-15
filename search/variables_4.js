@@ -4,5 +4,6 @@ var searchData=
   ['density_1',['density',['../classPhysicalObject.html#a7786ea72c55489e9da0d21626ea99e26',1,'PhysicalObject']]],
   ['dist_5fsq_2',['dist_sq',['../structCandidate.html#ad0c3203887f2c43477947afb5b8fb508',1,'Candidate']]],
   ['dot_5fradius_3',['dot_radius',['../classMembraneObject.html#a2bac9f07c4da65eac9ddcc6516aa8624',1,'MembraneObject']]],
-  ['dots_4',['dots',['../classMembraneObject.html#a3776ff22dd725c452559ca866bab5356',1,'MembraneObject']]]
+  ['dots_4',['dots',['../classMembraneObject.html#a3776ff22dd725c452559ca866bab5356',1,'MembraneObject']]],
+  ['dummy_5',['dummy',['../classPogobotObject.html#a2941c83910f8d62e9e11d0578c1a50ee',1,'PogobotObject']]]
 ];

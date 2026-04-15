@@ -107,12 +107,18 @@ $(function(){initNavTree('classDataLogger.html','','classDataLogger-members'); }
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ad96d8c455f8959184b002befebd85b99" id="r_ad96d8c455f8959184b002befebd85b99"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="#ad96d8c455f8959184b002befebd85b99">DataLogger</a> ()=default</td></tr>
 <tr class="memdesc:ad96d8c455f8959184b002befebd85b99"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor.  <br /></td></tr>
+<tr class="memitem:ab9de12fe5c087f0166706dc9c330f2d3" id="r_ab9de12fe5c087f0166706dc9c330f2d3"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="#ab9de12fe5c087f0166706dc9c330f2d3">DataLogger</a> (int64_t flush_row_count)</td></tr>
+<tr class="memdesc:ab9de12fe5c087f0166706dc9c330f2d3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with explicit buffered batch size.  <br /></td></tr>
 <tr class="memitem:a9aaff109f3e7749a0a0a0313655da50a" id="r_a9aaff109f3e7749a0a0a0313655da50a"><td class="memItemLeft">virtual&#160;</td><td class="memItemRight"><a class="el" href="#a9aaff109f3e7749a0a0a0313655da50a">~DataLogger</a> ()</td></tr>
 <tr class="memdesc:a9aaff109f3e7749a0a0a0313655da50a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Destructor.  <br /></td></tr>
+<tr class="memitem:a681741f062b64044e70c334930c1466f" id="r_a681741f062b64044e70c334930c1466f"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a681741f062b64044e70c334930c1466f">column_exists</a> (const std::string &amp;column_name)</td></tr>
+<tr class="memdesc:a681741f062b64044e70c334930c1466f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks if the specified column exists.  <br /></td></tr>
+<tr class="memitem:a4c13e06f37d54f9241be95a4b29d7a86" id="r_a4c13e06f37d54f9241be95a4b29d7a86"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a4c13e06f37d54f9241be95a4b29d7a86">column_value_already_set</a> (const std::string &amp;column_name)</td></tr>
+<tr class="memdesc:a4c13e06f37d54f9241be95a4b29d7a86"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks if the specified column value has been set for the current row.  <br /></td></tr>
 <tr class="memitem:a88e1a463a0ca9f4ac72272f380e63df0" id="r_a88e1a463a0ca9f4ac72272f380e63df0"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a88e1a463a0ca9f4ac72272f380e63df0">add_metadata</a> (const std::string &amp;key, const std::string &amp;value)</td></tr>
 <tr class="memdesc:a88e1a463a0ca9f4ac72272f380e63df0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds arbitrary string metadata to be embedded in the Feather file.  <br /></td></tr>
-<tr class="memitem:af690ffd04b786da7f19cb530cab3c321" id="r_af690ffd04b786da7f19cb530cab3c321"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#af690ffd04b786da7f19cb530cab3c321">add_field</a> (const std::string &amp;name, std::shared_ptr&lt; arrow::DataType &gt; type)</td></tr>
-<tr class="memdesc:af690ffd04b786da7f19cb530cab3c321"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a new field to the schema.  <br /></td></tr>
+<tr class="memitem:a89998178777ab4ba644017d56b618fd3" id="r_a89998178777ab4ba644017d56b618fd3"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a89998178777ab4ba644017d56b618fd3">add_field</a> (const std::string &amp;name, std::shared_ptr&lt; arrow::DataType &gt; type, bool ignore_existing_name=false)</td></tr>
+<tr class="memdesc:a89998178777ab4ba644017d56b618fd3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a new field to the schema.  <br /></td></tr>
 <tr class="memitem:a77852c40d79c20f320639f07e41b5728" id="r_a77852c40d79c20f320639f07e41b5728"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a77852c40d79c20f320639f07e41b5728">open_file</a> (const std::string &amp;filename)</td></tr>
 <tr class="memdesc:a77852c40d79c20f320639f07e41b5728"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opens the output file for writing.  <br /></td></tr>
 <tr class="memitem:ae604558c20e9c6cfea7700d2b7910f50" id="r_ae604558c20e9c6cfea7700d2b7910f50"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#ae604558c20e9c6cfea7700d2b7910f50">set_value</a> (const std::string &amp;column_name, int64_t value)</td></tr>
@@ -125,6 +131,8 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a441a72808af7970f6ac9427f8efdd84f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the value for a specified column in the current row.  <br /></td></tr>
 <tr class="memitem:ae00ecac34f2d901bce34dc9ba53dc313" id="r_ae00ecac34f2d901bce34dc9ba53dc313"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#ae00ecac34f2d901bce34dc9ba53dc313">set_value</a> (const std::string &amp;column_name, double value)</td></tr>
 <tr class="memdesc:ae00ecac34f2d901bce34dc9ba53dc313"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the value for a specified column in the current row.  <br /></td></tr>
+<tr class="memitem:a118c1c51d7f4830e635c5b62ec6b5253" id="r_a118c1c51d7f4830e635c5b62ec6b5253"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a118c1c51d7f4830e635c5b62ec6b5253">set_value</a> (const std::string &amp;column_name, float value)</td></tr>
+<tr class="memdesc:a118c1c51d7f4830e635c5b62ec6b5253"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the value for a specified column in the current row.  <br /></td></tr>
 <tr class="memitem:a9079fbadf26f395672bc8c7f2bcfbd79" id="r_a9079fbadf26f395672bc8c7f2bcfbd79"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a9079fbadf26f395672bc8c7f2bcfbd79">set_value</a> (const std::string &amp;column_name, const std::string &amp;value)</td></tr>
 <tr class="memdesc:a9079fbadf26f395672bc8c7f2bcfbd79"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the value for a specified column in the current row.  <br /></td></tr>
 <tr class="memitem:a3ae7591494706877ac55bc5300a8bfcd" id="r_a3ae7591494706877ac55bc5300a8bfcd"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a3ae7591494706877ac55bc5300a8bfcd">set_value</a> (const std::string &amp;column_name, bool value)</td></tr>
@@ -133,13 +141,16 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a60bca28b743b9ba234388f58cbf55545"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the value for a specified column in the current row.  <br /></td></tr>
 <tr class="memitem:a7ac06c613805e7a628272089237bc5e5" id="r_a7ac06c613805e7a628272089237bc5e5"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a7ac06c613805e7a628272089237bc5e5">save_row</a> ()</td></tr>
 <tr class="memdesc:a7ac06c613805e7a628272089237bc5e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Saves the current row to the Feather file.  <br /></td></tr>
+<tr class="memitem:a36f7288f4db002e3a8d79d322b6f05ae" id="r_a36f7288f4db002e3a8d79d322b6f05ae"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a36f7288f4db002e3a8d79d322b6f05ae">flush</a> ()</td></tr>
+<tr class="memdesc:a36f7288f4db002e3a8d79d322b6f05ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flushes all currently buffered rows to the Feather file.  <br /></td></tr>
 </table>
 <a name="details" id="details"></a><h2 id="header-details" class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classDataLogger.html" title="DataLogger class for writing data to a Feather file using Apache Arrow.">DataLogger</a> class for writing data to a Feather file using Apache Arrow. </p>
-<p>This class allows dynamic creation of a schema by adding fields prior to opening the file. Once the schema is defined, data rows can be built by setting individual column values and saved row-by-row into a Feather file using Zstd compression. </p>
+<p>This class allows dynamic creation of a schema by adding fields prior to opening the file. Once the schema is defined, data rows can be built by setting individual column values and saved row-by-row into a Feather file using Zstd compression.</p>
+<p>Internally, rows are buffered and written in larger record batches so that compression is applied on larger chunks of data, which significantly reduces file size and improves write performance compared with writing one record batch per row. </p>
 </div><a name="doc-constructors" id="doc-constructors"></a><h2 id="header-doc-constructors" class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ad96d8c455f8959184b002befebd85b99" name="ad96d8c455f8959184b002befebd85b99"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad96d8c455f8959184b002befebd85b99">&#9670;&#160;</a></span>DataLogger()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ad96d8c455f8959184b002befebd85b99">&#9670;&#160;</a></span>DataLogger() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -162,6 +173,46 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Default constructor. </p>
+<p>Uses a default buffered batch size. </p>
+
+</div>
+</div>
+<a id="ab9de12fe5c087f0166706dc9c330f2d3" name="ab9de12fe5c087f0166706dc9c330f2d3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab9de12fe5c087f0166706dc9c330f2d3">&#9670;&#160;</a></span>DataLogger() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">DataLogger::DataLogger </td>
+          <td>(</td>
+          <td class="paramtype">int64_t</td>          <td class="paramname"><span class="paramname"><em>flush_row_count</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel explicit">explicit</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructor with explicit buffered batch size. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">flush_row_count</td><td>Number of rows to buffer before writing a record batch.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">std::runtime_error</td><td>if flush_row_count is zero. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -189,13 +240,13 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Destructor. </p>
-<p>Closes the Feather writer and the output file if they are open. Warnings are logged if either the writer or the file cannot be closed properly. </p>
+<p>Flushes any remaining buffered rows, then closes the Feather writer and the output file if they are open. Warnings are logged if flushing or closing fails. </p>
 
 </div>
 </div>
 <a name="doc-func-members" id="doc-func-members"></a><h2 id="header-doc-func-members" class="groupheader">Member Function Documentation</h2>
-<a id="af690ffd04b786da7f19cb530cab3c321" name="af690ffd04b786da7f19cb530cab3c321"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af690ffd04b786da7f19cb530cab3c321">&#9670;&#160;</a></span>add_field()</h2>
+<a id="a89998178777ab4ba644017d56b618fd3" name="a89998178777ab4ba644017d56b618fd3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a89998178777ab4ba644017d56b618fd3">&#9670;&#160;</a></span>add_field()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -208,7 +259,12 @@ Public Member Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::shared_ptr&lt; arrow::DataType &gt;</td>          <td class="paramname"><span class="paramname"><em>type</em></span>&#160;)</td>
+          <td class="paramtype">std::shared_ptr&lt; arrow::DataType &gt;</td>          <td class="paramname"><span class="paramname"><em>type</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool</td>          <td class="paramname"><span class="paramname"><em>ignore_existing_name</em></span><span class="paramdefsep"> = </span><span class="paramdefval">false</span>&#160;)</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -218,13 +274,15 @@ Public Member Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">name</td><td>The name of the field. </td></tr>
-    <tr><td class="paramname">type</td><td>The Arrow data type for the field.</td></tr>
+    <tr><td class="paramname">type</td><td>The Arrow data type for the field. </td></tr>
+    <tr><td class="paramname">ignore_existing_name</td><td>Whether to ignore an existing field with the same name. If False, throw std::runtime_error.</td></tr>
   </table>
   </dd>
 </dl>
 <dl class="exception"><dt>Exceptions</dt><dd>
   <table class="exception">
     <tr><td class="paramname">std::runtime_error</td><td>if called after the file has been opened. </td></tr>
+    <tr><td class="paramname">std::runtime_error</td><td>if ignore_existing_name==false and field name already exists </td></tr>
   </table>
   </dd>
 </dl>
@@ -251,8 +309,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Adds arbitrary string metadata to be embedded in the Feather file. </p>
-<p>This can be called any time <b>before</b> <span class="tt"><a class="el" href="#a77852c40d79c20f320639f07e41b5728" title="Opens the output file for writing.">open_file()</a></span>. <br  />
- If the same key is supplied more than once the value is overwritten.</p>
+<p>This can be called any time <b>before</b> <span class="tt"><a class="el" href="#a77852c40d79c20f320639f07e41b5728" title="Opens the output file for writing.">open_file()</a></span>. If the same key is supplied more than once the value is overwritten.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">key</td><td>The metadata key (UTF-8, non-empty). </td></tr>
@@ -263,6 +320,90 @@ Public Member Functions</h2></td></tr>
 <dl class="exception"><dt>Exceptions</dt><dd>
   <table class="exception">
     <tr><td class="paramname">std::runtime_error</td><td>if the file has already been opened. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a681741f062b64044e70c334930c1466f" name="a681741f062b64044e70c334930c1466f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a681741f062b64044e70c334930c1466f">&#9670;&#160;</a></span>column_exists()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool DataLogger::column_exists </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;</td>          <td class="paramname"><span class="paramname"><em>column_name</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Checks if the specified column exists. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">column_name</td><td>The name of the column to check.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>whether the column exists </dd></dl>
+
+</div>
+</div>
+<a id="a4c13e06f37d54f9241be95a4b29d7a86" name="a4c13e06f37d54f9241be95a4b29d7a86"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4c13e06f37d54f9241be95a4b29d7a86">&#9670;&#160;</a></span>column_value_already_set()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool DataLogger::column_value_already_set </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;</td>          <td class="paramname"><span class="paramname"><em>column_name</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Checks if the specified column value has been set for the current row. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">column_name</td><td>The name of the column to check.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>whether the column value has been set for the current row </dd></dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">std::runtime_error</td><td>if the file is not open or the column does not exist. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a36f7288f4db002e3a8d79d322b6f05ae" name="a36f7288f4db002e3a8d79d322b6f05ae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a36f7288f4db002e3a8d79d322b6f05ae">&#9670;&#160;</a></span>flush()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void DataLogger::flush </td>
+          <td>(</td>
+          <td class="paramname"><span class="paramname"><em></em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Flushes all currently buffered rows to the Feather file. </p>
+<p>If no rows are buffered, this is a no-op. This may be called manually, but is also called automatically by the destructor before closing the file.</p>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">std::runtime_error</td><td>if finalizing arrays or writing the record batch fails. </td></tr>
   </table>
   </dd>
 </dl>
@@ -285,7 +426,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Opens the output file for writing. </p>
-<p>Constructs the schema from the added fields, attaches custom metadata (such as the program version), ensures that the parent directory exists, and opens the file for writing. A Feather writer is then created with Zstd compression. The current row values are initialized.</p>
+<p>Constructs the schema from the added fields, attaches custom metadata (such as the program version), ensures that the parent directory exists, and opens the file for writing. A Feather writer is then created with Zstd compression. Internal persistent builders are initialized, and the current row values are reset.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">filename</td><td>The path to the file to be written.</td></tr>
@@ -317,10 +458,10 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Saves the current row to the Feather file. </p>
-<p>Constructs Arrow array builders for each column based on the field type, appends the current row's values (or nulls if missing), finalizes the arrays, and creates a record batch which is then written to the file. After writing, the row is reset to its default state.</p>
+<p>Appends the current row's values (or nulls if missing) to persistent Arrow array builders. Once enough rows have been accumulated, a record batch is finalized and written to the file. After appending, the row is reset to its default state.</p>
 <dl class="exception"><dt>Exceptions</dt><dd>
   <table class="exception">
-    <tr><td class="paramname">std::runtime_error</td><td>if any step in appending data, finalizing arrays, or writing the record batch fails. </td></tr>
+    <tr><td class="paramname">std::runtime_error</td><td>if any step in appending data or writing the record batch fails. </td></tr>
   </table>
   </dd>
 </dl>
@@ -328,7 +469,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="a3ae7591494706877ac55bc5300a8bfcd" name="a3ae7591494706877ac55bc5300a8bfcd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3ae7591494706877ac55bc5300a8bfcd">&#9670;&#160;</a></span>set_value() <span class="overload">[1/7]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a3ae7591494706877ac55bc5300a8bfcd">&#9670;&#160;</a></span>set_value() <span class="overload">[1/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -365,7 +506,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="a9079fbadf26f395672bc8c7f2bcfbd79" name="a9079fbadf26f395672bc8c7f2bcfbd79"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9079fbadf26f395672bc8c7f2bcfbd79">&#9670;&#160;</a></span>set_value() <span class="overload">[2/7]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a9079fbadf26f395672bc8c7f2bcfbd79">&#9670;&#160;</a></span>set_value() <span class="overload">[2/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -402,7 +543,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="ae00ecac34f2d901bce34dc9ba53dc313" name="ae00ecac34f2d901bce34dc9ba53dc313"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae00ecac34f2d901bce34dc9ba53dc313">&#9670;&#160;</a></span>set_value() <span class="overload">[3/7]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ae00ecac34f2d901bce34dc9ba53dc313">&#9670;&#160;</a></span>set_value() <span class="overload">[3/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -438,8 +579,45 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a118c1c51d7f4830e635c5b62ec6b5253" name="a118c1c51d7f4830e635c5b62ec6b5253"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a118c1c51d7f4830e635c5b62ec6b5253">&#9670;&#160;</a></span>set_value() <span class="overload">[4/8]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void DataLogger::set_value </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;</td>          <td class="paramname"><span class="paramname"><em>column_name</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float</td>          <td class="paramname"><span class="paramname"><em>value</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Sets the value for a specified column in the current row. </p>
+<p>Overloaded method for float values.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">column_name</td><td>The name of the column. </td></tr>
+    <tr><td class="paramname">value</td><td>The float value to set.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">std::runtime_error</td><td>if the file is not open or the column does not exist. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a58394e27311938031a370bb823f8e9a0" name="a58394e27311938031a370bb823f8e9a0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a58394e27311938031a370bb823f8e9a0">&#9670;&#160;</a></span>set_value() <span class="overload">[4/7]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a58394e27311938031a370bb823f8e9a0">&#9670;&#160;</a></span>set_value() <span class="overload">[5/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -476,7 +654,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="a66ecaddfc3494816c0ab39c9badab918" name="a66ecaddfc3494816c0ab39c9badab918"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a66ecaddfc3494816c0ab39c9badab918">&#9670;&#160;</a></span>set_value() <span class="overload">[5/7]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a66ecaddfc3494816c0ab39c9badab918">&#9670;&#160;</a></span>set_value() <span class="overload">[6/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -513,7 +691,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="ae604558c20e9c6cfea7700d2b7910f50" name="ae604558c20e9c6cfea7700d2b7910f50"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae604558c20e9c6cfea7700d2b7910f50">&#9670;&#160;</a></span>set_value() <span class="overload">[6/7]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ae604558c20e9c6cfea7700d2b7910f50">&#9670;&#160;</a></span>set_value() <span class="overload">[7/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -550,7 +728,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="a441a72808af7970f6ac9427f8efdd84f" name="a441a72808af7970f6ac9427f8efdd84f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a441a72808af7970f6ac9427f8efdd84f">&#9670;&#160;</a></span>set_value() <span class="overload">[7/7]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a441a72808af7970f6ac9427f8efdd84f">&#9670;&#160;</a></span>set_value() <span class="overload">[8/8]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -610,7 +788,7 @@ Public Member Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">column_name</td><td>The name of the column. </td></tr>
-    <tr><td class="paramname">value</td><td>The boolean value to set.</td></tr>
+    <tr><td class="paramname">value</td><td>The float value to convert to Arrow float16 raw payload.</td></tr>
   </table>
   </dd>
 </dl>

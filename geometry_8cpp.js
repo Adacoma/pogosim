@@ -11,6 +11,7 @@ var geometry_8cpp =
     [ "generate_random_points_power_lloyd", "geometry_8cpp.html#ae5b5e400b14772fe48f8c4b9e3277d5f", null ],
     [ "generate_random_points_within_polygon_safe", "geometry_8cpp.html#a22187493dac8cea6ae5286a2c77ecdfd", null ],
     [ "generate_regular_disk_points_in_polygon", "geometry_8cpp.html#ab70d032568001cd6f8ad49c68e96cc30", null ],
+    [ "generate_regular_disk_points_in_polygon", "geometry_8cpp.html#a018696c0f9839d9bfc8e6e70f657739d", null ],
     [ "import_points_from_file", "geometry_8cpp.html#a14ae44b918ffa60675fb450ec775a444", null ],
     [ "is_point_within_polygon", "geometry_8cpp.html#ae0d53ae819a7d994c21d8b60c3866ff4", null ],
     [ "offset_polygon", "geometry_8cpp.html#ad6c33659f7609a5b225d1874dbe98a0d", null ],

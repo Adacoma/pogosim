@@ -1,9 +1,11 @@
 var classPogobotObject =
 [
-    [ "PogobotObject", "classPogobotObject.html#ac5f76e97d83f7429f8d530fc9980e718", null ],
-    [ "PogobotObject", "classPogobotObject.html#a7f79823f0980b7701be55383576e9e6a", null ],
+    [ "PogobotObject", "classPogobotObject.html#a9cc9f6a154ddc7c56e99a6e0a298fa79", null ],
+    [ "PogobotObject", "classPogobotObject.html#a27903af721e4803755ac9b8e4680d70f", null ],
     [ "create_robot_body", "classPogobotObject.html#ad45d87fb8e3a0710b6104078ea3f6e13", null ],
+    [ "create_serialization_fields", "classPogobotObject.html#abf3b08dad0425df0b58ebec832a3126e", null ],
     [ "disable_stop_watches", "classPogobotObject.html#ae9d4a9989dc9a73bfd4e0956db635fbb", null ],
+    [ "do_init", "classPogobotObject.html#a7384f5c6a431219776534961504036ac", null ],
     [ "enable_stop_watches", "classPogobotObject.html#a628acebefbe1c7f13c379bc1aa2828ed", null ],
     [ "enable_user_steps", "classPogobotObject.html#a39ec1581bb46d1fbc1f35b8b9c27cfb2", null ],
     [ "get_IR_emitter_angle", "classPogobotObject.html#a57becdfbefd3757ea86e2424f1bcd688", null ],
@@ -20,6 +22,7 @@ var classPogobotObject =
     [ "render_communication_channels", "classPogobotObject.html#a1704d529d92def42cf456fa349f5e7ef", null ],
     [ "send_to_neighbors", "classPogobotObject.html#a854b6fed9bd9e67ccdbad5a2da4a479e", null ],
     [ "send_to_neighbors", "classPogobotObject.html#af982d525eff0f1ae8027ac8bced0ab7d", null ],
+    [ "serialize_base_values", "classPogobotObject.html#a42ec2231018416b8967e1461aa7550e6", null ],
     [ "set_motor", "classPogobotObject.html#a27191f8c66a6a08bfba56f2f9488decd", null ],
     [ "sleep_µs", "classPogobotObject.html#a9ffc3f1cc0a007ab482ab9e5895e5989", null ],
     [ "update_time", "classPogobotObject.html#aa7092fc77dd46e06748becb1e15a1bae", null ],
@@ -33,6 +36,7 @@ var classPogobotObject =
     [ "communication_radius", "classPogobotObject.html#a0e1f8009ab5a65fb5e6d3a5249dc75b3", null ],
     [ "current_time_microseconds", "classPogobotObject.html#acc0f9e5c94d1839fa94d457192d0d997", null ],
     [ "data", "classPogobotObject.html#a415ea6ce97e5b69f53065d4593daa39c", null ],
+    [ "dummy", "classPogobotObject.html#a2941c83910f8d62e9e11d0578c1a50ee", null ],
     [ "error_codes_led_idx", "classPogobotObject.html#a53bfcffe5d44bf84d6f829626921043f", null ],
     [ "leds", "classPogobotObject.html#a102dc90e83ff64cdb8390e5a6a3e9816", null ],
     [ "left_motor_speed", "classPogobotObject.html#a24dea33a598e876ea2254b9f9988da50", null ],
@@ -64,5 +68,6 @@ var classPogobotObject =
     [ "temporal_noise_stddev", "classPogobotObject.html#a9a79cc1f826b9c7557a8f83a8bb56d9c", null ],
     [ "timer_main_loop", "classPogobotObject.html#ab391aba5d135e6cc48b9dd8196970bc1", null ],
     [ "user_init", "classPogobotObject.html#a5c573de31b7be76aa52da7452f0758e6", null ],
-    [ "user_step", "classPogobotObject.html#af189e01131d2e571df1e5e0806278d90", null ]
+    [ "user_step", "classPogobotObject.html#af189e01131d2e571df1e5e0806278d90", null ],
+    [ "userdatasize", "classPogobotObject.html#a2fdc78528ccc0bb1ade587f2be8c9196", null ]
 ];

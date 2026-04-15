@@ -260,8 +260,8 @@ Access the pose and states of the robots in Python</h1>
 <p>After a simulation is executed, it can periodically store the pose (position and orientation) and internal states of each robot into a data file. This feature can be enabled in the configuration file, with entries: </p><div class="fragment"><div class="line">enable_data_logging: true                   # Set to true to enable the generation of a data file</div>
 <div class="line">data_filename: &quot;frames/data.feather&quot;        # Path of the generated data file</div>
 <div class="line">save_data_period: 1.0       # In s          # Save data every 1.0 second</div>
-</div><!-- fragment --><p>The data is stored as an Apache Arrow Feather file, a standard and convenient format to store large dataframes. As such, it can easily be imported in Python by using Pandas: </p><div class="fragment"><div class="line">import pandas as pd</div>
-<div class="line">df = pd.read_feather(&quot;frames/data.feather&quot;)</div>
+</div><!-- fragment --><p>The data is stored as an Apache Arrow Feather file, a standard and convenient format to store large dataframes. As such, it can easily be imported in Python by using Pandas: </p><div class="fragment"><div class="line"><span class="keyword">import</span> pandas <span class="keyword">as</span> pd</div>
+<div class="line">df = pd.read_feather(<span class="stringliteral">&quot;frames/data.feather&quot;</span>)</div>
 <div class="line">print(df)</div>
 <div class="line"> </div>
 <div class="line">       time robot_category  robot_id  pogobot_ticks         x         y       angle  </div>
@@ -278,6 +278,26 @@ Access the pose and states of the robots in Python</h1>
 <div class="line">1427  14.13         robots        99            883  9.031286  1.299344   -0.168437  </div>
 <div class="line"> </div>
 <div class="line">[1428 rows x 7 columns]</div>
+</div><!-- fragment --><p>Or alternatively, using the "pogosim" python package: </p><div class="fragment"><div class="line"><span class="keyword">import</span> pogosim.utils <span class="keyword">as</span> pu</div>
+<div class="line">df, meta = pu.load_dataframe(<span class="stringliteral">&quot;frames/data.feather&quot;</span>)</div>
+<div class="line">print(df)</div>
+<div class="line"> </div>
+<div class="line">       time robot_category  robot_id  pogobot_ticks         x         y       angle  </div>
+<div class="line">0      1.00          walls     65535             63  5.001000  5.001000    0.000000  </div>
+<div class="line">1      1.00      membranes     65534             63  6.824879  4.867349         NaN  </div>
+<div class="line">2      1.00         robots         0             63  4.038734  0.959281    1.953128  </div>
+<div class="line">3      1.00         robots         1             63  1.023770  8.115510    1.303922  </div>
+<div class="line">4      1.00         robots         2             63  1.965905  3.455247   -2.005039  </div>
+<div class="line">...     ...            ...       ...            ...       ...       ...         ...  </div>
+<div class="line">1423  14.13         robots        95            884  0.654096  9.729611   -0.386542  </div>
+<div class="line">1424  14.13         robots        96            884  8.011082  6.353422    1.812981  </div>
+<div class="line">1425  14.13         robots        97            884  4.807075  7.854455    1.177420  </div>
+<div class="line">1426  14.13         robots        98            884  4.021065  9.730083    1.626796  </div>
+<div class="line">1427  14.13         robots        99            883  9.031286  1.299344   -0.168437  </div>
+<div class="line"> </div>
+<div class="line">[1428 rows x 7 columns]</div>
+<div class="line"> </div>
+<div class="line"><span class="comment"># &quot;meta&quot; (metadata) contains a dict with the program version, the arena polygons and the YAML configuration used.</span></div>
 </div><!-- fragment --><p>Custom columns can be added into this file by using the callback mechanism. See examples "blooming" (simple) and "ssr" (complex) for more information.</p>
 <h1 class="doxsection"><a class="anchor" id="autotoc_md135"></a>
 Launch several runs in Parallel, with different configuration options</h1>

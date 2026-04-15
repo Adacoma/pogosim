@@ -87,10 +87,10 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FifoBuffer_8h.html",
-"classPogobotObject.html#ad45d87fb8e3a0710b6104078ea3f6e13",
-"geometry_8h.html#af359853bf93f4b8dcf6e0fae04e067a5",
-"spogobot_8cpp.html#a287a8e8926a5d810bc0ac073bcbcc9e7",
-"structmessage__short__header__t.html#ad4207e438d1f1dc8f628b5c44b8d194b"
+"classPogobotObject.html#a83fb561ab44770fa6f1e996bc7cc513b",
+"geometry_8cpp.html#a26bae0c48b4485fc418034fccaebad7f",
+"robot_8h.html",
+"structBoundingBox.html#ad923e964fad287d43a040a16036a83f3"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronization';

@@ -1,8 +1,10 @@
 var classPhysicalObject =
 [
-    [ "PhysicalObject", "classPhysicalObject.html#af69ae5997b755e95c3a43db90da4aec4", null ],
-    [ "PhysicalObject", "classPhysicalObject.html#a82f16f0c85d359a25de2120ff9665476", null ],
+    [ "PhysicalObject", "classPhysicalObject.html#a0b3f67812e10d4ddff363a73f6fc02ee", null ],
+    [ "PhysicalObject", "classPhysicalObject.html#a5396acc61c8ce93674d2286b5f2e9cca", null ],
     [ "create_body", "classPhysicalObject.html#ab4ac909f5ffdd44360339f9a9c730c08", null ],
+    [ "create_serialization_fields", "classPhysicalObject.html#aa3507c10283dc05d899b0267e54a4298", null ],
+    [ "do_init", "classPhysicalObject.html#a0951c205914d4c25798efa4d11906ef0", null ],
     [ "generate_contours", "classPhysicalObject.html#ab9e62e9bd5d2db4418e6d299670d0e2c", null ],
     [ "get_angle", "classPhysicalObject.html#a2b774231b6532c8550540c3c9fb084c3", null ],
     [ "get_angular_velocity", "classPhysicalObject.html#abc6ca818ae020ee681badb9c142f9021", null ],
@@ -13,6 +15,7 @@ var classPhysicalObject =
     [ "move", "classPhysicalObject.html#a0fb7b624ea03c571d78690557c8e841a", null ],
     [ "parse_configuration", "classPhysicalObject.html#a2f76f3d904f69c0af6386d3ec79a4e87", null ],
     [ "render", "classPhysicalObject.html#aa9986b4d8fe2a190e7f3632cafb9fcca", null ],
+    [ "serialize_base_values", "classPhysicalObject.html#afeae247d640529e5a9145edd3f38ebb3", null ],
     [ "_estimated_dt", "classPhysicalObject.html#ae1c76ccb055fa601a3762c134f9fa068", null ],
     [ "_last_time", "classPhysicalObject.html#a2b3d5f7efddb9ae277d154af28ed5edd", null ],
     [ "_lin_acc", "classPhysicalObject.html#a81dffbd145496c43f24ac55e4a2b7225", null ],

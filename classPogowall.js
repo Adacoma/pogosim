@@ -1,7 +1,8 @@
 var classPogowall =
 [
-    [ "Pogowall", "classPogowall.html#aa7cdb5f7093d8053a8bc5b146c367f4f", null ],
-    [ "Pogowall", "classPogowall.html#a3a902e5f7f82bca94c727906df3fc6de", null ],
+    [ "Pogowall", "classPogowall.html#a0a6ef73dcf608607a8f7316c6e1da4c2", null ],
+    [ "Pogowall", "classPogowall.html#afc482dcd2560a76a6e860d37bdc627e2", null ],
+    [ "do_init", "classPogowall.html#a6d050d11ba12e130421b81177c0943c9", null ],
     [ "get_IR_emitter_angle", "classPogowall.html#ae48bce0c60914cb7ae854f260e016013", null ],
     [ "get_IR_emitter_position", "classPogowall.html#a4d9a948fbf836490aa6c3149f1f71b4c", null ],
     [ "is_tangible", "classPogowall.html#a86f32d424d9eb62e904b49797ee03e96", null ],

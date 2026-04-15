@@ -9,6 +9,7 @@ var searchData=
   ['user_5finit_6',['user_init',['../classPogobotObject.html#a5c573de31b7be76aa52da7452f0758e6',1,'PogobotObject']]],
   ['user_5fstep_7',['user_step',['../classPogobotObject.html#af189e01131d2e571df1e5e0806278d90',1,'PogobotObject']]],
   ['userdatasize_8',['UserdataSize',['../robot_8h.html#ad756af0ea5228342ef5392888dc3dcfc',1,'robot.h']]],
-  ['utils_2ecpp_9',['utils.cpp',['../utils_8cpp.html',1,'']]],
-  ['utils_2eh_10',['utils.h',['../utils_8h.html',1,'']]]
+  ['userdatasize_9',['userdatasize',['../classPogobotObject.html#a2fdc78528ccc0bb1ade587f2be8c9196',1,'PogobotObject']]],
+  ['utils_2ecpp_10',['utils.cpp',['../utils_8cpp.html',1,'']]],
+  ['utils_2eh_11',['utils.h',['../utils_8h.html',1,'']]]
 ];

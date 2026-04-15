@@ -108,20 +108,25 @@ Inheritance diagram for PogobotObject:</div>
  <div class="center">
   <img src="classPogobotObject.png" usemap="#PogobotObject_map" alt=""/>
   <map id="PogobotObject_map" name="PogobotObject_map">
-<area href="classPhysicalObject.html" title="A physical object, i.e. with physics properties (e.g. collisions) modelled by Box2D." alt="PhysicalObject" shape="rect" coords="119,56,228,80"/>
-<area href="classObject.html" title="Base class of any object contained within the simulation." alt="Object" shape="rect" coords="119,0,228,24"/>
-<area href="classActiveObject.html" title="Class representing an active object, with a pogowall on each side." alt="ActiveObject" shape="rect" coords="0,168,109,192"/>
-<area href="classPogobjectObject.html" title="Class representing a simulated Pogobject." alt="PogobjectObject" shape="rect" coords="119,168,228,192"/>
-<area href="classPogowall.html" title="Class representing a simulated Pogowall." alt="Pogowall" shape="rect" coords="238,168,347,192"/>
-<area href="classMembraneObject.html" title="Class representing a simulated Membrane, with a pogowall on each side." alt="MembraneObject" shape="rect" coords="238,224,347,248"/>
+<area href="classPhysicalObject.html" title="A physical object, i.e. with physics properties (e.g. collisions) modelled by Box2D." alt="PhysicalObject" shape="rect" coords="144,56,278,80"/>
+<area href="classObject.html" title="Base class of any object contained within the simulation." alt="Object" shape="rect" coords="144,0,278,24"/>
+<area href="classActiveObject.html" title="Class representing an active object, with a pogowall on each side." alt="ActiveObject" shape="rect" coords="0,168,134,192"/>
+<area href="classPogobjectObject.html" title="Class representing a simulated Pogobject." alt="PogobjectObject" shape="rect" coords="144,168,278,192"/>
+<area href="classPogowall.html" title="Class representing a simulated Pogowall." alt="Pogowall" shape="rect" coords="288,168,422,192"/>
+<area href="classMembraneObject.html" title="Class representing a simulated Membrane, with a pogowall on each side." alt="MembraneObject" shape="rect" coords="288,224,422,248"/>
+<area href="classRectMembraneObject.html" alt="RectMembraneObject" shape="rect" coords="288,280,422,304"/>
   </map>
 </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-pub-methods" class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ac5f76e97d83f7429f8d530fc9980e718" id="r_ac5f76e97d83f7429f8d530fc9980e718"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="#ac5f76e97d83f7429f8d530fc9980e718">PogobotObject</a> (uint16_t _id, float _x, float _y, <a class="el" href="classObjectGeometry.html">ObjectGeometry</a> &amp;<a class="el" href="classObject.html#adcd450bea878660ce4e2161997ba60f9">geom</a>, b2WorldId world_id, size_t _userdatasize, float _communication_radius=80.0f, std::unique_ptr&lt; <a class="el" href="classMsgSuccessRate.html">MsgSuccessRate</a> &gt; _msg_success_rate=std::make_unique&lt; <a class="el" href="classConstMsgSuccessRate.html">ConstMsgSuccessRate</a> &gt;(0.5), float _temporal_noise_stddev=0.0f, float _linear_damping=0.0f, float _angular_damping=0.0f, float _density=10.0f, float _friction=0.3f, float _restitution=0.5f, float _max_linear_speed=100.0f, float _max_angular_speed=1.0f, float _linear_noise_stddev=0.0f, float _angular_noise_stddev=0.0f, bool _rotate_LEDs_45_deg=false, std::pair&lt; int16_t, int16_t &gt; angular_systematic_bias_domain={0, 0}, std::pair&lt; int16_t, int16_t &gt; photosensors_systematic_bias_domain={0, 0}, float _photosensors_noise_stddev=0.0f, std::string const &amp;_category=&quot;robots&quot;, bool dummy=false)</td></tr>
-<tr class="memitem:a7f79823f0980b7701be55383576e9e6a" id="r_a7f79823f0980b7701be55383576e9e6a"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="#a7f79823f0980b7701be55383576e9e6a">PogobotObject</a> (<a class="el" href="classSimulation.html">Simulation</a> *<a class="el" href="simulator_8cpp.html#ab70bfad4a612008f75bd058a276a926e">simulation</a>, uint16_t _id, float _x, float _y, b2WorldId world_id, size_t _userdatasize, <a class="el" href="classConfiguration.html">Configuration</a> const &amp;config, std::string const &amp;_category=&quot;robots&quot;)</td></tr>
-<tr class="memdesc:a7f79823f0980b7701be55383576e9e6a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="classPogobotObject.html" title="Class representing a simulated Pogobot.">PogobotObject</a> from a configuration entry.  <br /></td></tr>
+<tr class="memitem:a9cc9f6a154ddc7c56e99a6e0a298fa79" id="r_a9cc9f6a154ddc7c56e99a6e0a298fa79"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="#a9cc9f6a154ddc7c56e99a6e0a298fa79">PogobotObject</a> (uint16_t _id, float _x, float _y, <a class="el" href="classObjectGeometry.html">ObjectGeometry</a> &amp;<a class="el" href="classObject.html#adcd450bea878660ce4e2161997ba60f9">geom</a>, size_t _userdatasize, float _communication_radius=80.0f, std::unique_ptr&lt; <a class="el" href="classMsgSuccessRate.html">MsgSuccessRate</a> &gt; _msg_success_rate=std::make_unique&lt; <a class="el" href="classConstMsgSuccessRate.html">ConstMsgSuccessRate</a> &gt;(0.5), float _temporal_noise_stddev=0.0f, float _linear_damping=0.0f, float _angular_damping=0.0f, float _density=10.0f, float _friction=0.3f, float _restitution=0.5f, float _max_linear_speed=100.0f, float _max_angular_speed=1.0f, float _linear_noise_stddev=0.0f, float _angular_noise_stddev=0.0f, bool _rotate_LEDs_45_deg=false, std::pair&lt; int16_t, int16_t &gt; angular_systematic_bias_domain={0, 0}, std::pair&lt; int16_t, int16_t &gt; photosensors_systematic_bias_domain={0, 0}, float _photosensors_noise_stddev=0.0f, std::string const &amp;_category=&quot;robots&quot;, bool <a class="el" href="#a2941c83910f8d62e9e11d0578c1a50ee">dummy</a>=false)</td></tr>
+<tr class="memitem:a27903af721e4803755ac9b8e4680d70f" id="r_a27903af721e4803755ac9b8e4680d70f"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="#a27903af721e4803755ac9b8e4680d70f">PogobotObject</a> (<a class="el" href="classSimulation.html">Simulation</a> *<a class="el" href="simulator_8cpp.html#ab70bfad4a612008f75bd058a276a926e">simulation</a>, uint16_t _id, float _x, float _y, size_t _userdatasize, <a class="el" href="classConfiguration.html">Configuration</a> const &amp;config, std::string const &amp;_category=&quot;robots&quot;)</td></tr>
+<tr class="memdesc:a27903af721e4803755ac9b8e4680d70f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="classPogobotObject.html" title="Class representing a simulated Pogobot.">PogobotObject</a> from a configuration entry.  <br /></td></tr>
+<tr class="memitem:abf3b08dad0425df0b58ebec832a3126e" id="r_abf3b08dad0425df0b58ebec832a3126e"><td class="memItemLeft">virtual void&#160;</td><td class="memItemRight"><a class="el" href="#abf3b08dad0425df0b58ebec832a3126e">create_serialization_fields</a> (<a class="el" href="classDataLogger.html">DataLogger</a> *data_logger) override</td></tr>
+<tr class="memdesc:abf3b08dad0425df0b58ebec832a3126e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create serialization fields of the data logger.  <br /></td></tr>
+<tr class="memitem:a42ec2231018416b8967e1461aa7550e6" id="r_a42ec2231018416b8967e1461aa7550e6"><td class="memItemLeft">virtual void&#160;</td><td class="memItemRight"><a class="el" href="#a42ec2231018416b8967e1461aa7550e6">serialize_base_values</a> (<a class="el" href="classDataLogger.html">DataLogger</a> *data_logger, double t) override</td></tr>
+<tr class="memdesc:a42ec2231018416b8967e1461aa7550e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Save base values of the object into a data logger row.  <br /></td></tr>
 <tr class="memitem:accc4cf73c9c21aa2a0e8b4a50ed65fa3" id="r_accc4cf73c9c21aa2a0e8b4a50ed65fa3"><td class="memItemLeft">virtual void&#160;</td><td class="memItemRight"><a class="el" href="#accc4cf73c9c21aa2a0e8b4a50ed65fa3">launch_user_step</a> (float t) override</td></tr>
 <tr class="memdesc:accc4cf73c9c21aa2a0e8b4a50ed65fa3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Launches the user-defined step function.  <br /></td></tr>
 <tr class="memitem:addaf84fd3573bc601d3c44fd62580b96" id="r_addaf84fd3573bc601d3c44fd62580b96"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#addaf84fd3573bc601d3c44fd62580b96">register_stop_watch</a> (<a class="el" href="structtime__reference__t.html">time_reference_t</a> *sw)</td></tr>
@@ -155,10 +160,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a9ffc3f1cc0a007ab482ab9e5895e5989" id="r_a9ffc3f1cc0a007ab482ab9e5895e5989"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a9ffc3f1cc0a007ab482ab9e5895e5989">sleep_µs</a> (uint64_t microseconds)</td></tr>
 <tr class="memdesc:a9ffc3f1cc0a007ab482ab9e5895e5989"><td class="mdescLeft">&#160;</td><td class="mdescRight">Simulate a sleep on a single robot.  <br /></td></tr>
 <tr class="inherit_header pub_methods_classPhysicalObject"><td colspan="2" onclick="javascript:dynsection.toggleInherit('pub_methods_classPhysicalObject')"><span class="dynarrow"><span class="arrowhead closed"></span></span>Public Member Functions inherited from <a class="el" href="classPhysicalObject.html">PhysicalObject</a></td></tr>
-<tr class="memitem:af69ae5997b755e95c3a43db90da4aec4 inherit pub_methods_classPhysicalObject" id="r_af69ae5997b755e95c3a43db90da4aec4"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="classPhysicalObject.html#af69ae5997b755e95c3a43db90da4aec4">PhysicalObject</a> (uint16_t _id, float _x, float _y, <a class="el" href="classObjectGeometry.html">ObjectGeometry</a> &amp;<a class="el" href="classObject.html#adcd450bea878660ce4e2161997ba60f9">geom</a>, b2WorldId world_id, float _linear_damping=0.0f, float _angular_damping=0.0f, float _density=10.0f, float _friction=0.3f, float _restitution=0.5f, std::string const &amp;_category=&quot;objects&quot;)</td></tr>
-<tr class="memdesc:af69ae5997b755e95c3a43db90da4aec4 inherit pub_methods_classPhysicalObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="classPhysicalObject.html" title="A physical object, i.e. with physics properties (e.g. collisions) modelled by Box2D.">PhysicalObject</a>.  <br /></td></tr>
-<tr class="memitem:a82f16f0c85d359a25de2120ff9665476 inherit pub_methods_classPhysicalObject" id="r_a82f16f0c85d359a25de2120ff9665476"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="classPhysicalObject.html#a82f16f0c85d359a25de2120ff9665476">PhysicalObject</a> (<a class="el" href="classSimulation.html">Simulation</a> *<a class="el" href="simulator_8cpp.html#ab70bfad4a612008f75bd058a276a926e">simulation</a>, uint16_t _id, float _x, float _y, b2WorldId world_id, <a class="el" href="classConfiguration.html">Configuration</a> const &amp;config, std::string const &amp;_category=&quot;objects&quot;)</td></tr>
-<tr class="memdesc:a82f16f0c85d359a25de2120ff9665476 inherit pub_methods_classPhysicalObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="classPhysicalObject.html" title="A physical object, i.e. with physics properties (e.g. collisions) modelled by Box2D.">PhysicalObject</a> from a configuration entry.  <br /></td></tr>
+<tr class="memitem:a0b3f67812e10d4ddff363a73f6fc02ee inherit pub_methods_classPhysicalObject" id="r_a0b3f67812e10d4ddff363a73f6fc02ee"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="classPhysicalObject.html#a0b3f67812e10d4ddff363a73f6fc02ee">PhysicalObject</a> (uint16_t _id, float _x, float _y, <a class="el" href="classObjectGeometry.html">ObjectGeometry</a> &amp;<a class="el" href="classObject.html#adcd450bea878660ce4e2161997ba60f9">geom</a>, float _linear_damping=0.0f, float _angular_damping=0.0f, float _density=10.0f, float _friction=0.3f, float _restitution=0.5f, std::string const &amp;_category=&quot;objects&quot;)</td></tr>
+<tr class="memdesc:a0b3f67812e10d4ddff363a73f6fc02ee inherit pub_methods_classPhysicalObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="classPhysicalObject.html" title="A physical object, i.e. with physics properties (e.g. collisions) modelled by Box2D.">PhysicalObject</a>.  <br /></td></tr>
+<tr class="memitem:a5396acc61c8ce93674d2286b5f2e9cca inherit pub_methods_classPhysicalObject" id="r_a5396acc61c8ce93674d2286b5f2e9cca"><td class="memItemLeft">&#160;</td><td class="memItemRight"><a class="el" href="classPhysicalObject.html#a5396acc61c8ce93674d2286b5f2e9cca">PhysicalObject</a> (<a class="el" href="classSimulation.html">Simulation</a> *<a class="el" href="simulator_8cpp.html#ab70bfad4a612008f75bd058a276a926e">simulation</a>, uint16_t _id, float _x, float _y, <a class="el" href="classConfiguration.html">Configuration</a> const &amp;config, std::string const &amp;_category=&quot;objects&quot;)</td></tr>
+<tr class="memdesc:a5396acc61c8ce93674d2286b5f2e9cca inherit pub_methods_classPhysicalObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="classPhysicalObject.html" title="A physical object, i.e. with physics properties (e.g. collisions) modelled by Box2D.">PhysicalObject</a> from a configuration entry.  <br /></td></tr>
 <tr class="memitem:a06eda66a3fb541b632de953edbc919a7 inherit pub_methods_classPhysicalObject" id="r_a06eda66a3fb541b632de953edbc919a7"><td class="memItemLeft">virtual b2Vec2&#160;</td><td class="memItemRight"><a class="el" href="classPhysicalObject.html#a06eda66a3fb541b632de953edbc919a7">get_position</a> () const</td></tr>
 <tr class="memdesc:a06eda66a3fb541b632de953edbc919a7 inherit pub_methods_classPhysicalObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the object's current position.  <br /></td></tr>
 <tr class="memitem:a2b774231b6532c8550540c3c9fb084c3 inherit pub_methods_classPhysicalObject" id="r_a2b774231b6532c8550540c3c9fb084c3"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="classPhysicalObject.html#a2b774231b6532c8550540c3c9fb084c3">get_angle</a> () const</td></tr>
@@ -180,11 +185,16 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:abff706f2ee9b700ef56317599e71e160 inherit pub_methods_classObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs an <a class="el" href="classObject.html" title="Base class of any object contained within the simulation.">Object</a> from a configuration entry.  <br /></td></tr>
 <tr class="memitem:ae8f5483f459e46687bd01e6f9977afd3 inherit pub_methods_classObject" id="r_ae8f5483f459e46687bd01e6f9977afd3"><td class="memItemLeft">virtual&#160;</td><td class="memItemRight"><a class="el" href="classObject.html#ae8f5483f459e46687bd01e6f9977afd3">~Object</a> ()</td></tr>
 <tr class="memdesc:ae8f5483f459e46687bd01e6f9977afd3 inherit pub_methods_classObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Destructor.  <br /></td></tr>
+<tr class="memitem:ad527d3dc9e520a9be5163ab81cc179c9 inherit pub_methods_classObject" id="r_ad527d3dc9e520a9be5163ab81cc179c9"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="classObject.html#ad527d3dc9e520a9be5163ab81cc179c9">init</a> (b2WorldId world_id)</td></tr>
+<tr class="memdesc:ad527d3dc9e520a9be5163ab81cc179c9 inherit pub_methods_classObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Launch virtual function 'do_init' that will perform base initialization (e.g. create Box2D objects).  <br /></td></tr>
+<tr class="memitem:ab35f8d05e12473c236dcfdd705d2fabb inherit pub_methods_classObject" id="r_ab35f8d05e12473c236dcfdd705d2fabb"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="classObject.html#ab35f8d05e12473c236dcfdd705d2fabb">is_initialized</a> () const noexcept</td></tr>
+<tr class="memdesc:ab35f8d05e12473c236dcfdd705d2fabb inherit pub_methods_classObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Check if the object was correctly initialized yet.  <br /></td></tr>
 <tr class="memitem:aa801769eaa6f5a8e717c79bee42df98e inherit pub_methods_classObject" id="r_aa801769eaa6f5a8e717c79bee42df98e"><td class="memItemLeft"><a class="el" href="classObjectGeometry.html">ObjectGeometry</a> *&#160;</td><td class="memItemRight"><a class="el" href="classObject.html#aa801769eaa6f5a8e717c79bee42df98e">get_geometry</a> ()</td></tr>
 <tr class="memdesc:aa801769eaa6f5a8e717c79bee42df98e inherit pub_methods_classObject"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return the object's geometry.  <br /></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-pub-attribs" class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
+<tr class="memitem:a2fdc78528ccc0bb1ade587f2be8c9196" id="r_a2fdc78528ccc0bb1ade587f2be8c9196"><td class="memItemLeft">size_t&#160;</td><td class="memItemRight"><a class="el" href="#a2fdc78528ccc0bb1ade587f2be8c9196">userdatasize</a></td></tr>
 <tr class="memitem:a415ea6ce97e5b69f53065d4593daa39c" id="r_a415ea6ce97e5b69f53065d4593daa39c"><td class="memItemLeft">void *&#160;</td><td class="memItemRight"><a class="el" href="#a415ea6ce97e5b69f53065d4593daa39c">data</a> = nullptr</td></tr>
 <tr class="memdesc:a415ea6ce97e5b69f53065d4593daa39c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to user data.  <br /></td></tr>
 <tr class="memitem:a5c573de31b7be76aa52da7452f0758e6" id="r_a5c573de31b7be76aa52da7452f0758e6"><td class="memItemLeft">void(*&#160;</td><td class="memItemRight"><a class="el" href="#a5c573de31b7be76aa52da7452f0758e6">user_init</a> )(void) = nullptr</td></tr>
@@ -267,6 +277,8 @@ Public Attributes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 id="header-pro-methods" class="groupheader"><a id="pro-methods" name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
+<tr class="memitem:a7384f5c6a431219776534961504036ac" id="r_a7384f5c6a431219776534961504036ac"><td class="memItemLeft">virtual void&#160;</td><td class="memItemRight"><a class="el" href="#a7384f5c6a431219776534961504036ac">do_init</a> (b2WorldId world_id) override</td></tr>
+<tr class="memdesc:a7384f5c6a431219776534961504036ac"><td class="mdescLeft">&#160;</td><td class="mdescRight">Perform the base initialization (e.g. create Box2D objects). Called once by <span class="tt">init(world_id)</span>.  <br /></td></tr>
 <tr class="memitem:ad45d87fb8e3a0710b6104078ea3f6e13" id="r_ad45d87fb8e3a0710b6104078ea3f6e13"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#ad45d87fb8e3a0710b6104078ea3f6e13">create_robot_body</a> (b2WorldId world_id)</td></tr>
 <tr class="memdesc:ad45d87fb8e3a0710b6104078ea3f6e13"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates the object's physical body in the simulation.  <br /></td></tr>
 <tr class="memitem:a1269c2c6776d9ea9cf536f12e74675d6" id="r_a1269c2c6776d9ea9cf536f12e74675d6"><td class="memItemLeft">void&#160;</td><td class="memItemRight"><a class="el" href="#a1269c2c6776d9ea9cf536f12e74675d6">initialize_time</a> ()</td></tr>
@@ -290,6 +302,7 @@ Protected Attributes</h2></td></tr>
 <tr class="memitem:a83fb561ab44770fa6f1e996bc7cc513b" id="r_a83fb561ab44770fa6f1e996bc7cc513b"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="#a83fb561ab44770fa6f1e996bc7cc513b">linear_noise_stddev</a></td></tr>
 <tr class="memitem:a64c3e918840a9edb2c23b34837bf7406" id="r_a64c3e918840a9edb2c23b34837bf7406"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="#a64c3e918840a9edb2c23b34837bf7406">angular_noise_stddev</a></td></tr>
 <tr class="memitem:a30d5225b4e621d792fc09e8163c3fb3e" id="r_a30d5225b4e621d792fc09e8163c3fb3e"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a30d5225b4e621d792fc09e8163c3fb3e">rotate_LEDs_45_deg</a></td></tr>
+<tr class="memitem:a2941c83910f8d62e9e11d0578c1a50ee" id="r_a2941c83910f8d62e9e11d0578c1a50ee"><td class="memItemLeft">bool&#160;</td><td class="memItemRight"><a class="el" href="#a2941c83910f8d62e9e11d0578c1a50ee">dummy</a> = false</td></tr>
 <tr class="inherit_header pro_attribs_classPhysicalObject"><td colspan="2" onclick="javascript:dynsection.toggleInherit('pro_attribs_classPhysicalObject')"><span class="dynarrow"><span class="arrowhead closed"></span></span>Protected Attributes inherited from <a class="el" href="classPhysicalObject.html">PhysicalObject</a></td></tr>
 <tr class="memitem:a29d22426d87ff17fcd15ef8d2b67e282 inherit pro_attribs_classPhysicalObject" id="r_a29d22426d87ff17fcd15ef8d2b67e282"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="classPhysicalObject.html#a29d22426d87ff17fcd15ef8d2b67e282">linear_damping</a></td></tr>
 <tr class="memitem:a6add211d37bfefda7503473f5c81169c inherit pro_attribs_classPhysicalObject" id="r_a6add211d37bfefda7503473f5c81169c"><td class="memItemLeft">float&#160;</td><td class="memItemRight"><a class="el" href="classPhysicalObject.html#a6add211d37bfefda7503473f5c81169c">angular_damping</a></td></tr>
@@ -310,8 +323,8 @@ Protected Attributes</h2></td></tr>
 <div class="textblock"><p>Class representing a simulated Pogobot. </p>
 <p>The <a class="el" href="classPogobotObject.html" title="Class representing a simulated Pogobot.">PogobotObject</a> class encapsulates the properties and behaviors of a simulated Pogobot robot, including physical properties, timing, LED control, messaging, and rendering. </p>
 </div><a name="doc-constructors" id="doc-constructors"></a><h2 id="header-doc-constructors" class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="ac5f76e97d83f7429f8d530fc9980e718" name="ac5f76e97d83f7429f8d530fc9980e718"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac5f76e97d83f7429f8d530fc9980e718">&#9670;&#160;</a></span>PogobotObject() <span class="overload">[1/2]</span></h2>
+<a id="a9cc9f6a154ddc7c56e99a6e0a298fa79" name="a9cc9f6a154ddc7c56e99a6e0a298fa79"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9cc9f6a154ddc7c56e99a6e0a298fa79">&#9670;&#160;</a></span>PogobotObject() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -335,11 +348,6 @@ Protected Attributes</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype"><a class="el" href="classObjectGeometry.html">ObjectGeometry</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>geom</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">b2WorldId</td>          <td class="paramname"><span class="paramname"><em>world_id</em></span>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -445,7 +453,6 @@ Protected Attributes</h2></td></tr>
     <tr><td class="paramname"><a class="el" href="classObject.html#a99addca3b5d96c214fa8f90474224699" title="X position.">x</a></td><td>Initial x-coordinate in the simulation. </td></tr>
     <tr><td class="paramname"><a class="el" href="classObject.html#a2870044ec214e97550ee28db89c6382a" title="Y position.">y</a></td><td>Initial y-coordinate in the simulation. </td></tr>
     <tr><td class="paramname"><a class="el" href="classObject.html#adcd450bea878660ce4e2161997ba60f9" title="Geometry of the object.">geom</a></td><td><a class="el" href="classObject.html" title="Base class of any object contained within the simulation.">Object</a>'s geometry. </td></tr>
-    <tr><td class="paramname">world_id</td><td>The Box2D world identifier. </td></tr>
     <tr><td class="paramname">_userdatasize</td><td>Size of the memory block allocated for user data. </td></tr>
     <tr><td class="paramname">_communication_radius</td><td>communication radius of each IR emitter </td></tr>
     <tr><td class="paramname">_msg_success_rate</td><td>std::unique_ptr&lt;MsgSuccessRate&gt; describing the probability of successfully sending a message. </td></tr>
@@ -467,8 +474,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a7f79823f0980b7701be55383576e9e6a" name="a7f79823f0980b7701be55383576e9e6a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7f79823f0980b7701be55383576e9e6a">&#9670;&#160;</a></span>PogobotObject() <span class="overload">[2/2]</span></h2>
+<a id="a27903af721e4803755ac9b8e4680d70f" name="a27903af721e4803755ac9b8e4680d70f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a27903af721e4803755ac9b8e4680d70f">&#9670;&#160;</a></span>PogobotObject() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -496,11 +503,6 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">b2WorldId</td>          <td class="paramname"><span class="paramname"><em>world_id</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
           <td class="paramtype">size_t</td>          <td class="paramname"><span class="paramname"><em>_userdatasize</em></span>, </td>
         </tr>
         <tr>
@@ -523,7 +525,6 @@ Protected Attributes</h2></td></tr>
     <tr><td class="paramname">_id</td><td>Unique object identifier. </td></tr>
     <tr><td class="paramname"><a class="el" href="classObject.html#a99addca3b5d96c214fa8f90474224699" title="X position.">x</a></td><td>Initial x-coordinate in the simulation. </td></tr>
     <tr><td class="paramname"><a class="el" href="classObject.html#a2870044ec214e97550ee28db89c6382a" title="Y position.">y</a></td><td>Initial y-coordinate in the simulation. </td></tr>
-    <tr><td class="paramname">world_id</td><td>The Box2D world identifier. </td></tr>
     <tr><td class="paramname">_userdatasize</td><td>Size of the memory block allocated for user data. </td></tr>
     <tr><td class="paramname">config</td><td><a class="el" href="classConfiguration.html" title="Class for managing hierarchical configuration parameters.">Configuration</a> entry describing the object properties. </td></tr>
   </table>
@@ -566,6 +567,43 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="abf3b08dad0425df0b58ebec832a3126e" name="abf3b08dad0425df0b58ebec832a3126e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abf3b08dad0425df0b58ebec832a3126e">&#9670;&#160;</a></span>create_serialization_fields()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PogobotObject::create_serialization_fields </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classDataLogger.html">DataLogger</a> *</td>          <td class="paramname"><span class="paramname"><em>data_logger</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel override">override</span><span class="mlabel virtual">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Create serialization fields of the data logger. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">data_logger</td><td>Pointer to a <a class="el" href="classDataLogger.html" title="DataLogger class for writing data to a Feather file using Apache Arrow.">DataLogger</a> used for serialization </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPhysicalObject.html#aa3507c10283dc05d899b0267e54a4298">PhysicalObject</a>.</p>
+
+<p>Reimplemented in <a class="el" href="classMembraneObject.html#ae9a229066e2f59b698a565687acbc076">MembraneObject</a>.</p>
+
+</div>
+</div>
 <a id="ae9d4a9989dc9a73bfd4e0956db635fbb" name="ae9d4a9989dc9a73bfd4e0956db635fbb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae9d4a9989dc9a73bfd4e0956db635fbb">&#9670;&#160;</a></span>disable_stop_watches()</h2>
 
@@ -583,6 +621,43 @@ Protected Attributes</h2></td></tr>
 
 <p>Disables all registered stop watches. </p>
 <p>Iterates through all registered stop watches and disables them. </p>
+
+</div>
+</div>
+<a id="a7384f5c6a431219776534961504036ac" name="a7384f5c6a431219776534961504036ac"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7384f5c6a431219776534961504036ac">&#9670;&#160;</a></span>do_init()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PogobotObject::do_init </td>
+          <td>(</td>
+          <td class="paramtype">b2WorldId</td>          <td class="paramname"><span class="paramname"><em>world_id</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel override">override</span><span class="mlabel protected">protected</span><span class="mlabel virtual">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Perform the base initialization (e.g. create Box2D objects). Called once by <span class="tt">init(world_id)</span>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">world_id</td><td>The Box2D world identifier. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPhysicalObject.html#a0951c205914d4c25798efa4d11906ef0">PhysicalObject</a>.</p>
+
+<p>Reimplemented in <a class="el" href="classMembraneObject.html#a28829e52f0fe2f6e93af1f887a974d20">MembraneObject</a>, <a class="el" href="classPogobjectObject.html#adc38a086492c3222acecd607299ff8ee">PogobjectObject</a>, <a class="el" href="classPogowall.html#a6d050d11ba12e130421b81177c0943c9">Pogowall</a>, and <a class="el" href="classRectMembraneObject.html#ac06ed85c397ab464d4373969a6f41bdb">RectMembraneObject</a>.</p>
 
 </div>
 </div>
@@ -877,7 +952,7 @@ Protected Attributes</h2></td></tr>
 
 <p>Reimplemented from <a class="el" href="classPhysicalObject.html#a2f76f3d904f69c0af6386d3ec79a4e87">PhysicalObject</a>.</p>
 
-<p>Reimplemented in <a class="el" href="classActiveObject.html#a8aa9141a047d2d3ce63b4b7db21c0bab">ActiveObject</a>, and <a class="el" href="classMembraneObject.html#ae843a156c1f44a3c70c171c1b84bcda0">MembraneObject</a>.</p>
+<p>Reimplemented in <a class="el" href="classActiveObject.html#a8aa9141a047d2d3ce63b4b7db21c0bab">ActiveObject</a>, <a class="el" href="classMembraneObject.html#ae843a156c1f44a3c70c171c1b84bcda0">MembraneObject</a>, and <a class="el" href="classRectMembraneObject.html#a0f60e036089acbbb2bbdf7a470532b7c">RectMembraneObject</a>.</p>
 
 </div>
 </div>
@@ -975,7 +1050,7 @@ Protected Attributes</h2></td></tr>
 
 <p>Implements <a class="el" href="classPhysicalObject.html#aa9986b4d8fe2a190e7f3632cafb9fcca">PhysicalObject</a>.</p>
 
-<p>Reimplemented in <a class="el" href="classActiveObject.html#a6836b3e4ffcf6eccf9d8f503d3a16957">ActiveObject</a>, <a class="el" href="classMembraneObject.html#a2cff8f738de2a3fafb9a38141c984fbf">MembraneObject</a>, <a class="el" href="classPogobjectObject.html#a128ead5f12b471660c54e00fe0ef1126">PogobjectObject</a>, and <a class="el" href="classPogowall.html#ae08f47fb55434dcffc5f412a3d7cc5da">Pogowall</a>.</p>
+<p>Reimplemented in <a class="el" href="classActiveObject.html#a6836b3e4ffcf6eccf9d8f503d3a16957">ActiveObject</a>, <a class="el" href="classMembraneObject.html#a2cff8f738de2a3fafb9a38141c984fbf">MembraneObject</a>, <a class="el" href="classPogobjectObject.html#a128ead5f12b471660c54e00fe0ef1126">PogobjectObject</a>, <a class="el" href="classPogowall.html#ae08f47fb55434dcffc5f412a3d7cc5da">Pogowall</a>, and <a class="el" href="classRectMembraneObject.html#a6e4f8881deaae0f67aa2460d0ba56d68">RectMembraneObject</a>.</p>
 
 </div>
 </div>
@@ -1078,6 +1153,47 @@ Protected Attributes</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a42ec2231018416b8967e1461aa7550e6" name="a42ec2231018416b8967e1461aa7550e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a42ec2231018416b8967e1461aa7550e6">&#9670;&#160;</a></span>serialize_base_values()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void PogobotObject::serialize_base_values </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classDataLogger.html">DataLogger</a> *</td>          <td class="paramname"><span class="paramname"><em>data_logger</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>t</em></span>&#160;)</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel override">override</span><span class="mlabel virtual">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Save base values of the object into a data logger row. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">data_logger</td><td>Pointer to a <a class="el" href="classDataLogger.html" title="DataLogger class for writing data to a Feather file using Apache Arrow.">DataLogger</a> used to serialize base values </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented from <a class="el" href="classPhysicalObject.html#afeae247d640529e5a9145edd3f38ebb3">PhysicalObject</a>.</p>
+
+<p>Reimplemented in <a class="el" href="classMembraneObject.html#a6f9fc18a6021a09d05357638eeddd4e9">MembraneObject</a>, and <a class="el" href="classRectMembraneObject.html#a4fe2fbdc56827a47e60c8a98ce9e0a30">RectMembraneObject</a>.</p>
 
 </div>
 </div>
@@ -1337,6 +1453,28 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Pointer to user data. </p>
+
+</div>
+</div>
+<a id="a2941c83910f8d62e9e11d0578c1a50ee" name="a2941c83910f8d62e9e11d0578c1a50ee"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2941c83910f8d62e9e11d0578c1a50ee">&#9670;&#160;</a></span>dummy</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PogobotObject::dummy = false</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel protected">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -1881,6 +2019,20 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Pointer to a user-defined step function. </p>
+
+</div>
+</div>
+<a id="a2fdc78528ccc0bb1ade587f2be8c9196" name="a2fdc78528ccc0bb1ade587f2be8c9196"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2fdc78528ccc0bb1ade587f2be8c9196">&#9670;&#160;</a></span>userdatasize</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">size_t PogobotObject::userdatasize</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>

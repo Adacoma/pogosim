@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['interval_0',['Interval',['../structangles_1_1Interval.html',1,'angles::Interval'],['../structInterval.html',1,'Interval']]]
+  ['hinge_0',['Hinge',['../structRectMembraneObject_1_1Hinge.html',1,'RectMembraneObject']]]
 ];

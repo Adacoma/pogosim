@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['joint_0',['Joint',['../structMembraneObject_1_1Joint.html',1,'MembraneObject']]]
+  ['interval_0',['Interval',['../structangles_1_1Interval.html',1,'angles::Interval'],['../structInterval.html',1,'Interval']]]
 ];

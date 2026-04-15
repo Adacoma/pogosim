@@ -10,6 +10,7 @@ var hierarchy =
     [ "emitting_power_list_t", "unionemitting__power__list__t.html", null ],
     [ "GridCell", "structGridCell.html", null ],
     [ "GridCellHash", "structGridCellHash.html", null ],
+    [ "RectMembraneObject::Hinge", "structRectMembraneObject_1_1Hinge.html", null ],
     [ "angles::Interval", "structangles_1_1Interval.html", null ],
     [ "Interval", "structInterval.html", null ],
     [ "MembraneObject::Joint", "structMembraneObject_1_1Joint.html", null ],
@@ -29,7 +30,9 @@ var hierarchy =
           [ "ActiveObject", "classActiveObject.html", null ],
           [ "PogobjectObject", "classPogobjectObject.html", null ],
           [ "Pogowall", "classPogowall.html", [
-            [ "MembraneObject", "classMembraneObject.html", null ]
+            [ "MembraneObject", "classMembraneObject.html", [
+              [ "RectMembraneObject", "classRectMembraneObject.html", null ]
+            ] ]
           ] ]
         ] ]
       ] ],
@@ -43,6 +46,7 @@ var hierarchy =
       [ "RectangleGeometry", "classRectangleGeometry.html", null ],
       [ "TriangleGeometry", "classTriangleGeometry.html", null ]
     ] ],
+    [ "RectMembraneObject::Rect", "structRectMembraneObject_1_1Rect.html", null ],
     [ "short_message_t", "structshort__message__t.html", null ],
     [ "Simulation", "classSimulation.html", null ],
     [ "slip_error_counter_s", "structslip__error__counter__s.html", null ],

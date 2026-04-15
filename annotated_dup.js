@@ -34,6 +34,7 @@ var annotated_dup =
     [ "PogobotObject", "classPogobotObject.html", "classPogobotObject" ],
     [ "Pogowall", "classPogowall.html", "classPogowall" ],
     [ "RectangleGeometry", "classRectangleGeometry.html", "classRectangleGeometry" ],
+    [ "RectMembraneObject", "classRectMembraneObject.html", "classRectMembraneObject" ],
     [ "RotatingRayOfLightObject", "classRotatingRayOfLightObject.html", "classRotatingRayOfLightObject" ],
     [ "short_message_t", "structshort__message__t.html", "structshort__message__t" ],
     [ "Simulation", "classSimulation.html", "classSimulation" ],
