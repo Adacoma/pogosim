@@ -90,6 +90,10 @@ From: ubuntu:24.04
     pip3 install meson==0.64.1 ninja # pogosim
 
     # Install last version of pogobatch
+    cd /opt/pogosim
+    find scripts -name '*.pyc' -delete
+    find scripts -name '__pycache__' -type d -exec rm -rf {} +
+    rm -rf scripts/build scripts/dist scripts/*.egg-info
     cd /opt/pogosim/scripts
     python3 setup.py sdist bdist_wheel
     pip3 install -U .
