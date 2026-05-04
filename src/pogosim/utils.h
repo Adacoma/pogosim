@@ -8,6 +8,7 @@
 #include <box2d/box2d.h>
 
 #include <random>
+#include <cstdint>
 #include <algorithm>
 
 #include "configuration.h"
@@ -33,6 +34,20 @@ extern std::shared_ptr<spdlog::logger> robotlogger;
 extern std::random_device rd;
 /// Random number generator seeded with rd.
 extern std::mt19937 rnd_gen;
+
+/**
+ * @brief Seed all simulator RNGs from a single seed value.
+ *
+ * @param seed The seed value to apply.
+ */
+void seed_random_generators(uint32_t seed);
+
+/**
+ * @brief Generate a non-deterministic seed value.
+ *
+ * @return uint32_t The generated seed.
+ */
+uint32_t make_random_seed();
 
 /**
  * @brief Check whether a vector contains a given value.

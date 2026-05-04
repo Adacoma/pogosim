@@ -2,6 +2,7 @@
 #include <string>
 #include <filesystem>
 #include <algorithm>
+#include <cstdlib>
 
 #include "utils.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -14,6 +15,15 @@ std::shared_ptr<spdlog::logger> robotlogger;
 // Random device and generator
 std::random_device rd;
 std::mt19937 rnd_gen(rd());
+
+void seed_random_generators(uint32_t seed) {
+    rnd_gen.seed(seed); // C++ rng
+    std::srand(static_cast<unsigned int>(seed)); // C rng (in case of rand() usage)
+}
+
+uint32_t make_random_seed() {
+    return rd();
+}
 
 
 void init_logger(Configuration& config) {
