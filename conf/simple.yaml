@@ -17,6 +17,8 @@ data_filename: "frames/data.feather"
 enable_console_logging: true
 log_format: default         # Either default or minimal
 console_filename: "frames/console.txt"
+enable_config_logging: true
+config_filename: "frames/config.yaml"
 save_data_period: 1.0       # In s, or -1 to disable data export (see also "enable_data_logging")
 save_video_period: 0.1      # In s, or -1 to disable frame export
 frames_name: "frames/f{:010.4f}.png"
