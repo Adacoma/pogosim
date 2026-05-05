@@ -9,6 +9,9 @@
 #include "data_logger.h"
 #include "SDL_FontCache.h"
 
+#include <optional>
+#include <unordered_set>
+
 /**
  * @brief Main entry point for the robot code (C linkage).
  *
@@ -120,6 +123,7 @@ class Simulation {
     bool enable_data_logging;                ///< Flag to enable data logging.
     std::unique_ptr<DataLogger> data_logger; ///< DataLogger instance.
     uint64_t data_logger_flush_row_count;    ///< Number of rows to buffer before writing a record batch with the data logger.
+    std::optional<std::unordered_set<std::string>> data_logger_categories; ///< Optional robot/object categories to log.
 
     // Dummy robot used as current robot in the global_step callback
     std::unique_ptr<PogobotObject> dummy_global_robot;
