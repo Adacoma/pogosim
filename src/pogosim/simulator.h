@@ -8,6 +8,7 @@
 #include "configuration.h"
 #include "data_logger.h"
 #include "SDL_FontCache.h"
+#include "trajectory_traces.h"
 
 /**
  * @brief Main entry point for the robot code (C linkage).
@@ -55,6 +56,7 @@ class Simulation {
     bool show_comm_above_all = false;     ///< Flag indicating if the communication channels must be drawn above the objects (true) or below.
     bool show_lateral_leds = false;       ///< Flag indicating whether to show the lateral LEDs.
     bool show_light_levels = false;       ///< Flag indicating whether to show the light level.
+    bool show_trajectory_traces = false;  ///< Flag indicating whether to show robot tail trajectory traces.
 
     double t = 0.0f;                      ///< Simulation time (in seconds).
 
@@ -87,6 +89,7 @@ class Simulation {
     std::vector<std::shared_ptr<PogobotObject>> robots;                     ///< Vector of robots in the simulation.
     std::vector<std::shared_ptr<Object>> non_robots;                        ///< Vector of objects that are not robots in the simulation.
     std::unique_ptr<LightLevelMap> light_map;                               ///< Light map of the arena.
+    TrajectoryTraces trajectory_traces;                                      ///< GUI-only bounded tail trajectory traces.
     std::string initial_formation;                                          ///< Type of initial formation of the objects.
     std::pair<float, float> initial_formation_center;                       ///< X, Y coordinates of the center of the initial formation, for formations that requires it.
     std::string initial_formation_root_object_name;                         ///< Name of the object class used to define bounds of the initial formation (e.g. passive object or membrane).
@@ -275,6 +278,11 @@ public:
      * Renders a horizontal scale bar along with a label indicating the scale in millimeters.
      */
     void draw_scale_bar();
+
+    /**
+     * @brief Toggles robot trajectory trace rendering.
+     */
+    void toggle_trajectory_traces();
 
     /**
      * @brief Renders all simulation components.

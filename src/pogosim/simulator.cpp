@@ -478,6 +478,7 @@ void Simulation::init_config() {
     show_comm_above_all = config["show_communication_channels_above_all"].get(false);
     show_lateral_leds = config["show_lateral_LEDs"].get(true);
     show_light_levels = config["show_light_levels"].get(false);
+    show_trajectory_traces = config["show_trajectory_traces"].get(false);
 
     initial_formation = config["initial_formation"].get(std::string("power_lloyd"));
     initial_formation_center = config["initial_formation_center"].get<decltype(initial_formation_center)>({NAN, NAN});
@@ -709,6 +710,7 @@ void Simulation::help_message() {
     glogger->info("Welcome to the Pogosim's GUI. This is an help message...");
     glogger->info("Here is a list of shortcuts that can be used to control the GUI:");
     glogger->info(" - F1: Help message");
+    glogger->info(" - F2: Show/Hide the trajectory traces");
     glogger->info(" - F3: Slow down the simulation");
     glogger->info(" - F4: Speed up the simulation");
     glogger->info(" - F5: Show/Hide the communication channels, below/above the other objects");
@@ -734,6 +736,9 @@ void Simulation::handle_SDL_events() {
             switch (event.key.keysym.sym) {
                 case SDLK_F1:
                     help_message();
+                    break;
+                case SDLK_F2:
+                    toggle_trajectory_traces();
                     break;
                 case SDLK_F3:
                     speed_down();
@@ -936,6 +941,13 @@ void Simulation::draw_scale_bar() {
     FC_Draw(font, renderer, x1, y1 + 5, "%s", formatted_scale.c_str());
 }
 
+void Simulation::toggle_trajectory_traces() {
+    show_trajectory_traces = !show_trajectory_traces;
+    if (show_trajectory_traces) {
+        trajectory_traces.reset(robots);
+    }
+    glogger->info("Trajectory traces {}", show_trajectory_traces ? "enabled" : "disabled");
+}
 
 void Simulation::render_all() {
     if (!renderer || !window) {
@@ -961,6 +973,10 @@ void Simulation::render_all() {
     //renderWalls(renderer); // Render the walls
     for(auto const& poly : arena_polygons) {
         draw_polygon(renderer, poly);
+    }
+
+    if (show_trajectory_traces) {
+        trajectory_traces.render(renderer, boundary_condition, domain_w, domain_h);
     }
 
     // Render objects
@@ -1072,6 +1088,9 @@ void Simulation::main_loop() {
         last_data_saved_t = t;
         export_data();
     }
+    if (show_trajectory_traces) {
+        trajectory_traces.reset(robots);
+    }
 
     // Main loop for all robots
     while (running && t < simulation_time) {
@@ -1126,6 +1145,10 @@ void Simulation::main_loop() {
 
         if (boundary_condition == boundary_condition_t::periodic) {
             apply_periodic_wrapping();
+        }
+
+        if (show_trajectory_traces) {
+            trajectory_traces.update(robots);
         }
 
         // Compute neighbors
