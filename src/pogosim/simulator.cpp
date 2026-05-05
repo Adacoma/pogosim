@@ -3,6 +3,7 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include <fstream>
 
 #include <fmt/format.h>
 #include <yaml-cpp/yaml.h>
@@ -865,7 +866,41 @@ void Simulation::compute_neighbors() {
 
 
 void Simulation::init_callbacks() {
+    save_config_snapshot();
     init_data_logger();
+}
+
+void Simulation::save_config_snapshot() {
+    // Two parameters control the configuration snapshot saving:
+    //  1. one flag controls whether the file is written (enable_config_logging)
+    //  2. one filename controls where it goes (config_filename)
+
+    // if not enabled, do nothing
+    bool const enable_config_logging = config["enable_config_logging"].get(true);
+    if (!enable_config_logging) {
+        return;
+    }
+
+    // if enabled, but filename is missing or empty, throw error
+    Configuration const config_filename_config = config["config_filename"];
+    std::string const config_filename = config_filename_config.get(std::string());
+    if (!config_filename_config.exists() || config_filename.empty()) {
+        throw std::runtime_error("'enable_config_logging' is set to true, but 'config_filename' is missing or empty.");
+    }
+
+    // create parent directories if they don't exist
+    std::filesystem::path const config_path(config_filename);
+    std::filesystem::path const parent = config_path.parent_path();
+    if (!parent.empty()) {
+        std::filesystem::create_directories(parent);
+    }
+
+    std::ofstream out(config_path);
+    if (!out) {
+        throw std::runtime_error("Unable to write configuration snapshot: " + config_path.string());
+    }
+    // Write the configuration summary to the file
+    out << config.summary() << '\n';
 }
 
 void Simulation::init_data_logger() {

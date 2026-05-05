@@ -252,6 +252,15 @@ public:
     void init_callbacks();
 
     /**
+     * @brief Saves the effective configuration to a YAML file.
+     *
+     * The destination is controlled by enable_config_logging and config_filename.
+     *
+     * @throw std::runtime_error if the configuration snapshot cannot be written.
+     */
+    void save_config_snapshot();
+
+    /**
      * @brief Initializes the data logger.
      *
      * Sets up the DataLogger schema based on configuration and opens the data file.
