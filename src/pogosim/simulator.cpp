@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <algorithm>
+#include <limits>
 
 #include <cmath>
 #include <vector>
@@ -33,6 +34,7 @@ void set_current_robot(PogobotObject& robot) {
     // Store values of previous robot
     if (current_robot != nullptr) {
         current_robot->callback_export_data          = callback_export_data;
+        current_robot->callback_robot_click          = callback_robot_click;
         current_robot->pogobot_ticks                 = pogobot_ticks;
         current_robot->main_loop_hz                  = main_loop_hz;
         current_robot->max_nb_processed_msg_per_tick = max_nb_processed_msg_per_tick;
@@ -53,6 +55,7 @@ void set_current_robot(PogobotObject& robot) {
 
     // Update robot values
     callback_export_data          = robot.callback_export_data;
+    callback_robot_click          = robot.callback_robot_click;
     pogobot_ticks                 = robot.pogobot_ticks;
     main_loop_hz                  = robot.main_loop_hz;
     max_nb_processed_msg_per_tick = robot.max_nb_processed_msg_per_tick;
@@ -723,6 +726,78 @@ void Simulation::help_message() {
     glogger->info(" - 0: Reset the zoom and visualization coordinates");
 }
 
+std::shared_ptr<PogobotObject> Simulation::find_robot_at_screen_position(int mouse_x, int mouse_y) const {
+    // find robot whose center is nearest to the click
+    std::shared_ptr<PogobotObject> best;
+    // smallest squared distance found so far
+    float best_dist_sq = std::numeric_limits<float>::max();
+
+    // add a small margin to make selection easier
+    constexpr float padding_px = 6.0f;
+
+    for (auto const& robot : robots) {
+        if (!robot) {
+            continue;
+        }
+
+        // compare the mouse position and robot center in screen coordinates
+        b2Vec2 const position = robot->get_position();
+        auto const screen_pos = visualization_position(position.x * VISUALIZATION_SCALE,
+                                                       position.y * VISUALIZATION_SCALE);
+        float const dx = static_cast<float>(mouse_x) - screen_pos.x;
+        float const dy = static_cast<float>(mouse_y) - screen_pos.y;
+        float const dist_sq = dx * dx + dy * dy;
+        float const pick_radius_px = robot->radius * mm_to_pixels + padding_px;
+
+        // avoid sqrt by comparing squared distances
+        if (dist_sq <= pick_radius_px * pick_radius_px && dist_sq < best_dist_sq) {
+            best_dist_sq = dist_sq;
+            best = robot;
+        }
+    }
+
+    return best;
+}
+
+void Simulation::handle_robot_click(int mouse_x, int mouse_y) {
+    // try to find robot under mouse position
+    auto clicked_robot = find_robot_at_screen_position(mouse_x, mouse_y);
+
+    // no robot hit -> clear any existing selection
+    if (!clicked_robot) {
+        selected_robot.reset(); // drop reference
+        return;
+    }
+
+    // resolve current selection
+    auto current_selection = selected_robot.lock();
+
+    // clicking already-selected robot toggles selection off
+    if (current_selection == clicked_robot) {
+        selected_robot.reset();
+        return;
+    }
+
+    // update selection to newly clicked robot
+    selected_robot = clicked_robot;
+
+    // if robot has no callback, stop
+    if (!clicked_robot->callback_robot_click) {
+        return;
+    }
+
+    // switch execution to clicked robot
+    PogobotObject* const previous_robot = current_robot;
+    set_current_robot(*clicked_robot.get());
+
+    // execute callback
+    clicked_robot->callback_robot_click();
+
+    // restore previous context if it existed
+    if (previous_robot && previous_robot != clicked_robot.get()) {
+        set_current_robot(*previous_robot);
+    }
+}
 
 void Simulation::handle_SDL_events() {
     SDL_Event event;
@@ -805,6 +880,8 @@ void Simulation::handle_SDL_events() {
                 dragging_pos_by_mouse = true;
                 last_mouse_x = event.button.x;
                 last_mouse_y = event.button.y;
+            } else if (event.button.button == SDL_BUTTON_LEFT) {
+                handle_robot_click(event.button.x, event.button.y);
             }
 
         } else if (event.type == SDL_MOUSEBUTTONUP) {
@@ -937,6 +1014,28 @@ void Simulation::draw_scale_bar() {
 }
 
 
+void Simulation::render_selected_robot() {
+    // resolve selected robot
+    auto robot = selected_robot.lock();
+    if (!robot) {
+        return;
+    }
+
+    // convert world position to screen coordinates
+    b2Vec2 const position = robot->get_position();
+    auto const screen_pos = visualization_position(position.x * VISUALIZATION_SCALE,
+                                                   position.y * VISUALIZATION_SCALE);
+
+    // radius slightly larger than robot
+    float const radius = robot->radius * mm_to_pixels + 5.0f;
+
+    // draw ring around robot's body
+    circleRGBA(renderer, screen_pos.x, screen_pos.y, radius,    255, 255, 255, 230);
+    circleRGBA(renderer, screen_pos.x, screen_pos.y, radius + 1, 30, 120, 255, 255);
+    circleRGBA(renderer, screen_pos.x, screen_pos.y, radius + 2, 30, 120, 255, 180);
+}
+
+
 void Simulation::render_all() {
     if (!renderer || !window) {
         return; // headless / CI without renderer
@@ -968,6 +1067,8 @@ void Simulation::render_all() {
         robot->show_lateral_leds = show_lateral_leds;
         robot->render(renderer, worldId);
     }
+    // Keep the selection marker above robots but below passive objects and overlays.
+    render_selected_robot();
     //SDL_RenderPresent(renderer);
 
     for (auto const& obj : non_robots) {
