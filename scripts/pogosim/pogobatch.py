@@ -229,6 +229,8 @@ class PogobotLauncher:
             config['data_filename'] = os.path.join(frames_dir, os.path.basename(config['data_filename']))
         if 'console_filename' in config:
             config['console_filename'] = os.path.join(frames_dir, os.path.basename(config['console_filename']))
+        if 'config_filename' in config:
+            config['config_filename'] = os.path.join(frames_dir, os.path.basename(config['config_filename']))
         if 'frames_name' in config:
             config['frames_name'] = os.path.join(frames_dir, os.path.basename(config['frames_name']))
 
