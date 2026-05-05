@@ -1181,6 +1181,9 @@ void Simulation::delete_old_data() {
         std::string const frames_name = config["frames_name"].get(std::string("frames/f{:06.4f}.png"));
         std::filesystem::path filePath(frames_name);
         std::filesystem::path directory = filePath.parent_path();
+        if (!std::filesystem::exists(directory)) {
+            return;
+        }
         glogger->info("Deleting old data files in directory: {}", directory.string());
         delete_files_with_extension(directory, ".png", false);
     }
