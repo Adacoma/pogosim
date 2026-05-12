@@ -59,7 +59,7 @@ void print_help() {
               << "  -c, --config <file>             Specify the configuration file.\n"
               << "  -g, --no-GUI                    Disable GUI mode.\n"
               << "  -v, --verbose                   Enable verbose mode.\n"
-              << "  -q, --verbose                   Enable quiet mode (ouput only warning and errors on terminal).\n"
+              << "  -q, --quiet                     Enable quiet mode (ouput only warning and errors on terminal).\n"
               << "  -nr, --do-not-show-robot-msg    Suppress robot messages.\n"
               << "  -P, --progress                  Show progress output.\n"
               << "  -V, --version                   Show version information.\n"
