@@ -717,7 +717,7 @@ void Simulation::help_message() {
     glogger->info(" - F8: Show/Hide the current time and scale bar");
     glogger->info(" - ESC: quit the simulation");
     glogger->info(" - SPACE: pause the simulation");
-    glogger->info(" - S: advance the simulation by one tick while paused");
+    glogger->info(" - S: pause and advance the simulation by one tick");
     glogger->info(" - DOWN, UP, LEFT, RIGHT: move the visualisation coordinates");
     glogger->info(" - Right-Click + Mouse move: move the visualisation coordinates");
     glogger->info(" - PLUS, MINUS or Mouse Wheel: Zoom up or down");
@@ -769,6 +769,7 @@ void Simulation::handle_SDL_events() {
                     pause();
                     break;
                 case SDLK_s:
+                    paused = true;
                     one_tick_requested = true;
                     break;
                 case SDLK_UP:
@@ -1082,7 +1083,7 @@ void Simulation::main_loop() {
     while (running && t < simulation_time) {
         handle_SDL_events();
 
-        // Check if we want to run one tick while paused
+        // Check if we want to pause and run one tick
         bool const run_one_tick = one_tick_requested;
         one_tick_requested = false;
 
