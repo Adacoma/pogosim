@@ -48,6 +48,7 @@ class Simulation {
     SDL_Renderer* renderer = nullptr;     ///< SDL renderer.
     bool enable_gui = true;               ///< Flag to enable or disable the GUI.
     bool paused = false;                  ///< Flag indicating whether the simulation is paused.
+    bool one_tick_requested = false;      ///< Flag indicating whether a single tick should run while paused.
     bool running = true;                  ///< Flag indicating whether the simulation is running.
     bool show_time = false;               ///< Flag indicating whether to show the current simulated time in the top right corner
     bool show_scale_bar = false;          ///< Flag indicating whether to show a scale bar in the bottom left corner
