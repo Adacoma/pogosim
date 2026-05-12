@@ -209,13 +209,11 @@ class PogobotLauncher:
         self.gui = gui
 
     @staticmethod
-    def modify_config_static(base_config_path, output_dir, seed):
+    def modify_config_static(base_config_path, output_dir):
         # Load the base YAML configuration.
         with open(base_config_path, 'r') as f:
             config = yaml.safe_load(f)
 
-        # Set a unique seed for this instance.
-        config['seed'] = seed
 
         ## Disable frame export.
         #config['save_video_period'] = -1
@@ -240,9 +238,9 @@ class PogobotLauncher:
         return new_config_path
 
     @staticmethod
-    def launch_simulator_static(config_path, simulator_binary, gui: bool = False):
-        # Build the simulator command and run it.
-        command = [simulator_binary, "-c", config_path, "-nr", "-q"]
+    def launch_simulator_static(config_path, simulator_binary, seed: int, gui: bool = False):
+        # Give each worker its seed explicitly.
+        command = [simulator_binary, "-c", config_path, "-nr", "-q", "--seed", str(seed)]
         if not gui:
             command.append("-g")   # headless
         logger.debug(f"Executing command: {' '.join(command)}")
@@ -259,8 +257,8 @@ class PogobotLauncher:
 
             try:
                 cfg_path = PogobotLauncher.modify_config_static(
-                    base_cfg, temp_dir, seed=i)
-                PogobotLauncher.launch_simulator_static(cfg_path, sim_bin, gui)
+                    base_cfg, temp_dir)
+                PogobotLauncher.launch_simulator_static(cfg_path, sim_bin, seed=i, gui=gui)
                 break                       # success
             except subprocess.CalledProcessError as exc:
                 logger.warning(

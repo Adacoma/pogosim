@@ -4,18 +4,23 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include <cstdint>
+#include <limits>
 
 #include "version.h"
 #include "simulator.h"
 #include "main.h"
+#include "utils.h"
 #undef main         // We defined main() as robot_main() in pogobot.h
 
-bool parse_arguments(int argc, char* argv[], std::string& config_file, bool& verbose, bool& quiet, bool& do_not_show_robot_msg, bool& gui, bool& progress) {
+bool parse_arguments(int argc, char* argv[], std::string& config_file, bool& verbose, bool& quiet, bool& do_not_show_robot_msg, bool& gui, bool& progress, bool& seed_provided, uint32_t& seed) {
     verbose = false;
     quiet = false;
     do_not_show_robot_msg = false;
     gui = true;
     progress = false;
+    seed_provided = false;
+    seed = 0;
     config_file.clear();
 
     for (int i = 1; i < argc; ++i) {
@@ -38,6 +43,29 @@ bool parse_arguments(int argc, char* argv[], std::string& config_file, bool& ver
             do_not_show_robot_msg = true;
         } else if (arg == "-P" || arg == "--progress") {
             progress = true;
+        } else if (arg == "-s" || arg == "--seed") {
+            if (i + 1 < argc) {
+                std::string seed_arg = argv[++i];
+                try {
+                    // accepts only a non-negative integer.
+                    std::size_t consumed = 0;
+                    unsigned long parsed = std::stoul(seed_arg, &consumed, 10);
+                    if (consumed != seed_arg.size()) {
+                        throw std::invalid_argument("trailing characters");
+                    }
+                    if (parsed > std::numeric_limits<uint32_t>::max()) {
+                        throw std::out_of_range("seed too large");
+                    }
+                    seed = static_cast<uint32_t>(parsed);
+                    seed_provided = true;
+                } catch (const std::exception&) {
+                    std::cerr << "Error: -s/--seed requires a non-negative integer argument." << std::endl;
+                    return false;
+                }
+            } else {
+                std::cerr << "Error: -s/--seed requires an integer argument." << std::endl;
+                return false;
+            }
         } else if (arg == "-V" || arg == "--version") {
             std::cout << "Pogosim simulator. Version " << POGOSIM_VERSION << "." << std::endl;
             return false;
@@ -61,6 +89,7 @@ void print_help() {
               << "  -v, --verbose                   Enable verbose mode.\n"
               << "  -q, --quiet                     Enable quiet mode (ouput only warning and errors on terminal).\n"
               << "  -nr, --do-not-show-robot-msg    Suppress robot messages.\n"
+              << "  -s, --seed <int>                Seed the simulator RNG.\n"
               << "  -P, --progress                  Show progress output.\n"
               << "  -V, --version                   Show version information.\n"
               << "  -h, --help                      Display this help message.\n";
@@ -74,10 +103,12 @@ int main(int argc, char** argv) {
     bool do_not_show_robot_msg = false;
     bool gui = true;
     bool progress = false;
+    bool cli_seed_provided = false;
+    uint32_t cli_seed = 0;
 
     // Parse command-line arguments
-    if (!parse_arguments(argc, argv, config_file, verbose, quiet, do_not_show_robot_msg, gui, progress)) {
-        std::cerr << "Usage: " << argv[0] << " -c CONFIG_FILE [-v/-q] [-nr] [-g] [-P] [-V]" << std::endl;
+    if (!parse_arguments(argc, argv, config_file, verbose, quiet, do_not_show_robot_msg, gui, progress, cli_seed_provided, cli_seed)) {
+        std::cerr << "Usage: " << argv[0] << " -c CONFIG_FILE [-v/-q] [-nr] [-g] [-s SEED] [-P] [-V]" << std::endl;
         return 1;
     }
 
@@ -94,6 +125,23 @@ int main(int argc, char** argv) {
         // Display configuration
         if (verbose)
             glogger->debug(config.summary());
+
+        // The command line wins over a config (YAML) provided seed.
+        uint32_t seed = 0;
+        std::string seed_source;
+        if (cli_seed_provided) {
+            seed = cli_seed;
+            seed_source = "command line";
+        } else if (config["seed"].exists()) {
+            seed = config["seed"].get<uint32_t>();
+            seed_source = "configuration";
+        } else {
+            seed = make_random_seed();
+            seed_source = "generated";
+        }
+        seed_random_generators(seed);
+        config.set("seed", seed);
+        glogger->info("Using random seed {} ({})", seed, seed_source);
     } catch (const std::exception& e) {
         std::cerr << "Unable to create configuration. Error: " << e.what() << std::endl;
         return 1;
