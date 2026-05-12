@@ -731,9 +731,12 @@ void Simulation::handle_SDL_events() {
         if (event.type == SDL_QUIT) {
             stop_simulation_main_loop();
 
-        } else if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+        } else if (event.type == SDL_KEYDOWN) {
+            bool const is_repeat = event.key.repeat != 0;
+
             switch (event.key.keysym.sym) {
                 case SDLK_F1:
+                    if (is_repeat) { break; }
                     help_message();
                     break;
                 case SDLK_F3:
@@ -743,6 +746,7 @@ void Simulation::handle_SDL_events() {
                     speed_up();
                     break;
                 case SDLK_F5:
+                    if (is_repeat) { break; }
                     if (show_comm && !show_comm_above_all) {
                         show_comm_above_all = true;
                     } else if (show_comm && show_comm_above_all) {
@@ -753,12 +757,15 @@ void Simulation::handle_SDL_events() {
                     }
                     break;
                 case SDLK_F6:
+                    if (is_repeat) { break; }
                     show_lateral_leds = !show_lateral_leds;
                     break;
                 case SDLK_F7:
+                    if (is_repeat) { break; }
                     show_light_levels = !show_light_levels;
                     break;
                 case SDLK_F8:
+                    if (is_repeat) { break; }
                     show_time = !show_time;
                     show_scale_bar = !show_scale_bar;
                     break;
@@ -766,6 +773,7 @@ void Simulation::handle_SDL_events() {
                     stop_simulation_main_loop();
                     break;
                 case SDLK_SPACE:
+                    if (is_repeat) { break; }
                     pause();
                     break;
                 case SDLK_s:
@@ -791,6 +799,7 @@ void Simulation::handle_SDL_events() {
                     adjust_mm_to_pixels(-0.1);
                     break;
                 case SDLK_0:
+                    if (is_repeat) { break; }
                     visualization_x = 0.0f;
                     visualization_y = 0.0f;
                     mm_to_pixels = 0.0f;
