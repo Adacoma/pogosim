@@ -224,6 +224,7 @@ public:
     void (*user_step)(void) = nullptr;   ///< Pointer to a user-defined step function.
     bool _enable_user_steps = true;       ///< Whether we allow user programs to be executed.
     void (*callback_export_data)(void) = nullptr;        ///< Callback to export data.
+    void (*callback_robot_click)(void) = nullptr;        ///< Callback called when this robot is clicked in the simulator.
 
     /**
      * @brief Launches the user-defined step function.

@@ -119,6 +119,14 @@ class Simulation {
     bool dragging_pos_by_mouse = false;   ///< Flag for mouse dragging.
     int last_mouse_x;                     ///< Last recorded mouse x-coordinate.
     int last_mouse_y;                     ///< Last recorded mouse y-coordinate.
+    std::weak_ptr<PogobotObject> selected_robot; ///< Robot currently selected in the GUI.
+
+    // Find the robot at the given screen position
+    std::shared_ptr<PogobotObject> find_robot_at_screen_position(int mouse_x, int mouse_y) const;
+    // Run per-robot click callback for the robot under the mouse.
+    void handle_robot_click(int mouse_x, int mouse_y);
+    // Render a visual indication that the robot is selected (e.g. a circle around it)
+    void render_selected_robot();
 
     // Data logger
     bool enable_data_logging;                ///< Flag to enable data logging.
