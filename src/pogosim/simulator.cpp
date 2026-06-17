@@ -229,6 +229,13 @@ void Simulation::create_objects() {
                 points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii, formation_center_vec);
             }
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "aligned_disk") {
+            if (isnan(formation_center_vec.x) || isnan(formation_center_vec.y)) {
+                points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii);
+            } else {
+                points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii, formation_center_vec);
+            }
+            std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "lloyd") {
             points = generate_points_voronoi_lloyd(initial_formation_boundaries, objects_radii.size());
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
