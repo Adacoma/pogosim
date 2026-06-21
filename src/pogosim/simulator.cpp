@@ -983,6 +983,17 @@ void Simulation::init_data_logger() {
 
     data_logger = std::make_unique<DataLogger>(data_logger_flush_row_count);
 
+    if (config["data_logger_fields"].exists()) {
+        data_logger->set_logged_fields(config["data_logger_fields"].get<std::vector<std::string>>({}));
+    }
+
+    if (config["data_logger_category"].exists()) {
+        auto categories = config["data_logger_category"].get<std::vector<std::string>>({});
+        data_logger_categories = std::unordered_set<std::string>(categories.begin(), categories.end());
+    } else {
+        data_logger_categories.reset();
+    }
+
     // Save configuration as metadata
     data_logger->add_metadata("configuration", config.summary());
 
@@ -1155,6 +1166,10 @@ void Simulation::export_frames() {
 
 void Simulation::export_data() {
     for (auto obj : phys_objects) {
+        if (data_logger_categories && !data_logger_categories->contains(obj->category)) {
+            continue;
+        }
+
         // User-defined values
         if (auto robot = std::dynamic_pointer_cast<PogobotObject>(obj)) {
             if (robot->callback_export_data != nullptr) {
