@@ -34,6 +34,7 @@ void set_current_robot(PogobotObject& robot) {
     // Store values of previous robot
     if (current_robot != nullptr) {
         current_robot->callback_export_data          = callback_export_data;
+        current_robot->callback_robot_end            = callback_robot_end;
         current_robot->callback_robot_click          = callback_robot_click;
         current_robot->pogobot_ticks                 = pogobot_ticks;
         current_robot->main_loop_hz                  = main_loop_hz;
@@ -55,6 +56,7 @@ void set_current_robot(PogobotObject& robot) {
 
     // Update robot values
     callback_export_data          = robot.callback_export_data;
+    callback_robot_end            = robot.callback_robot_end;
     callback_robot_click          = robot.callback_robot_click;
     pogobot_ticks                 = robot.pogobot_ticks;
     main_loop_hz                  = robot.main_loop_hz;
@@ -1315,6 +1317,14 @@ void Simulation::main_loop() {
     // End progress bar, if needed
     if (progress_bar) {
         tqdmrange.end();
+    }
+
+    // Run per-robot end-of-experiment callbacks, if specified
+    for (auto robot : robots) {
+        if (robot->callback_robot_end != nullptr) {
+            set_current_robot(*robot.get());
+            robot->callback_robot_end();
+        }
     }
 }
 
