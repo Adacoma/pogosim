@@ -293,7 +293,7 @@ data_logger_category:
 
 Useful when a user program defines many custom fields, but a specific experiment only needs some of them in the output file. Moreover, depending on the experiment this can significantly reduce the size of the logged files. Similarly, `data_logger_category` lets an experiment follow only selected object or robot categories.
 
-### Data storage
+### Data storage - retrieve simulation dataframes and configuration parameters
 
 The data is stored as an Apache Arrow Feather file, a standard and convenient format to store large dataframes.
 As such, it can easily be imported in Python by using Pandas:
@@ -318,7 +318,7 @@ print(df)
 [1428 rows x 7 columns]
 ```
 
-Or alternatively, using the "pogosim" python package:
+Or alternatively, using the "pogosim" python package (cf next section for installation procedure):
 ```python
 import pogosim.utils as pu
 df, meta = pu.load_dataframe("frames/data.feather")
@@ -340,6 +340,38 @@ print(df)
 [1428 rows x 7 columns]
 
 # "meta" (metadata) contains a dict with the program version, the arena polygons and the YAML configuration used.
+# To print out the configuration dictionnary:
+import pprint
+pprint.pprint(meta['configuration'])
+
+{'GUI': True,
+ 'GUI_speed_up': 10.0,
+ 'arena_file': 'arenas/disk.csv',
+ 'arena_surface': '1.0e6',
+ 'arena_temperature': 25.0,
+ 'boundary_condition': 'solid',
+ 'chessboard_distance_between_neighbors': 110,
+ 'communication_ignore_occlusions': False,
+ 'console_filename': 'frames/console.txt',
+ 'data_filename': 'frames/data.feather',
+ 'delete_old_files': True,
+ 'enable_console_logging': True,
+ 'enable_data_logging': True,
+ 'formation_cluster_at_center': True,
+ 'frames_name': 'frames/f{:010.4f}.png',
+ 'initial_formation': 'random',
+ 'initial_formation_root_object': 'arena',
+ 'log_format': 'default',
+ 'mm_to_pixels': 0.531604,
+ 'objects': {'global_light': {'geometry': 'global',
+                              'light_mode': 'static',
+                              'photo_start_at': 1.0,
+                              'photo_start_duration': 1.0,
+                              'photo_start_value': 32767,
+                              'type': 'static_light',
+                              'value': 200},
+ [...]
+}
 ```
 
 Custom columns can be added into this file by using the callback mechanism. See examples "blooming" (simple) and "ssr" (complex) for more information.
