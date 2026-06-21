@@ -456,7 +456,7 @@ static void step_motility(uint32_t now_ms) {
         return;
     }
 
-    uint16_t const motor_low = (uint16_t)(motorFull * 1.00);
+    uint16_t const motor_low = (uint16_t)(motorFull * 0.30);
 
     // Phase switch?
     if (now_ms - mydata->phase_start_ms >= mydata->phase_duration_ms) {
