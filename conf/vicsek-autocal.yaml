@@ -32,6 +32,23 @@ data_filename: "frames/data.feather"
 enable_console_logging: true
 console_filename: "frames/console.txt"
 save_data_period: 1.0       # In s, or -1 to disable data export (see also "enable_data_logging")
+
+# Optional: uncomment to restrict which columns are written to the data file.
+# If omitted, all built-in and user-defined fields are logged.
+#data_logger_fields:
+#  - time
+#  - robot_category
+#  - robot_id
+#  - pogobot_ticks
+#  - x
+#  - y
+#  - angle
+
+# Optional: uncomment to restrict which object/robot categories are logged.
+# If omitted, all categories are logged.
+#data_logger_category:
+#  - robots
+
 save_video_period: 1.0      # In s, or -1 to disable frame export
 frames_name: "frames/f{:010.4f}.png"
 
