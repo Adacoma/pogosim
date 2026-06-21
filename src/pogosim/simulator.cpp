@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <algorithm>
+#include <limits>
 
 #include <cmath>
 #include <vector>
@@ -34,6 +35,7 @@ void set_current_robot(PogobotObject& robot) {
     if (current_robot != nullptr) {
         current_robot->callback_export_data          = callback_export_data;
         current_robot->callback_robot_end            = callback_robot_end;
+        current_robot->callback_robot_click          = callback_robot_click;
         current_robot->pogobot_ticks                 = pogobot_ticks;
         current_robot->main_loop_hz                  = main_loop_hz;
         current_robot->max_nb_processed_msg_per_tick = max_nb_processed_msg_per_tick;
@@ -55,6 +57,7 @@ void set_current_robot(PogobotObject& robot) {
     // Update robot values
     callback_export_data          = robot.callback_export_data;
     callback_robot_end            = robot.callback_robot_end;
+    callback_robot_click          = robot.callback_robot_click;
     pogobot_ticks                 = robot.pogobot_ticks;
     main_loop_hz                  = robot.main_loop_hz;
     max_nb_processed_msg_per_tick = robot.max_nb_processed_msg_per_tick;
@@ -228,6 +231,13 @@ void Simulation::create_objects() {
                 points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii, formation_center_vec);
             }
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
+        } else if (initial_formation == "aligned_disk") {
+            if (isnan(formation_center_vec.x) || isnan(formation_center_vec.y)) {
+                points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii);
+            } else {
+                points = generate_regular_disk_points_in_polygon(initial_formation_boundaries, objects_radii, formation_center_vec);
+            }
+            std::ranges::generate(thetas, [&] { return M_PI/2.f; });
         } else if (initial_formation == "lloyd") {
             points = generate_points_voronoi_lloyd(initial_formation_boundaries, objects_radii.size());
             std::ranges::generate(thetas, [&] { return angle_distrib(rnd_gen); });
@@ -480,6 +490,7 @@ void Simulation::init_config() {
     show_comm_above_all = config["show_communication_channels_above_all"].get(false);
     show_lateral_leds = config["show_lateral_LEDs"].get(true);
     show_light_levels = config["show_light_levels"].get(false);
+    show_trajectory_traces = config["show_trajectory_traces"].get(false);
 
     initial_formation = config["initial_formation"].get(std::string("power_lloyd"));
     initial_formation_center = config["initial_formation_center"].get<decltype(initial_formation_center)>({NAN, NAN});
@@ -502,8 +513,6 @@ void Simulation::init_config() {
     GUI_speed_up = config["GUI_speed_up"].get(1.0f);
 
     data_logger_flush_row_count = config["data_logger_flush_row_count"].get(1048576);
-
-    std::srand(std::time(nullptr));
 }
 
 
@@ -711,6 +720,7 @@ void Simulation::help_message() {
     glogger->info("Welcome to the Pogosim's GUI. This is an help message...");
     glogger->info("Here is a list of shortcuts that can be used to control the GUI:");
     glogger->info(" - F1: Help message");
+    glogger->info(" - F2: Show/Hide the trajectory traces");
     glogger->info(" - F3: Slow down the simulation");
     glogger->info(" - F4: Speed up the simulation");
     glogger->info(" - F5: Show/Hide the communication channels, below/above the other objects");
@@ -719,12 +729,85 @@ void Simulation::help_message() {
     glogger->info(" - F8: Show/Hide the current time and scale bar");
     glogger->info(" - ESC: quit the simulation");
     glogger->info(" - SPACE: pause the simulation");
+    glogger->info(" - S: pause and advance the simulation by one tick");
     glogger->info(" - DOWN, UP, LEFT, RIGHT: move the visualisation coordinates");
     glogger->info(" - Right-Click + Mouse move: move the visualisation coordinates");
     glogger->info(" - PLUS, MINUS or Mouse Wheel: Zoom up or down");
     glogger->info(" - 0: Reset the zoom and visualization coordinates");
 }
 
+std::shared_ptr<PogobotObject> Simulation::find_robot_at_screen_position(int mouse_x, int mouse_y) const {
+    // find robot whose center is nearest to the click
+    std::shared_ptr<PogobotObject> best;
+    // smallest squared distance found so far
+    float best_dist_sq = std::numeric_limits<float>::max();
+
+    // add a small margin to make selection easier
+    constexpr float padding_px = 6.0f;
+
+    for (auto const& robot : robots) {
+        if (!robot) {
+            continue;
+        }
+
+        // compare the mouse position and robot center in screen coordinates
+        b2Vec2 const position = robot->get_position();
+        auto const screen_pos = visualization_position(position.x * VISUALIZATION_SCALE,
+                                                       position.y * VISUALIZATION_SCALE);
+        float const dx = static_cast<float>(mouse_x) - screen_pos.x;
+        float const dy = static_cast<float>(mouse_y) - screen_pos.y;
+        float const dist_sq = dx * dx + dy * dy;
+        float const pick_radius_px = robot->radius * mm_to_pixels + padding_px;
+
+        // avoid sqrt by comparing squared distances
+        if (dist_sq <= pick_radius_px * pick_radius_px && dist_sq < best_dist_sq) {
+            best_dist_sq = dist_sq;
+            best = robot;
+        }
+    }
+
+    return best;
+}
+
+void Simulation::handle_robot_click(int mouse_x, int mouse_y) {
+    // try to find robot under mouse position
+    auto clicked_robot = find_robot_at_screen_position(mouse_x, mouse_y);
+
+    // no robot hit -> clear any existing selection
+    if (!clicked_robot) {
+        selected_robot.reset(); // drop reference
+        return;
+    }
+
+    // resolve current selection
+    auto current_selection = selected_robot.lock();
+
+    // clicking already-selected robot toggles selection off
+    if (current_selection == clicked_robot) {
+        selected_robot.reset();
+        return;
+    }
+
+    // update selection to newly clicked robot
+    selected_robot = clicked_robot;
+
+    // if robot has no callback, stop
+    if (!clicked_robot->callback_robot_click) {
+        return;
+    }
+
+    // switch execution to clicked robot
+    PogobotObject* const previous_robot = current_robot;
+    set_current_robot(*clicked_robot.get());
+
+    // execute callback
+    clicked_robot->callback_robot_click();
+
+    // restore previous context if it existed
+    if (previous_robot && previous_robot != clicked_robot.get()) {
+        set_current_robot(*previous_robot);
+    }
+}
 
 void Simulation::handle_SDL_events() {
     SDL_Event event;
@@ -732,10 +815,16 @@ void Simulation::handle_SDL_events() {
         if (event.type == SDL_QUIT) {
             stop_simulation_main_loop();
 
-        } else if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+        } else if (event.type == SDL_KEYDOWN) {
+            bool const is_repeat = event.key.repeat != 0;
+
             switch (event.key.keysym.sym) {
                 case SDLK_F1:
+                    if (is_repeat) { break; }
                     help_message();
+                    break;
+                case SDLK_F2:
+                    toggle_trajectory_traces();
                     break;
                 case SDLK_F3:
                     speed_down();
@@ -744,6 +833,7 @@ void Simulation::handle_SDL_events() {
                     speed_up();
                     break;
                 case SDLK_F5:
+                    if (is_repeat) { break; }
                     if (show_comm && !show_comm_above_all) {
                         show_comm_above_all = true;
                     } else if (show_comm && show_comm_above_all) {
@@ -754,12 +844,15 @@ void Simulation::handle_SDL_events() {
                     }
                     break;
                 case SDLK_F6:
+                    if (is_repeat) { break; }
                     show_lateral_leds = !show_lateral_leds;
                     break;
                 case SDLK_F7:
+                    if (is_repeat) { break; }
                     show_light_levels = !show_light_levels;
                     break;
                 case SDLK_F8:
+                    if (is_repeat) { break; }
                     show_time = !show_time;
                     show_scale_bar = !show_scale_bar;
                     break;
@@ -767,7 +860,12 @@ void Simulation::handle_SDL_events() {
                     stop_simulation_main_loop();
                     break;
                 case SDLK_SPACE:
+                    if (is_repeat) { break; }
                     pause();
+                    break;
+                case SDLK_s:
+                    paused = true;
+                    one_tick_requested = true;
                     break;
                 case SDLK_UP:
                     visualization_y += 10.0f * (1.f / mm_to_pixels);
@@ -788,6 +886,7 @@ void Simulation::handle_SDL_events() {
                     adjust_mm_to_pixels(-0.1);
                     break;
                 case SDLK_0:
+                    if (is_repeat) { break; }
                     visualization_x = 0.0f;
                     visualization_y = 0.0f;
                     mm_to_pixels = 0.0f;
@@ -807,6 +906,8 @@ void Simulation::handle_SDL_events() {
                 dragging_pos_by_mouse = true;
                 last_mouse_x = event.button.x;
                 last_mouse_y = event.button.y;
+            } else if (event.button.button == SDL_BUTTON_LEFT) {
+                handle_robot_click(event.button.x, event.button.y);
             }
 
         } else if (event.type == SDL_MOUSEBUTTONUP) {
@@ -938,6 +1039,35 @@ void Simulation::draw_scale_bar() {
     FC_Draw(font, renderer, x1, y1 + 5, "%s", formatted_scale.c_str());
 }
 
+void Simulation::toggle_trajectory_traces() {
+    show_trajectory_traces = !show_trajectory_traces;
+    if (show_trajectory_traces) {
+        trajectory_traces.reset(robots);
+    }
+    glogger->info("Trajectory traces {}", show_trajectory_traces ? "enabled" : "disabled");
+}
+
+void Simulation::render_selected_robot() {
+    // resolve selected robot
+    auto robot = selected_robot.lock();
+    if (!robot) {
+        return;
+    }
+
+    // convert world position to screen coordinates
+    b2Vec2 const position = robot->get_position();
+    auto const screen_pos = visualization_position(position.x * VISUALIZATION_SCALE,
+                                                   position.y * VISUALIZATION_SCALE);
+
+    // radius slightly larger than robot
+    float const radius = robot->radius * mm_to_pixels + 5.0f;
+
+    // draw ring around robot's body
+    circleRGBA(renderer, screen_pos.x, screen_pos.y, radius,    255, 255, 255, 230);
+    circleRGBA(renderer, screen_pos.x, screen_pos.y, radius + 1, 30, 120, 255, 255);
+    circleRGBA(renderer, screen_pos.x, screen_pos.y, radius + 2, 30, 120, 255, 180);
+}
+
 
 void Simulation::render_all() {
     if (!renderer || !window) {
@@ -965,11 +1095,17 @@ void Simulation::render_all() {
         draw_polygon(renderer, poly);
     }
 
+    if (show_trajectory_traces) {
+        trajectory_traces.render(renderer, boundary_condition, domain_w, domain_h);
+    }
+
     // Render objects
     for (auto robot : robots) {
         robot->show_lateral_leds = show_lateral_leds;
         robot->render(renderer, worldId);
     }
+    // Keep the selection marker above robots but below passive objects and overlays.
+    render_selected_robot();
     //SDL_RenderPresent(renderer);
 
     for (auto const& obj : non_robots) {
@@ -1057,6 +1193,7 @@ void Simulation::main_loop() {
 
     // Prepare main loop
     running = true;
+    one_tick_requested = false;
     t = 0.0f;
     last_frame_shown_t = 0.0f - time_step_duration;
     last_frame_saved_t = 0.0f - time_step_duration;
@@ -1074,13 +1211,20 @@ void Simulation::main_loop() {
         last_data_saved_t = t;
         export_data();
     }
+    if (show_trajectory_traces) {
+        trajectory_traces.reset(robots);
+    }
 
     // Main loop for all robots
     while (running && t < simulation_time) {
         handle_SDL_events();
 
+        // Check if we want to pause and run one tick
+        bool const run_one_tick = one_tick_requested;
+        one_tick_requested = false;
+
         // Check if the simulation is paused
-        if (enable_gui && paused) {
+        if (enable_gui && paused && !run_one_tick) {
             render_all();
             SDL_RenderPresent(renderer);
             // Delay
@@ -1128,6 +1272,10 @@ void Simulation::main_loop() {
 
         if (boundary_condition == boundary_condition_t::periodic) {
             apply_periodic_wrapping();
+        }
+
+        if (show_trajectory_traces) {
+            trajectory_traces.update(robots);
         }
 
         // Compute neighbors
@@ -1191,6 +1339,9 @@ void Simulation::delete_old_data() {
         std::string const frames_name = config["frames_name"].get(std::string("frames/f{:06.4f}.png"));
         std::filesystem::path filePath(frames_name);
         std::filesystem::path directory = filePath.parent_path();
+        if (!std::filesystem::exists(directory)) {
+            return;
+        }
         glogger->info("Deleting old data files in directory: {}", directory.string());
         delete_files_with_extension(directory, ".png", false);
     }

@@ -43,6 +43,7 @@ extern void (*callback_export_data)(void);
 extern void (*callback_global_setup)(void);
 extern void (*callback_global_step)(void);
 extern void (*callback_robot_end)(void);
+extern void (*callback_robot_click)(void);
 
 #else // Compiling for real robots
 

@@ -8,6 +8,7 @@
 #include "configuration.h"
 #include "data_logger.h"
 #include "SDL_FontCache.h"
+#include "trajectory_traces.h"
 
 /**
  * @brief Main entry point for the robot code (C linkage).
@@ -48,6 +49,7 @@ class Simulation {
     SDL_Renderer* renderer = nullptr;     ///< SDL renderer.
     bool enable_gui = true;               ///< Flag to enable or disable the GUI.
     bool paused = false;                  ///< Flag indicating whether the simulation is paused.
+    bool one_tick_requested = false;      ///< Flag indicating whether a single tick should run while paused.
     bool running = true;                  ///< Flag indicating whether the simulation is running.
     bool show_time = false;               ///< Flag indicating whether to show the current simulated time in the top right corner
     bool show_scale_bar = false;          ///< Flag indicating whether to show a scale bar in the bottom left corner
@@ -55,6 +57,7 @@ class Simulation {
     bool show_comm_above_all = false;     ///< Flag indicating if the communication channels must be drawn above the objects (true) or below.
     bool show_lateral_leds = false;       ///< Flag indicating whether to show the lateral LEDs.
     bool show_light_levels = false;       ///< Flag indicating whether to show the light level.
+    bool show_trajectory_traces = false;  ///< Flag indicating whether to show robot tail trajectory traces.
 
     double t = 0.0f;                      ///< Simulation time (in seconds).
 
@@ -87,6 +90,7 @@ class Simulation {
     std::vector<std::shared_ptr<PogobotObject>> robots;                     ///< Vector of robots in the simulation.
     std::vector<std::shared_ptr<Object>> non_robots;                        ///< Vector of objects that are not robots in the simulation.
     std::unique_ptr<LightLevelMap> light_map;                               ///< Light map of the arena.
+    TrajectoryTraces trajectory_traces;                                      ///< GUI-only bounded tail trajectory traces.
     std::string initial_formation;                                          ///< Type of initial formation of the objects.
     std::pair<float, float> initial_formation_center;                       ///< X, Y coordinates of the center of the initial formation, for formations that requires it.
     std::string initial_formation_root_object_name;                         ///< Name of the object class used to define bounds of the initial formation (e.g. passive object or membrane).
@@ -115,6 +119,14 @@ class Simulation {
     bool dragging_pos_by_mouse = false;   ///< Flag for mouse dragging.
     int last_mouse_x;                     ///< Last recorded mouse x-coordinate.
     int last_mouse_y;                     ///< Last recorded mouse y-coordinate.
+    std::weak_ptr<PogobotObject> selected_robot; ///< Robot currently selected in the GUI.
+
+    // Find the robot at the given screen position
+    std::shared_ptr<PogobotObject> find_robot_at_screen_position(int mouse_x, int mouse_y) const;
+    // Run per-robot click callback for the robot under the mouse.
+    void handle_robot_click(int mouse_x, int mouse_y);
+    // Render a visual indication that the robot is selected (e.g. a circle around it)
+    void render_selected_robot();
 
     // Data logger
     bool enable_data_logging;                ///< Flag to enable data logging.
@@ -275,6 +287,11 @@ public:
      * Renders a horizontal scale bar along with a label indicating the scale in millimeters.
      */
     void draw_scale_bar();
+
+    /**
+     * @brief Toggles robot trajectory trace rendering.
+     */
+    void toggle_trajectory_traces();
 
     /**
      * @brief Renders all simulation components.

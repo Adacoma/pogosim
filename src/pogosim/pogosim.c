@@ -8,6 +8,7 @@ void (*callback_export_data)(void) = NULL;
 void (*callback_global_setup)(void) = NULL;
 void (*callback_global_step)(void) = NULL;
 void (*callback_robot_end)(void) = NULL;
+void (*callback_robot_click)(void) = NULL;
 #endif
 
 uint8_t main_loop_hz = 60;

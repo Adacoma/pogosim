@@ -474,7 +474,7 @@ std::vector<b2Vec2> generate_random_points_layered(
     for (std::size_t h=1; h<polygons.size(); ++h) add_poly(polygons[h]);
 
     // ─── RNG ───────────────────────────────────────────────────────────
-    static std::mt19937 gen{std::random_device{}()};
+    // Uses the shared simulator RNG
     std::uniform_real_distribution<float> pick_len(0.f, total_len);
     std::uniform_real_distribution<float> pick_t(0.f, 1.f);
     std::uniform_real_distribution<float> pick_ang(0.f, 2.f*static_cast<float>(M_PI));
@@ -527,11 +527,11 @@ std::vector<b2Vec2> generate_random_points_layered(
 
             bool ok=false;
             for (std::uint32_t a=0; a<attempts_per_point && !ok; ++a){
-                float s = pick_len(gen);
+                float s = pick_len(rnd_gen);
                 auto it = std::lower_bound(segs.begin(),segs.end(),s,
                      [](const seg_t&sg,float v){ return sg.cumulative<v; });
                 const seg_t &seg=*it;
-                float t=pick_t(gen);
+                float t=pick_t(rnd_gen);
                 b2Vec2 wall_pt{seg.a.x+t*(seg.b.x-seg.a.x),
                                seg.a.y+t*(seg.b.y-seg.a.y)};
                 b2Vec2 cand = wall_pt + (clearance+eps)*inward_normal(seg);
@@ -568,8 +568,8 @@ std::vector<b2Vec2> generate_random_points_layered(
                 float clearance = r_i * wall_clearance_factor;
                 bool ok=false;
                 for (std::uint32_t a=0; a<attempts_per_point && !ok; ++a){
-                    const placed_t &seed = placed[pick_neigh(gen)];
-                    float θ=pick_ang(gen);
+                    const placed_t &seed = placed[pick_neigh(rnd_gen)];
+                    float θ=pick_ang(rnd_gen);
                     b2Vec2 dir{std::cos(θ),std::sin(θ)};
                     b2Vec2 cand = seed.p + (r_i+seed.r+eps)*dir;
 
