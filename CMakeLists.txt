@@ -83,7 +83,7 @@ target_link_libraries(${PROJECT_NAME}
         #Boost::system
         SDL2::SDL2
         #        Box2D::Box2D
-        yaml-cpp
+        yaml-cpp::yaml-cpp
         spdlog::spdlog
         fmt::fmt
 )
