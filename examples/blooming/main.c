@@ -26,7 +26,7 @@ bool enable_random_seed    = true;  // If false, the seed is the robot with the 
                                     // If true, robots can self-promote themselves as the seed, with probability p
 uint32_t den_p_become_seed = 25000; // 105000;   // lower => more frequent blooms
 
-#define BOOT_TIME 1000             // Waiting time before the start of the experience in ms
+#define BOOT_TIME 1000          // Waiting time before the start of the experience in ms
 #define ENABLE_PHOTO_START      // Whether to enable photo start, i.e. wait at the beginning of a experiment for a large instantaneous difference in light level
                                 //  --> allow robots to start the experiment all at the same time by just adjusting quickly the light level in the experimental setup.
                                 //  Comment this macro to disable photo start
@@ -43,9 +43,9 @@ uint8_t percent_msg_sent       = 10;    // slow-ish broadcast, helps "wavefront"
 
 // Visuals
 #define MAX_HOPS 250            // clamp for safety
-bool enable_blinking_when_updated = true;      // LEDs blink when state updates
-uint32_t blink_total_ms           = 200; // total blink duration when state updates
-uint32_t blink_half_period_ms     = 50;  // total blink duration when state updates
+bool enable_blinking_when_updated = true;  // LEDs blink when state updates
+uint32_t blink_total_ms           = 200;   // total blink duration when state updates
+uint32_t blink_half_period_ms     = 50;    // total blink duration when state updates
 
 
 // -----------------------------------------------------------------------------
@@ -613,6 +613,25 @@ void export_data() {
         disable_data_export();
     }
 }
+
+// Function called when a user selects the focal robot by a mouse-click. Can be used to print out robot logs on the terminal
+void robot_click() {
+    printf("Robot current status:\n");
+    printf("  seed_id:%d  seed_time_ms:%d  dist_hops:%d  last_seed_heard_ms:%d  last_route_refresh_ms:%d  blink_on:%d\n",
+            mydata->seed_id,
+            mydata->seed_time_ms,
+            mydata->dist_hops,
+            mydata->last_seed_heard_ms,
+            mydata->last_route_refresh_ms,
+            mydata->blink_on);
+}
+
+// Function called on each robot at the end of a simulation instance
+void robot_end() {
+    if (pogobot_helper_getid() == 0) {
+        printf("End of simulation\n");
+    }
+}
 #endif
 
 
@@ -627,5 +646,7 @@ int main(void) {
     SET_CALLBACK(callback_global_setup, global_setup);              // Called once at the start of a simulation. Useful to set configuration parameters from the config file
     SET_CALLBACK(callback_create_data_schema, create_data_schema);  // Called once to specify the data format
     SET_CALLBACK(callback_export_data, export_data);                // Called at each configuration-specified period (e.g. every second) on each robot to register exported data
+    SET_CALLBACK(callback_robot_click, robot_click);                // Called when the user selects the focal robot using a mouse-click
+    SET_CALLBACK(callback_robot_end, robot_end);                    // Called for each robot at the end of each simulation
     return 0;
 }
