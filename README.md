@@ -268,6 +268,33 @@ data_filename: "frames/data.feather"        # Path of the generated data file
 save_data_period: 1.0       # In s          # Save data every 1.0 second
 ```
 
+### Specifying logged fields
+
+By default, all built-in fields and all user-defined fields created in the data schema callback are logged. The output can be restricted from the configuration:
+```yaml
+# Optional: only write these columns to the data file.
+# Remove a field from this list to stop logging it.
+data_logger_fields:
+  - time
+  - robot_category
+  - robot_id
+  - pogobot_ticks
+  - x
+#   - y     # a built-in field <- not logged, as it is commented
+  - angle
+  - energy  # e.g. a custom field <- logged
+#   - fitness # e.g. a custom field <- not logged in this case
+
+# Optional: only log rows for these robot categories.
+data_logger_category:
+  - robots
+  - prey
+```
+
+Useful when a user program defines many custom fields, but a specific experiment only needs some of them in the output file. Moreover, depending on the experiment this can significantly reduce the size of the logged files. Similarly, `data_logger_category` lets an experiment follow only selected object or robot categories.
+
+### Data storage
+
 The data is stored as an Apache Arrow Feather file, a standard and convenient format to store large dataframes.
 As such, it can easily be imported in Python by using Pandas:
 ```python
@@ -488,5 +515,4 @@ This will generate a PDF report named "latex/refman.pdf".
   year={2025}
 }
 ```
-
 

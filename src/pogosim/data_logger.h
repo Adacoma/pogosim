@@ -6,6 +6,8 @@
 #include <arrow/io/file.h>
 #include <arrow/ipc/api.h>
 #include <arrow/util/compression.h>
+#include <optional>
+#include <unordered_set>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -78,6 +80,11 @@ public:
      * @throw std::runtime_error if the file has already been opened.
      */
     void add_metadata(const std::string& key, const std::string& value);
+
+    /**
+     * @brief Restricts the output schema to the listed field names.
+     */
+    void set_logged_fields(const std::vector<std::string>& field_names);
 
     /**
      * @brief Adds a new field to the schema.
@@ -259,6 +266,8 @@ private:
     bool file_opened_ = false;
     /// Stores user-supplied metadata until the file is opened.
     std::unordered_map<std::string, std::string> user_metadata_;
+    /// Optional allow-list of fields that should be written.
+    std::optional<std::unordered_set<std::string>> logged_fields_;
     /// Number of rows to buffer before flushing a record batch.
     int64_t flush_row_count_ = 1024;
     /// Number of rows currently accumulated in builders_.
@@ -274,6 +283,11 @@ private:
      * @throw std::runtime_error if the file is not open or the column does not exist.
      */
     void check_column(const std::string& column_name);
+
+    /**
+     * @brief Returns true if a field should be part of the schema/output.
+     */
+    bool field_is_logged(const std::string& column_name) const;
 
     /**
      * @brief Resets the current row values to default.
@@ -305,4 +319,3 @@ private:
 };
 
 #endif // DATA_LOGGER_H
-

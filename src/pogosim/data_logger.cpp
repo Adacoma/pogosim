@@ -108,10 +108,20 @@ void DataLogger::add_metadata(const std::string& key, const std::string& value) 
     user_metadata_[key] = value;    // Overwrite if the key already exists
 }
 
+void DataLogger::set_logged_fields(const std::vector<std::string>& field_names) {
+    if (file_opened_) {
+        throw std::runtime_error("Cannot configure logged fields after the file has been opened.");
+    }
+    logged_fields_ = std::unordered_set<std::string>(field_names.begin(), field_names.end());
+}
+
 // Add fields dynamically before opening the file
 void DataLogger::add_field(const std::string& name, std::shared_ptr<arrow::DataType> type, bool ignore_existing_name) {
     if (file_opened_) {
         throw std::runtime_error("Cannot add fields after the file has been opened.");
+    }
+    if (!field_is_logged(name)) {
+        return;
     }
     if (column_indices_.find(name) != column_indices_.end()) {
         if (ignore_existing_name)
@@ -173,46 +183,73 @@ void DataLogger::open_file(const std::string& filename) {
 
 // Set value of a specific column in the current row (Overloaded for different types)
 void DataLogger::set_value(const std::string& column_name, int64_t value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = value;
 }
 
 void DataLogger::set_value(const std::string& column_name, int32_t value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = value;
 }
 
 void DataLogger::set_value(const std::string& column_name, int16_t value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = value;
 }
 
 void DataLogger::set_value(const std::string& column_name, int8_t value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = value;
 }
 
 void DataLogger::set_value(const std::string& column_name, float value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = value;
 }
 
 void DataLogger::set_value(const std::string& column_name, double value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = value;
 }
 
 void DataLogger::set_value(const std::string& column_name, const std::string& value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = value;
 }
 
 void DataLogger::set_value(const std::string& column_name, bool value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = value;
 }
 
 void DataLogger::set_value_float16(const std::string& column_name, float value) {
+    if (!field_is_logged(column_name)) {
+        return;
+    }
     check_column(column_name);
     row_values_[column_name] = float_to_half_bits(value);
 }
@@ -293,6 +330,10 @@ bool DataLogger::column_exists(const std::string& column_name) {
 bool DataLogger::column_value_already_set(const std::string& column_name) {
     check_column(column_name);
     return row_values_.find(column_name) != row_values_.end();
+}
+
+bool DataLogger::field_is_logged(const std::string& column_name) const {
+    return !logged_fields_ || logged_fields_->contains(column_name);
 }
 
 void DataLogger::check_column(const std::string& column_name) {
@@ -445,4 +486,3 @@ void DataLogger::append_current_row_to_builders() {
         }
     }
 }
-
