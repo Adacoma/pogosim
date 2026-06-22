@@ -50,5 +50,6 @@ var hierarchy =
     [ "short_message_t", "structshort__message__t.html", null ],
     [ "Simulation", "classSimulation.html", null ],
     [ "slip_error_counter_s", "structslip__error__counter__s.html", null ],
-    [ "time_reference_t", "structtime__reference__t.html", null ]
+    [ "time_reference_t", "structtime__reference__t.html", null ],
+    [ "TrajectoryTraces", "classTrajectoryTraces.html", null ]
 ];

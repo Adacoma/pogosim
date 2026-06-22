@@ -30,6 +30,8 @@ var pogosim_8h =
     [ "callback_export_data", "pogosim_8h.html#af82ee9f0b9db15ac622da50a3ceb81c5", null ],
     [ "callback_global_setup", "pogosim_8h.html#ab857a0c66db0daf16c6ff904d1045c12", null ],
     [ "callback_global_step", "pogosim_8h.html#a6a2c64d2aa91d5fa327fd79430ee5809", null ],
+    [ "callback_robot_click", "pogosim_8h.html#a48b7714e8d5661d24453306a22bd7947", null ],
+    [ "callback_robot_end", "pogosim_8h.html#a47fb68f6df9fe471e59985b0b9d83f14", null ],
     [ "error_codes_led_idx", "pogosim_8h.html#adb000f2a6b93731350e5da070513297a", null ],
     [ "main_loop_hz", "pogosim_8h.html#a4370ff90bc88fe0fb481b8fead4bfc66", null ],
     [ "max_nb_processed_msg_per_tick", "pogosim_8h.html#a95397b928b9655bfc970968776efbacd", null ],

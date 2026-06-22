@@ -43,13 +43,16 @@ var NAVTREE =
       [ "Troubleshooting", "index.html#autotoc_md132", [
         [ "In headless/Pogobatch mode, I get an SDL-related error", "index.html#autotoc_md133", null ]
       ] ],
-      [ "Access the pose and states of the robots in Python", "index.html#autotoc_md134", null ],
-      [ "Launch several runs in Parallel, with different configuration options", "index.html#autotoc_md135", null ],
-      [ "Install and use the simulator in an Apptainer/Singularity container", "index.html#autotoc_md136", null ],
-      [ "Generate gif files of the traces", "index.html#autotoc_md137", null ],
-      [ "Development", "index.html#autotoc_md138", null ],
-      [ "Authors", "index.html#autotoc_md139", null ],
-      [ "Citing", "index.html#autotoc_md140", null ],
+      [ "Access the pose and states of the robots in Python", "index.html#autotoc_md134", [
+        [ "Specifying logged fields", "index.html#autotoc_md135", null ],
+        [ "Data storage - retrieve simulation dataframes and configuration parameters", "index.html#autotoc_md136", null ]
+      ] ],
+      [ "Launch several runs in Parallel, with different configuration options", "index.html#autotoc_md137", null ],
+      [ "Install and use the simulator in an Apptainer/Singularity container", "index.html#autotoc_md138", null ],
+      [ "Generate gif files of the traces", "index.html#autotoc_md139", null ],
+      [ "Development", "index.html#autotoc_md140", null ],
+      [ "Authors", "index.html#autotoc_md141", null ],
+      [ "Citing", "index.html#autotoc_md142", null ],
       [ "Namespace List", "namespaces.html", "namespaces_dup" ],
       [ "Namespace Members", "namespacemembers.html", [
         [ "All", "namespacemembers.html", null ],
@@ -87,12 +90,12 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "FifoBuffer_8h.html",
-"classPogobotObject.html#a83fb561ab44770fa6f1e996bc7cc513b",
-"geometry_8cpp.html#a26bae0c48b4485fc418034fccaebad7f",
-"robot_8h.html",
-"structBoundingBox.html#ad923e964fad287d43a040a16036a83f3"
+"classPogobotObject.html#a6e3e0374d106878957b19db0b5cf27ae",
+"functions_x.html",
+"pogosim__sim_8cpp.html#ae703e5f669a9e4f3cecfd8360aa367d2",
+"spogobot_8h.html#ae2b3bebe24e18549211146b5bd7d2b3ea37d2a4af780a03d5eb059aded2702e05"
 ];
 
-var SYNCONMSG = 'click to disable panel synchronization';
-var SYNCOFFMSG = 'click to enable panel synchronization';
-var LISTOFALLMEMBERS = 'List of all members';
+const SYNCONMSG = 'click to disable panel synchronization';
+const SYNCOFFMSG = 'click to enable panel synchronization';
+const LISTOFALLMEMBERS = 'List of all members';

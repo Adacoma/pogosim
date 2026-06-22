@@ -10,6 +10,7 @@ var classDataLogger =
     [ "flush", "classDataLogger.html#a36f7288f4db002e3a8d79d322b6f05ae", null ],
     [ "open_file", "classDataLogger.html#a77852c40d79c20f320639f07e41b5728", null ],
     [ "save_row", "classDataLogger.html#a7ac06c613805e7a628272089237bc5e5", null ],
+    [ "set_logged_fields", "classDataLogger.html#a3f758fc4ac16f56b049a66334a8599a3", null ],
     [ "set_value", "classDataLogger.html#a3ae7591494706877ac55bc5300a8bfcd", null ],
     [ "set_value", "classDataLogger.html#a9079fbadf26f395672bc8c7f2bcfbd79", null ],
     [ "set_value", "classDataLogger.html#ae00ecac34f2d901bce34dc9ba53dc313", null ],

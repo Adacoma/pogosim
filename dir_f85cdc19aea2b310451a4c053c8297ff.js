@@ -31,6 +31,8 @@ var dir_f85cdc19aea2b310451a4c053c8297ff =
     [ "simulator.h", "simulator_8h.html", "simulator_8h" ],
     [ "spogobot.cpp", "spogobot_8cpp.html", "spogobot_8cpp" ],
     [ "spogobot.h", "spogobot_8h.html", "spogobot_8h" ],
+    [ "trajectory_traces.cpp", "trajectory__traces_8cpp.html", null ],
+    [ "trajectory_traces.h", "trajectory__traces_8h.html", "trajectory__traces_8h" ],
     [ "utils.cpp", "utils_8cpp.html", "utils_8cpp" ],
     [ "utils.h", "utils_8h.html", "utils_8h" ],
     [ "version.h", "version_8h.html", "version_8h" ]

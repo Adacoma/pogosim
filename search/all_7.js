@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['fields_0',['fields',['../unionemitting__power__list__t.html#a50048825efd40d84c5705b4a0aac4dfb',1,'emitting_power_list_t']]],
+  ['fields_0',['fields',['../unionemitting__power__list__t.html#a50048825efd40d84c5705b4a0aac4dfb',1,'emitting_power_list_t::fields'],['../index.html#autotoc_md135',1,'Specifying logged fields']]],
   ['fifobuffer_2eh_1',['FifoBuffer.h',['../FifoBuffer_8h.html',1,'']]],
   ['fifobuffer_5fcount_2',['FifoBuffer_count',['../FifoBuffer_8h.html#a5263980e2276ed71e9e73103a59fad85',1,'FifoBuffer.h']]],
   ['fifobuffer_5fflush_3',['FifoBuffer_flush',['../FifoBuffer_8h.html#a32cf6b7e12ba564de99a87d4fdb5a737',1,'FifoBuffer.h']]],
@@ -12,7 +12,7 @@ var searchData=
   ['fifobuffer_5fread_9',['FifoBuffer_read',['../FifoBuffer_8h.html#a3af01a98fef76c9f26f43ab1e25cca62',1,'FifoBuffer.h']]],
   ['fifobuffer_5ftypedef_10',['FifoBuffer_typedef',['../FifoBuffer_8h.html#ad126c3bc7da9411447ac84c446385309',1,'FifoBuffer_typedef:&#160;FifoBuffer.h'],['../spogobot_8h.html#abda99fd607753e9fc7e285d857fb0dae',1,'FifoBuffer_typedef(message_t, Messagefifo):&#160;spogobot.h']]],
   ['fifobuffer_5fwrite_11',['FifoBuffer_write',['../FifoBuffer_8h.html#ad548598d90badf87abe21e870d6e9d63',1,'FifoBuffer.h']]],
-  ['files_20of_20the_20traces_12',['Generate gif files of the traces',['../index.html#autotoc_md137',1,'']]],
+  ['files_20of_20the_20traces_12',['Generate gif files of the traces',['../index.html#autotoc_md139',1,'']]],
   ['filter_5fvisible_13',['filter_visible',['../distances_8cpp.html#a3717d9ff9577143b9dd1fd0e34170ccf',1,'filter_visible(const std::vector&lt; Candidate &gt; &amp;cand):&#160;distances.cpp'],['../distances_8h.html#a3717d9ff9577143b9dd1fd0e34170ccf',1,'filter_visible(const std::vector&lt; Candidate &gt; &amp;cand):&#160;distances.cpp']]],
   ['find_5fneighbors_14',['find_neighbors',['../distances_8cpp.html#afe6f15e50695efc366aa2f2e9ad296b0',1,'find_neighbors(ir_direction dir, std::vector&lt; std::shared_ptr&lt; PogobotObject &gt; &gt; &amp;robots, float max_distance, bool enable_occlusion):&#160;distances.cpp'],['../distances_8h.html#aebfd4ff64b2ad3df42a5a68f5aba0905',1,'find_neighbors(ir_direction dir, std::vector&lt; std::shared_ptr&lt; PogobotObject &gt; &gt; &amp;robots, float maxDistance, bool enable_occlusion=true):&#160;distances.cpp']]],
   ['find_5fneighbors_5fperiodic_15',['find_neighbors_periodic',['../distances_8cpp.html#a7ee4e7d8da6ed6a44c071706a73ca80f',1,'find_neighbors_periodic(ir_direction dir, std::vector&lt; std::shared_ptr&lt; PogobotObject &gt; &gt; &amp;robots, float max_distance, b2Vec2 domain_min, float domain_w, float domain_h, bool enable_occlusion):&#160;distances.cpp'],['../distances_8h.html#a9c3860bda8b3ea1fdb9780510f19a0ca',1,'find_neighbors_periodic(ir_direction dir, std::vector&lt; std::shared_ptr&lt; PogobotObject &gt; &gt; &amp;robots, float max_distance, b2Vec2 domain_min, float domain_w, float domain_h, bool enable_occlusion=true):&#160;distances.cpp']]],

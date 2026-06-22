@@ -33,5 +33,6 @@ var classSimulation =
     [ "speed_down", "classSimulation.html#a036b70e265a1f6e0ccf9dbdd1370c7c7", null ],
     [ "speed_up", "classSimulation.html#a02ad6ce38548da0853f62b8555237a26", null ],
     [ "stop_simulation_main_loop", "classSimulation.html#a765d8e1e6d180d9966c655bd0de8b736", null ],
+    [ "toggle_trajectory_traces", "classSimulation.html#a78868bffecbcdb381a26f40606a40bc4", null ],
     [ "current_robot_enable_data_logging", "classSimulation.html#aecef4f2d7869ad7d77f0b339f49dc821", null ]
 ];

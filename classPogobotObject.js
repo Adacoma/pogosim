@@ -33,6 +33,8 @@ var classPogobotObject =
     [ "angular_bias", "classPogobotObject.html#ad630286ce2714902f4b6b183facad8e2", null ],
     [ "angular_noise_stddev", "classPogobotObject.html#a64c3e918840a9edb2c23b34837bf7406", null ],
     [ "callback_export_data", "classPogobotObject.html#a0caa19637594cc3810f7c1d17fe5291f", null ],
+    [ "callback_robot_click", "classPogobotObject.html#a999ec664b639f0813f51c93e455f7706", null ],
+    [ "callback_robot_end", "classPogobotObject.html#a4f080afa577d1d1bb3a9ff502cd9bcff", null ],
     [ "communication_radius", "classPogobotObject.html#a0e1f8009ab5a65fb5e6d3a5249dc75b3", null ],
     [ "current_time_microseconds", "classPogobotObject.html#acc0f9e5c94d1839fa94d457192d0d997", null ],
     [ "data", "classPogobotObject.html#a415ea6ce97e5b69f53065d4593daa39c", null ],

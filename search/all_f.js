@@ -11,7 +11,7 @@ var searchData=
   ['of_20a_20payload_20in_20a_20ir_20message_8',['Maximum size of a payload in a IR message',['../spogobot_8h.html#autotoc_md13',1,'']]],
   ['of_20the_20robots_20in_20python_9',['Access the pose and states of the robots in Python',['../index.html#autotoc_md134',1,'']]],
   ['of_20the_20simulator_10',['Command line parameters of the simulator',['../index.html#autotoc_md131',1,'']]],
-  ['of_20the_20traces_11',['Generate gif files of the traces',['../index.html#autotoc_md137',1,'']]],
+  ['of_20the_20traces_11',['Generate gif files of the traces',['../index.html#autotoc_md139',1,'']]],
   ['of_20word_20from_20ir_20recovers_20in_20one_20step_12',['Maximum number of word from IR recovers in one step',['../spogobot_8h.html#autotoc_md14',1,'']]],
   ['offset_5fpolygon_13',['offset_polygon',['../geometry_8cpp.html#ad6c33659f7609a5b225d1874dbe98a0d',1,'offset_polygon(const std::vector&lt; b2Vec2 &gt; &amp;polygon, float offset):&#160;geometry.cpp'],['../geometry_8h.html#ad6c33659f7609a5b225d1874dbe98a0d',1,'offset_polygon(const std::vector&lt; b2Vec2 &gt; &amp;polygon, float offset):&#160;geometry.cpp']]],
   ['on_20linux_14',['Install on Linux',['../index.html#autotoc_md121',1,'']]],
@@ -22,7 +22,7 @@ var searchData=
   ['operator_28_29_19',['operator()',['../structGridCellHash.html#a1b534141cd8531928832b5695b8c78bd',1,'GridCellHash::operator()()'],['../classMsgSuccessRate.html#a38a5141ec7a0aaade8481665d7306770',1,'MsgSuccessRate::operator()()'],['../classDynamicMsgSuccessRate.html#adfdfc56e3f68a0e948e638aeda882e7b',1,'DynamicMsgSuccessRate::operator()()'],['../classConstMsgSuccessRate.html#a251384f9be05763bb7cfe5cd5d7ea6b4',1,'ConstMsgSuccessRate::operator()()']]],
   ['operator_3d_3d_20',['operator==',['../structGridCell.html#a7c188146960190c921baf19ff0462f2e',1,'GridCell']]],
   ['operator_5b_5d_21',['operator[]',['../classConfiguration.html#ae70e4cfec1a54d59a0c1b72624bacbd1',1,'Configuration']]],
-  ['options_22',['Launch several runs in Parallel, with different configuration options',['../index.html#autotoc_md135',1,'']]],
+  ['options_22',['Launch several runs in Parallel, with different configuration options',['../index.html#autotoc_md137',1,'']]],
   ['orig_5fvalue_23',['orig_value',['../classStaticLightObject.html#aabe81513655952d01bc285be6b9ac117',1,'StaticLightObject']]],
   ['overflow_5fcounter_24',['overflow_counter',['../structslip__error__counter__s.html#aa6e5d5a3461d2606b41eaeac68593e30',1,'slip_error_counter_s']]],
   ['overview_25',['Overview',['../index.html#autotoc_md120',1,'']]]
