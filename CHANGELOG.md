@@ -1,6 +1,47 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [0.10.10] - 2026-06-22
+
+### Added
+ - add option 'initial\_formation\_root\_object' to specify the root object to use to create the initial formation
+ - now possible to specify the center of an initial formation, using config parameter "initial\_formation\_center"
+ - add support for membranes with rectangular parts
+ - data logger now supports buffered batch writing, to reduce feather file size
+ - README: explain how to load a feather file meta+df using pogosim.utils
+ - README: more info on how to retrieve configuration from feather files
+ - README: add images of GUI
+ - allow membrane objects to serialize the coordinates of each dot/section if serialize\_dot\_pose==true
+ - pogobatch: add --list-outputs and --only-output CLI parameters. The latter can be used to focus only on one exported feather file, useful for cluster batch launch
+ - pogobatch: support for batch\_options\_range in config files to specify a given range of parameters
+ - add per-robot end-of-experiment callback support
+ - add a new def file compatible with old version of singularity (e.g. 3.11)
+ - add new S keyboard press - advances simulator one tick.
+ - add toggleable robot trajectory traces in GUI
+ - add robot GUI selection and callback support
+ - add aligned\_disk formation
+ - add configurable logged data fields and robot categories
+
+### Changed
+ - refactor of Objects initialization: new 'init' and virtual 'do\_init' methods to avoid creating Box2D objects in cstors
+ - remove the 'hanabi' example. Use 'blooming' instead, that contains more infos, details and docs
+ - refactor data logger field creation: now Objects/Robots create serialization fields and base values rather than the Simulator object
+ - use float32 rather than float64 for x, y, angle, etc
+ - allow key press repeats for certain GUI commands, incl. F3, F4, S, up/down/left/right, +/-
+ - blooming example: reduce max lin speed
+
+### Fixed
+ - remove unused variables in robot.cpp
+ - apptainer def files: install last version of pogobatch
+ - apptainer def files: ensure that no built python binaries are present before installing the pogosim python package
+ - correct label of -q flag in help output ("--verbose" -> "--quiet")
+ - ignore directories that do not exist when using delete\_old\_files: true
+ - make simulator seeds reproducible and add CLI override
+ - fix warnings in CMakeLists.txt
+ - push\_sum example: normalize per neighbor number, fix convergence to nan, Doxygen description
+
+
+
 ## [0.10.9] - 2026-03-02
 
 ### Added
