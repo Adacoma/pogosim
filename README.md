@@ -171,13 +171,16 @@ The GUI is composed of several parts, as presented in this figure:
 
 Here is a list of shortcuts that can be used to control the GUI:
  - F1: Help message
+ - F2: Show/Hide the trajectory traces
  - F3: Slow down the simulation
  - F4: Speed up the simulation
- - F5: Show/Hide the communication channels
+ - F5: Show/Hide the communication channels, below/above the other objects
  - F6: Show/Hide the lateral LEDs
  - F7: Show/Hide the light level
+ - F8: Show/Hide the current time and scale bar
  - ESC: quit the simulation
  - SPACE: pause the simulation
+ - S: pause and advance the simulation by one tick
  - DOWN, UP, LEFT, RIGHT: move the visualisation coordinates
  - Right-Click + Mouse move: move the visualisation coordinates
  - PLUS, MINUS or Mouse Wheel: Zoom up or down
