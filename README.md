@@ -166,6 +166,9 @@ make clean sim
 
 
 ### Controlling the GUI
+The GUI is composed of several parts, as presented in this figure:
+![GUI](https://github.com/Adacoma/pogosim/blob/main/.description/gui.png)
+
 Here is a list of shortcuts that can be used to control the GUI:
  - F1: Help message
  - F3: Slow down the simulation
