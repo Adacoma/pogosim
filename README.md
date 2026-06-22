@@ -239,12 +239,15 @@ Options:
   -c, --config <file>             Specify the configuration file.
   -g, --no-GUI                    Disable GUI mode.
   -v, --verbose                   Enable verbose mode.
+  -q, --quiet                     Enable quiet mode (ouput only warning and errors on terminal).
   -nr, --do-not-show-robot-msg    Suppress robot messages.
+  -s, --seed <int>                Seed the simulator RNG.
   -P, --progress                  Show progress output.
   -V, --version                   Show version information.
   -h, --help                      Display this help message.
 ```
 - Parameter "-c" must always be provided, and corresponds to the YAML configuration file to use. See "conf/test.yaml" for an example.
+- Parameter "-s" is the random seed -- can also be specified in YAML configuration files, with the one provided in the CLI be prioritized.
 - Parameter "-g" enables headless mode: no GUI shown, but the program still export frames.
 - Parameter "-v" enables verbose mode (show debug messages).
 - Parameter "-nr" disables messages from the robots (printf in robot code).
