@@ -194,8 +194,9 @@ def expand_batch_options(node: dict, dotted_path: str = "") -> list[Any]:
 
 
 class PogobotLauncher:
-    def __init__(self, num_instances, base_config_path, combined_output_path, simulator_binary, temp_base_path, backend="multiprocessing", keep_temp=False, extra_columns=None, max_retries: int=5, gui: bool=False):
+    def __init__(self, num_instances, base_config_path, combined_output_path, simulator_binary, temp_base_path, backend="multiprocessing", keep_temp=False, extra_columns=None, max_retries: int=5, gui: bool=False, jobs: int | None = None, retry_new_seed: bool=True):
         self.num_instances = num_instances
+        self.jobs = min(num_instances, jobs) if jobs is not None and jobs > 0 else num_instances
         self.base_config_path = base_config_path
         self.combined_output_path = combined_output_path
         self.simulator_binary = simulator_binary
@@ -207,6 +208,7 @@ class PogobotLauncher:
         self.extra_columns = extra_columns or {}
         self.max_retries = max_retries
         self.gui = gui
+        self.retry_new_seed = retry_new_seed
 
     @staticmethod
     def modify_config_static(base_config_path, output_dir):
@@ -248,27 +250,33 @@ class PogobotLauncher:
 
     @staticmethod
     def worker(args):
-        (i, base_cfg, sim_bin, tmp_base, max_retries, gui) = args
+        (i, num_instances, base_cfg, sim_bin, tmp_base, max_retries, gui, retry_new_seed) = args
         attempt = 0
+        seed = i
         while True:
+            # By default, a failed run gets a deterministic replacement seed
+            # instead of retrying the same crashing seed forever.  The stride
+            # by num_instances avoids collisions with the initial batch seeds.
+            seed = i + attempt * num_instances if retry_new_seed else i
+
             # create a fresh sub-directory for every attempt
             temp_dir = tempfile.mkdtemp(
-                prefix=f"sim_{i}_try{attempt}_", dir=tmp_base)
+                prefix=f"sim_{i}_seed{seed}_try{attempt}_", dir=tmp_base)
 
             try:
                 cfg_path = PogobotLauncher.modify_config_static(
                     base_cfg, temp_dir)
-                PogobotLauncher.launch_simulator_static(cfg_path, sim_bin, seed=i, gui=gui)
+                PogobotLauncher.launch_simulator_static(cfg_path, sim_bin, seed=seed, gui=gui)
                 break                       # success
             except subprocess.CalledProcessError as exc:
                 logger.warning(
-                    "Instance %d – crash on attempt %d/%d: %s",
-                    i, attempt + 1, max_retries, exc)
+                    "Instance %d – seed %d crashed on attempt %d/%d: %s",
+                    i, seed, attempt + 1, max_retries + 1, exc)
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 attempt += 1
                 if attempt > max_retries:
-                    logger.error("Instance %d – gave up after %d retries",
-                                  i, max_retries)
+                    logger.error("Instance %d – gave up after %d retries; last seed was %d",
+                                  i, max_retries, seed)
                     return (None, None)     # hard failure
                 continue                    # retry
 
@@ -278,9 +286,13 @@ class PogobotLauncher:
         if os.path.exists(feather_path):
             try:
                 df = pd.read_feather(feather_path)
-                # Add a column "run" corresponding to the instance number.
+                # Add bookkeeping columns.  `run` is the logical replicate index;
+                # `seed` is the actual simulator seed used, which may differ from
+                # `run` when retrying with a new seed succeeds after a crash.
                 df['run'] = i
-                logger.debug(f"Instance {i}: Loaded data from {feather_path}")
+                df['seed'] = seed
+                df['retry_attempt'] = attempt
+                logger.debug(f"Instance {i}: Loaded data from {feather_path} using seed {seed} after {attempt} retries")
             except Exception as e:
                 logger.error(f"Instance {i}: Error reading feather file {feather_path}: {e}")
         else:
@@ -297,19 +309,23 @@ class PogobotLauncher:
 
     def clean_temp_dirs(self):
         for d in self.temp_dirs:
-            shutil.rmtree(d)
+            if d is None:
+                continue
+            shutil.rmtree(d, ignore_errors=True)
             logger.debug(f"Cleaned up temporary directory: {d}")
 
     def launch_all(self):
         # Prepare the arguments for each simulation instance.
         args_list = [
-            (i, self.base_config_path, self.simulator_binary, self.temp_base_path, self.max_retries, self.gui)
+            (i, self.num_instances, self.base_config_path, self.simulator_binary, self.temp_base_path, self.max_retries, self.gui, self.retry_new_seed)
             for i in range(self.num_instances)
         ]
 
         if self.backend == "multiprocessing":
-            # Use a multiprocessing Pool.
-            with Pool(processes=self.num_instances) as pool:
+            # Use a multiprocessing Pool.  The number of runs and the number of
+            # concurrent processes are intentionally separated: launching many
+            # simulator instances at once can exhaust memory/CPU/file descriptors.
+            with Pool(processes=self.jobs) as pool:
                 results = pool.map(PogobotLauncher.worker, args_list)
 
         elif self.backend == "ray":
@@ -334,9 +350,30 @@ class PogobotLauncher:
             logger.error(f"Unknown backend: {self.backend}")
             sys.exit(1)
 
+        failed_runs = [i for i, result in enumerate(results) if result[0] is None]
+        missing_data_runs = [
+            i for i, result in enumerate(results)
+            if result[0] is not None and result[1] is None
+        ]
+
         # Separate the temporary directories and the loaded DataFrames.
-        self.temp_dirs = [result[0] for result in results]
+        # Do not keep None entries: clean_temp_dirs() expects real paths.
+        self.temp_dirs = [result[0] for result in results if result[0] is not None]
         self.dataframes = [result[1] for result in results if result[1] is not None]
+
+        if failed_runs or missing_data_runs:
+            if not self.keep_temp:
+                self.clean_temp_dirs()
+            msg_parts = []
+            if failed_runs:
+                msg_parts.append(
+                    f"{len(failed_runs)} simulator run(s) failed after retries: {failed_runs}"
+                )
+            if missing_data_runs:
+                msg_parts.append(
+                    f"{len(missing_data_runs)} simulator run(s) produced no readable data.feather: {missing_data_runs}"
+                )
+            raise RuntimeError("; ".join(msg_parts))
 
         # Inject the EXTRA columns (same constant value for every row)
         if self.extra_columns and self.dataframes:
@@ -366,7 +403,8 @@ class PogobotBatchRunner:
     """
     def __init__(self, multi_config_file, runs, simulator_binary, temp_base, output_dir,
                  backend="multiprocessing", keep_temp=False, verbose=False, retries: int = 5,
-                 gui: bool = False, only_output: str = ""):
+                 gui: bool = False, only_output: str = "", jobs: int | None = None,
+                 retry_new_seed: bool = True):
         self.multi_config_file = multi_config_file
         self.runs = runs
         self.simulator_binary = simulator_binary
@@ -378,6 +416,8 @@ class PogobotBatchRunner:
         self.retries = retries
         self.gui = gui
         self.only_output = only_output
+        self.jobs = jobs
+        self.retry_new_seed = retry_new_seed
 
 #        # Initialize logging via utils.
 #        utils.init_logging(self.verbose)
@@ -583,6 +623,8 @@ class PogobotBatchRunner:
             extra_columns        = extra_columns,
             max_retries          = self.retries,
             gui                  = self.gui,
+            jobs                 = self.jobs,
+            retry_new_seed       = self.retry_new_seed,
         )
         launcher.launch_all()
         os.remove(temp_config_path)
@@ -708,6 +750,8 @@ def main():
                         help="Directory where the combined output Feather files will be saved (default: current directory).")
     parser.add_argument("--backend", choices=["multiprocessing", "ray", "sequential"], default="multiprocessing",
                         help="Parallelism backend to use for launching PogobotLauncher instances (default: multiprocessing). Use 'sequential' to disable parallelism.")
+    parser.add_argument("-j", "--jobs", type=int, default=0,
+                        help="Maximum number of simulator processes to run concurrently. By default this equals --runs.")
     parser.add_argument("--keep-temp", action="store_true",
                         help="Keep temporary directories after simulation runs.")
     parser.add_argument("--gui", action="store_true",
@@ -715,6 +759,11 @@ def main():
     parser.add_argument("-v", "--verbose", default=False, action="store_true", help="Verbose mode")
     parser.add_argument("-V", "--version", default=False, action="store_true", help="Return version")
     parser.add_argument("-R", "--retries", type=int, default=5, help="How many times to relaunch a run when the simulator crashes (default: 5).")
+    parser.add_argument("--retry-same-seed", dest="retry_new_seed", action="store_false",
+                        help=("When a simulator run crashes, retry it with the same seed instead of the default behavior "
+                              "of trying deterministic replacement seeds. By default, the replacement seed for run i "
+                              "at retry attempt k is i + k * runs. The maximum number of retries is controlled by --retries."))
+    parser.set_defaults(retry_new_seed=True)
     parser.add_argument( "--only-output", type=str, default="", help=( "Run only the combination(s) whose computed output filename matches this value. "
             "You can pass either the basename (e.g. result_x.feather) or the full path."),
     )
@@ -750,6 +799,8 @@ def main():
         retries=args.retries,
         gui=args.gui,
         only_output=args.only_output,
+        jobs=args.jobs if args.jobs > 0 else None,
+        retry_new_seed=args.retry_new_seed,
     )
 
     # Check if we are in 'list_outputs' mode
