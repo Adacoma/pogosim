@@ -109,10 +109,8 @@ From: ubuntu:24.04
     pip3 install -U .
 
     cd /
-    #git clone https://github.com/leo-cazenille/pogobot-sdk.git
-    git clone https://github.com/nekonaute/pogobot-sdk.git
+    git clone https://github.com/leo-cazenille/pogobot-sdk.git
     cd /pogobot-sdk
-    git checkout sdk_2_7
     mkdir -p dependencies
 
     # Litex
