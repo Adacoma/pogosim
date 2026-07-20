@@ -13,11 +13,6 @@
 // "Global" variables set by the YAML configuration file (in simulation) by the function global_setup, or with a fixed values (in experiments). These values should be seen as constants shared by all robots.
 
 float forward_speed_ratio = 1.0f;
-uint16_t forward_speed = 0;
-
-static inline void recompute_speeds(void) {
-    forward_speed = (uint16_t)((float)motorFull * forward_speed_ratio);
-}
 
 uint32_t wall_memory_ms = 100;        // How long wall detection persists (short to avoid spinning)
 uint32_t turn_duration_ms = 300;      // How long to execute a turn (long enough to clear wall angle)
@@ -302,8 +297,8 @@ void user_init(void) {
     uint8_t d[3];
     pogobot_motor_power_mem_get(p);
     pogobot_motor_dir_mem_get(d);
-    mydata->motorLeft  = p[1];
-    mydata->motorRight = p[0];
+    mydata->motorLeft  = p[1] * forward_speed_ratio;
+    mydata->motorRight = p[0] * forward_speed_ratio;
     mydata->dirLeft    = d[1];
     mydata->dirRight   = d[0];
 
@@ -373,7 +368,6 @@ void global_setup(void) {
     init_from_configuration(turn_duration_ms);
     init_from_configuration(forward_commit_ms);
     init_from_configuration(forward_speed_ratio);
-    recompute_speeds();
 }
 #endif
 
