@@ -9,6 +9,12 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define USE_RUN_AND_TUMBLE 1
+
+#if USE_RUN_AND_TUMBLE != 0 && USE_RUN_AND_TUMBLE != 1
+#error "USE_RUN_AND_TUMBLE must be either 0 or 1"
+#endif
+
 /* ------------------------- Parameters ------------------------------- */
 // "Global" variables set by the YAML configuration file (in simulation) by the function global_setup, or with a fixed values (in experiments). These values should be seen as constants shared by all robots.
 
@@ -18,14 +24,32 @@ uint32_t wall_memory_ms = 100;        // How long wall detection persists (short
 uint32_t turn_duration_ms = 300;      // How long to execute a turn (long enough to clear wall angle)
 uint32_t forward_commit_ms = 1000;    // Move forward after turn for this long
 
+#if USE_RUN_AND_TUMBLE
+uint32_t run_duration_min = 200;         // Minimum duration of a run phase
+uint32_t run_duration_max = 1200;        // Maximum duration of a run phase
+uint32_t tumble_duration_min = 100;      // Minimum duration of a tumble phase
+uint32_t tumble_duration_max = 1100;     // Maximum duration of a tumble phase
+#endif
+
 
 /* ------------------------- Types ------------------------------- */
 typedef enum {
     ACTION_FORWARD,
+#if USE_RUN_AND_TUMBLE
+    ACTION_TUMBLE_LEFT,
+    ACTION_TUMBLE_RIGHT,
+#endif
     ACTION_TURN_LEFT,
     ACTION_TURN_RIGHT,
-    ACTION_FORWARD_COMMIT  // Forward movement after a turn, but can still react to front walls
+    ACTION_FORWARD_COMMIT  // Forward movement after a wall turn, but can still react to front walls
 } action_t;
+
+#if USE_RUN_AND_TUMBLE
+typedef enum {
+    RTP_PHASE_RUN,
+    RTP_PHASE_TUMBLE
+} rtp_phase_t;
+#endif
 
 /**
  * @brief Extended USERDATA structure for the run-and-tumble behavior.
@@ -47,6 +71,14 @@ typedef struct {
     // Current action state
     action_t current_action;
     uint32_t action_until_ms;
+
+#if USE_RUN_AND_TUMBLE
+    // Nominal run-and-tumble state. Wall avoidance actions override this state.
+    rtp_phase_t rtp_phase;
+    uint32_t rtp_phase_start_ms;
+    uint32_t rtp_phase_duration_ms;
+    uint8_t rtp_tumble_direction; // 0: left, 1: right
+#endif
 
     time_reference_t timer_it;
 } USERDATA;
@@ -111,6 +143,25 @@ static inline void spin_right(void) {
     pogobot_led_setColor(0, 0, 25); // Blue: turning right
 }
 
+#if USE_RUN_AND_TUMBLE
+// RTP tumbles use a pivot turn, as in RTP.c: one wheel moves while the other stops.
+static inline void tumble_left(void) {
+    pogobot_motor_set(motorL, motorStop);
+    pogobot_motor_set(motorR, mydata->motorRight);
+    pogobot_motor_dir_set(motorL, mydata->dirLeft);
+    pogobot_motor_dir_set(motorR, mydata->dirRight);
+    pogobot_led_setColor(25, 25, 0); // Yellow: nominal tumble left
+}
+
+static inline void tumble_right(void) {
+    pogobot_motor_set(motorL, mydata->motorLeft);
+    pogobot_motor_set(motorR, motorStop);
+    pogobot_motor_dir_set(motorL, mydata->dirLeft);
+    pogobot_motor_dir_set(motorR, mydata->dirRight);
+    pogobot_led_setColor(25, 0, 25); // Magenta: nominal tumble right
+}
+#endif
+
 /* ------------------------- IR messages ------------------------------- */
 
 static void process_message(message_t *mr) {
@@ -132,6 +183,50 @@ static void process_message(message_t *mr) {
     }
 }
 
+
+/* ------------------------- Nominal motion ------------------------------- */
+#if USE_RUN_AND_TUMBLE
+static uint32_t random_duration_ms(uint32_t duration_min, uint32_t duration_max) {
+    if (duration_max <= duration_min) {
+        return duration_min;
+    }
+    return duration_min + (uint32_t)(rand() % (duration_max - duration_min + 1));
+}
+
+static void start_rtp_run(uint32_t tnow) {
+    mydata->rtp_phase = RTP_PHASE_RUN;
+    mydata->rtp_phase_start_ms = tnow;
+    mydata->rtp_phase_duration_ms = random_duration_ms(run_duration_min, run_duration_max);
+}
+
+static void update_nominal_action(uint32_t tnow) {
+    if (tnow - mydata->rtp_phase_start_ms >= mydata->rtp_phase_duration_ms) {
+        mydata->rtp_phase_start_ms = tnow;
+
+        if (mydata->rtp_phase == RTP_PHASE_RUN) {
+            mydata->rtp_phase = RTP_PHASE_TUMBLE;
+            mydata->rtp_phase_duration_ms = random_duration_ms(tumble_duration_min, tumble_duration_max);
+            mydata->rtp_tumble_direction = (uint8_t)(rand() & 1);
+        } else {
+            mydata->rtp_phase = RTP_PHASE_RUN;
+            mydata->rtp_phase_duration_ms = random_duration_ms(run_duration_min, run_duration_max);
+        }
+    }
+
+    if (mydata->rtp_phase == RTP_PHASE_RUN) {
+        mydata->current_action = ACTION_FORWARD;
+    } else if (mydata->rtp_tumble_direction == 0) {
+        mydata->current_action = ACTION_TUMBLE_LEFT;
+    } else {
+        mydata->current_action = ACTION_TUMBLE_RIGHT;
+    }
+}
+#else
+static void update_nominal_action(uint32_t tnow) {
+    (void)tnow;
+    mydata->current_action = ACTION_FORWARD;
+}
+#endif
 
 /* ------------------------- Simple reactive behavior ------------------------------- */
 static void decide_action(void) {
@@ -184,7 +279,7 @@ static void decide_action(void) {
         }
     }
 
-    // If in committed forward (after a turn), keep going forward but react to front walls
+    // If in committed forward (after a wall turn), keep going forward but react to front walls
     if (mydata->current_action == ACTION_FORWARD_COMMIT && tnow < mydata->action_until_ms) {
         if (front) {
             // Emergency: still heading into wall, turn more aggressively
@@ -198,13 +293,20 @@ static void decide_action(void) {
         return; // Otherwise continue committed forward
     }
 
-    // If just finished a turn, enter committed forward
+    // If just finished a wall-avoidance turn, enter committed forward.
     if ((mydata->current_action == ACTION_TURN_LEFT || mydata->current_action == ACTION_TURN_RIGHT)
         && tnow >= mydata->action_until_ms) {
         mydata->current_action = ACTION_FORWARD_COMMIT;
         mydata->action_until_ms = tnow + forward_commit_ms;
         return;
     }
+
+#if USE_RUN_AND_TUMBLE
+    // Restart with a fresh run after wall avoidance, rather than resuming a stale RTP timer.
+    if (mydata->current_action == ACTION_FORWARD_COMMIT && tnow >= mydata->action_until_ms) {
+        start_rtp_run(tnow);
+    }
+#endif
 
     // Normal reactive decision logic
     if (front) {
@@ -235,8 +337,8 @@ static void decide_action(void) {
         mydata->current_action = ACTION_TURN_LEFT;
         mydata->action_until_ms = tnow + turn_duration_ms;
     } else {
-        // No problematic walls (corridor, back only, or clear): go forward
-        mydata->current_action = ACTION_FORWARD;
+        // No directional wall-avoidance response is needed: execute nominal motion.
+        update_nominal_action(tnow);
     }
 }
 
@@ -248,6 +350,14 @@ static void execute_action(void) {
         case ACTION_TURN_RIGHT:
             spin_right();
             break;
+#if USE_RUN_AND_TUMBLE
+        case ACTION_TUMBLE_LEFT:
+            tumble_left();
+            break;
+        case ACTION_TUMBLE_RIGHT:
+            tumble_right();
+            break;
+#endif
         case ACTION_FORWARD_COMMIT:
         case ACTION_FORWARD:
         default:
@@ -304,6 +414,10 @@ void user_init(void) {
 
     mydata->current_action = ACTION_FORWARD;
     mydata->action_until_ms = 0;
+#if USE_RUN_AND_TUMBLE
+    start_rtp_run(current_time_milliseconds());
+    mydata->rtp_tumble_direction = (uint8_t)(rand() & 1);
+#endif
 }
 
 /**
@@ -368,6 +482,12 @@ void global_setup(void) {
     init_from_configuration(turn_duration_ms);
     init_from_configuration(forward_commit_ms);
     init_from_configuration(forward_speed_ratio);
+#if USE_RUN_AND_TUMBLE
+    init_from_configuration(run_duration_min);
+    init_from_configuration(run_duration_max);
+    init_from_configuration(tumble_duration_min);
+    init_from_configuration(tumble_duration_max);
+#endif
 }
 #endif
 
