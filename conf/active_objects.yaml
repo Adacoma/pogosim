@@ -286,6 +286,7 @@ parameters:
     turn_duration_ms: 500
     forward_commit_ms: 1000
     forward_speed_ratio: 0.5
+    enable_backward_dir: true
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8

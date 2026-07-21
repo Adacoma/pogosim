@@ -28,7 +28,8 @@ uint32_t forward_commit_ms = 1000;    // Move forward after turn for this long
 uint32_t run_duration_min = 200;         // Minimum duration of a run phase
 uint32_t run_duration_max = 1200;        // Maximum duration of a run phase
 uint32_t tumble_duration_min = 100;      // Minimum duration of a tumble phase
-uint32_t tumble_duration_max = 1100;     // Maximum duration of a tumble phase
+uint32_t tumble_duration_max = 600;     // Maximum duration of a tumble phase
+bool enable_backward_dir = true;        // Allow each new run to be forward or backward
 #endif
 
 
@@ -78,6 +79,7 @@ typedef struct {
     uint32_t rtp_phase_start_ms;
     uint32_t rtp_phase_duration_ms;
     uint8_t rtp_tumble_direction; // 0: left, 1: right
+    bool rtp_run_backward;         // false: forward run, true: backward run
 #endif
 
     time_reference_t timer_it;
@@ -119,13 +121,31 @@ static inline bool is_active_object_detected(const message_t *msg) {
 }
 
 /* ------------------------- Motion ------------------------------- */
+static inline void set_drive_direction(bool backward) {
+    pogobot_motor_dir_set(motorL, backward ? (mydata->dirLeft + 1) % 2 : mydata->dirLeft);
+    pogobot_motor_dir_set(motorR, backward ? (mydata->dirRight + 1) % 2 : mydata->dirRight);
+}
+
 static inline void move_forward(void) {
     pogobot_motor_set(motorL, mydata->motorLeft);
     pogobot_motor_set(motorR, mydata->motorRight);
-    pogobot_motor_dir_set(motorL, mydata->dirLeft);
-    pogobot_motor_dir_set(motorR, mydata->dirRight);
+    set_drive_direction(false);
     pogobot_led_setColor(0, 25, 0); // Green: moving forward
 }
+
+#if USE_RUN_AND_TUMBLE
+static inline void move_rtp_run(void) {
+    pogobot_motor_set(motorL, mydata->motorLeft);
+    pogobot_motor_set(motorR, mydata->motorRight);
+    set_drive_direction(mydata->rtp_run_backward);
+
+    if (mydata->rtp_run_backward) {
+        pogobot_led_setColor(0, 25, 25); // Cyan: nominal backward run
+    } else {
+        pogobot_led_setColor(0, 25, 0);  // Green: nominal forward run
+    }
+}
+#endif
 
 static inline void spin_left(void) {
     pogobot_motor_set(motorL, motorHalf);
@@ -193,10 +213,15 @@ static uint32_t random_duration_ms(uint32_t duration_min, uint32_t duration_max)
     return duration_min + (uint32_t)(rand() % (duration_max - duration_min + 1));
 }
 
+static bool choose_rtp_run_backward(void) {
+    return enable_backward_dir && ((rand() % 6) == 0);
+}
+
 static void start_rtp_run(uint32_t tnow) {
     mydata->rtp_phase = RTP_PHASE_RUN;
     mydata->rtp_phase_start_ms = tnow;
     mydata->rtp_phase_duration_ms = random_duration_ms(run_duration_min, run_duration_max);
+    mydata->rtp_run_backward = choose_rtp_run_backward();
 }
 
 static void update_nominal_action(uint32_t tnow) {
@@ -207,9 +232,11 @@ static void update_nominal_action(uint32_t tnow) {
             mydata->rtp_phase = RTP_PHASE_TUMBLE;
             mydata->rtp_phase_duration_ms = random_duration_ms(tumble_duration_min, tumble_duration_max);
             mydata->rtp_tumble_direction = (uint8_t)(rand() & 1);
+            mydata->rtp_run_backward = false;
         } else {
             mydata->rtp_phase = RTP_PHASE_RUN;
             mydata->rtp_phase_duration_ms = random_duration_ms(run_duration_min, run_duration_max);
+            mydata->rtp_run_backward = choose_rtp_run_backward();
         }
     }
 
@@ -308,9 +335,17 @@ static void decide_action(void) {
     }
 #endif
 
+    // During a backward RTP run, the rear face is the leading face.
+    bool path_blocked = front;
+#if USE_RUN_AND_TUMBLE
+    if (mydata->rtp_phase == RTP_PHASE_RUN && mydata->rtp_run_backward) {
+        path_blocked = back;
+    }
+#endif
+
     // Normal reactive decision logic
-    if (front) {
-        // Wall ahead: turn away from it
+    if (path_blocked) {
+        // Wall in the current direction of travel: turn away from it
         if (left && !right) {
             // Left wall too, turn right
             mydata->current_action = ACTION_TURN_RIGHT;
@@ -359,7 +394,15 @@ static void execute_action(void) {
             break;
 #endif
         case ACTION_FORWARD_COMMIT:
+            move_forward();
+            break;
         case ACTION_FORWARD:
+#if USE_RUN_AND_TUMBLE
+            move_rtp_run();
+#else
+            move_forward();
+#endif
+            break;
         default:
             move_forward();
             break;
@@ -487,6 +530,7 @@ void global_setup(void) {
     init_from_configuration(run_duration_max);
     init_from_configuration(tumble_duration_min);
     init_from_configuration(tumble_duration_max);
+    init_from_configuration(enable_backward_dir);
 #endif
 }
 #endif
