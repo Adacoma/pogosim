@@ -470,6 +470,21 @@ void pogobot_timer_offset_origin_microseconds( time_reference_t *timer, int32_t 
     timer->offset_origin_microseconds(microseconds_offset);
 }
 
+
+
+void erase_write_section_flash(void) {
+    std::memset(current_robot->flash_memory_authorized_section, 0xFF, flash_memory_authorized_section_size);
+}
+
+void write_page_flash(uint8_t page, const void *data)  {
+    std::memcpy(current_robot->flash_memory_authorized_section + 256*page, data, 256);
+}
+
+void read_page_flash(uint8_t page, char *buf) {
+    std::memcpy(buf, current_robot->flash_memory_authorized_section + 256*page, 256);
+}
+
+
 #pragma GCC diagnostic pop
 
 

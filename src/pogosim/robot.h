@@ -131,6 +131,7 @@ private:
  */
 MsgSuccessRate* msg_success_rate_factory(Configuration const& config);
 
+size_t constexpr flash_memory_authorized_section_size = 0x10000;
 
 
 /**
@@ -407,6 +408,10 @@ public:
     uint8_t motor_dir[3] = {0, 1, 0};
     uint16_t motor_power_mem[3] = {512, 512, 0};
 
+    // Flash memory authorized section
+    unsigned char flash_memory_authorized_section[flash_memory_authorized_section_size];
+
+
 protected:
     /**
      * @brief Perform the base initialization (e.g. create Box2D objects).
@@ -427,6 +432,11 @@ protected:
      * @brief Initialize time-related operations
      */
     void initialize_time();
+
+    /**
+     * @brief Initialize flash memory
+     */
+    void initialize_flash_memory();
 
     // Temporal information
     float temporal_noise = 0;

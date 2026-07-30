@@ -130,6 +130,7 @@ void PogobotObject::do_init([[maybe_unused]] b2WorldId world_id) {
     PhysicalObject::do_init(world_id);
     data = malloc(userdatasize);
     initialize_time();
+    initialize_flash_memory();
     create_robot_body(world_id);
 
     if (dummy) {
@@ -673,6 +674,10 @@ void PogobotObject::initialize_time() {
         std::uniform_real_distribution<float> dist(0.0f, temporal_noise_stddev);
         temporal_noise = dist(rnd_gen);
     }
+}
+
+void PogobotObject::initialize_flash_memory() {
+    //memset(flash_memory_authorized_section, 0x00, flash_memory_authorized_section_size);
 }
 
 void PogobotObject::update_time() {

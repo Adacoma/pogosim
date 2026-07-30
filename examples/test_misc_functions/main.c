@@ -33,6 +33,56 @@ static bool send_message(void) {
     return true;
 }
 
+
+/* Erase 64kB in flash in RW authorized space */
+/* Write and Read in each page (256 bytes) */
+static void test_flash_write_read(void) {
+    int cmp = 0;
+
+    /* One page */
+    char vals_in[256];
+    for (int i = 0; i<256; i++){
+        vals_in[i] = i;
+    }
+
+    char vals_out[256];
+    erase_write_section_flash();
+
+    for (int k = 0; k < 4; k++) {
+        pogobot_led_setColor(255,0,0);
+        write_page_flash(k, vals_in);
+
+        pogobot_led_setColor(0,255,0);
+        read_page_flash(k, vals_out);
+
+        pogobot_led_setColor(0,0,255);
+        printf("Read page %d : ", k);
+        cmp = 0;
+        for (int i = 0; i<256;i++) {
+            cmp += !(vals_out[i]==vals_in[i]);
+        }
+        if (cmp==0) {
+            printf("OK \n");
+        } else {
+            printf("NOK \n");  
+        }
+
+        erase_write_section_flash();
+        read_page_flash(k, vals_out);
+        printf("Read page %d after erasing : ", k);
+        cmp = 0;
+        for (int i = 0; i<256;i++) {
+            cmp += !((uint8_t)vals_out[i]==255);
+        }
+        if (cmp==0) {
+            printf("OK \n");
+        } else {
+            printf("NOK \n");  
+        }
+    }
+}
+
+
 // Init function. Called once at the beginning of the program (cf 'pogobot_start' call in main())
 void user_init(void) {
 #ifndef SIMULATOR
@@ -55,6 +105,9 @@ void user_init(void) {
 
     // Internal function to reset IR flags. May be useful if IR sensors are stuck.
     IR_reset_interrupt_flags();
+
+    // Test writing and reading parts of the flash
+    test_flash_write_read();
 }
 
 
@@ -62,13 +115,16 @@ void user_init(void) {
 void user_step(void) {
     mydata->data_foo[0] = 42;
 
+    bool verbose = (pogobot_ticks % 1000 == 0);
     if (is_muted()) {
         pogobot_led_setColor(255,0,0);
-        printf("Mute !\n");
+        if (verbose) printf("Mute !\n");
     } else {
         pogobot_led_setColor(0,255,0);
-        printf("Unmute !\n");
+        if (verbose) printf("Unmute !\n");
     }
+
+
 }
 
 

@@ -1028,6 +1028,54 @@ void pogobot_timer_wait_for_expiry( time_reference_t *timer );
  */
 void pogobot_timer_offset_origin_microseconds( time_reference_t *timer, int32_t microseconds_offset );
 
+/**
+ * ## FLASH API 
+ */
+
+/** This is a simple flash read / write implementation.
+ *
+ * Those functions allow the user to store data in the flash memory.
+ *
+ * The section is 64kB long and is writable by pages of 256 bytes.
+ * It starts at 0x290000 and is 0x10000 long.
+*/
+
+/** (erase_write_section_flash)
+ * Erase the whole user writable section (64 kB).
+ * It fills the section with 0xFF values.
+ *
+ * # Parameters
+ * - none
+ *
+ * # Return 
+ * - none 
+**/
+void erase_write_section_flash(void);
+
+/** (write_page_flash)
+ * Writes 256 bytes on a page in the user writable section.
+ *
+ * # Parameters
+ * - 'page' - page number
+ * - 'data' - pointer to an array containing data to write in the page.
+ *
+ * # Return 
+ * - none
+**/
+void write_page_flash(uint8_t page, const void *data);
+
+/** (read_page_flash)
+ * Reads 256 bytes on a page in the user writable section.
+ *
+ * # Parameters
+ * - 'page' - page number
+ * - 'data' - pointer to an array to fill with flash page data.
+ *
+ * # Return 
+ * - none
+**/
+void read_page_flash(uint8_t page, char *buf);
+
 
 #ifdef __cplusplus
 }
