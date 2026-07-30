@@ -31,7 +31,7 @@ void user_init(void) {
     // Set main loop frequency, message sending frequency, message processing frequency
     main_loop_hz = 60;      // Call the 'user_step' function 60 times per second
     max_nb_processed_msg_per_tick = 0;
-    // Specify functions to send/transmit messages. See the "hanabi" example to see message sending/processing in action!
+    // Specify functions to send/transmit messages. See the "blooming" example to see message sending/processing in action!
     msg_rx_fn = NULL;       // If Null, no reception of message
     msg_tx_fn = NULL;       // If Null, don't send any message
 
