@@ -120,6 +120,10 @@ void pogobot_infrared_recover_next_message( message_t *mes ) {
     memcpy(mes, &m, sizeof(message_t));
 }
 
+int is_muted(void) {
+    return 0; // Simulated robots are never muted
+}
+
 void pogobot_infrared_clear_message_queue( void ) {
     // Clear the queue
     while (!current_robot->messages.empty()) {
@@ -253,6 +257,11 @@ void pogobot_infrared_get_receiver_error_counter( slip_error_counter_s *error_co
 
 
 void pogobot_infrared_reset_receiver_error_counter( void ) {
+    // Do nothing ...
+}
+
+
+void IR_reset_interrupt_flags(void) {
     // Do nothing ...
 }
 

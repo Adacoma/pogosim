@@ -323,6 +323,19 @@ int pogobot_infrared_message_available( void );
  */
 void pogobot_infrared_recover_next_message( message_t *mes );
 
+
+/** (is_muted)
+ * Indicate whether or not its IR are muted.
+ *
+ * # Parameters
+ * - none
+ * 
+ * # Return
+ * - '_master_mute" - 1 if muted, 0 if unmuted.
+ *
+ */
+int is_muted(void);
+
 /** (pogobot_infrared_clear_message_queue)
  * Clears Infrared message queue
  *
@@ -475,6 +488,17 @@ void pogobot_infrared_get_receiver_error_counter( slip_error_counter_s *error_co
  *
  */
 void pogobot_infrared_reset_receiver_error_counter( void );
+
+/** (IR_reset_interrupt_flags)
+ * Lower IR interrupt flags.
+ *
+ * # Parameters
+ * - none
+ *
+ * # Return
+ * - none
+ */
+void IR_reset_interrupt_flags(void);
 
 /** 
  * ## RGB LED API

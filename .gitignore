@@ -99,6 +99,7 @@ examples/naming_game/naming_game
 examples/probes/probes
 examples/blooming/blooming
 examples/phototaxis_gradient/phototaxis_gradient
+examples/test_misc_functions/test_misc_functions
 
 # Apptainer
 *.sif
