@@ -9,7 +9,7 @@
  *  All helpers resolve at preprocessing time; they add zero run-time cost.
  */
 
-#define POGOLIB_RELEASE_VERSION "v2.6"
+#define POGOLIB_RELEASE_VERSION "v2.7"
 
 
 /* ────────── 1. Canonical numeric components ────────── */
