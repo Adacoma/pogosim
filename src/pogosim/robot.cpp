@@ -1,5 +1,7 @@
 
+#include <algorithm>
 #include <iostream>
+#include <limits>
 #include <thread>
 #include <chrono>
 #include <cstdarg>
@@ -11,6 +13,7 @@
 #include <unordered_map>
 #include <bit>
 #include <ranges>
+#include <stdexcept>
 
 
 #include "robot.h"
@@ -27,6 +30,20 @@ PogobotObject* current_robot;
 
 //std::chrono::time_point<std::chrono::system_clock> sim_starting_time;
 uint64_t sim_starting_time_microseconds;
+
+namespace {
+
+std::int16_t saturating_round_to_int16(double value) {
+    const double bounded = std::clamp(
+        value,
+        static_cast<double>(std::numeric_limits<std::int16_t>::min()),
+        static_cast<double>(std::numeric_limits<std::int16_t>::max())
+    );
+
+    return static_cast<std::int16_t>(std::lround(bounded));
+}
+
+} // namespace
 
 
 // Inline function to calculate the normalized color values
@@ -103,7 +120,9 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
        std::pair<int16_t, int16_t> photosensors_systematic_bias_domain,
        float _photosensors_noise_stddev,
        std::string const& _category,
-       bool _dummy)
+       bool _dummy,
+       const pogosim::magnetometer::raw_magnetometer_model* _magnetometer_model,
+       bool _magnetometer_enabled)
     : PhysicalObject(_id, _x, _y, geom,
       _linear_damping, _angular_damping,
       _density, _friction, _restitution, _category),
@@ -116,14 +135,41 @@ PogobotObject::PogobotObject(uint16_t _id, float _x, float _y,
     photosensors_noise_stddev(_photosensors_noise_stddev) {
     initialize_photosensors_bias(photosensors_systematic_bias_domain);
     initialize_angular_bias(angular_systematic_bias_domain);
+    initialize_magnetometer(_magnetometer_model, _magnetometer_enabled);
 }
 
 PogobotObject::PogobotObject(Simulation* simulation, uint16_t _id, float _x, float _y,
        size_t _userdatasize, Configuration const& config,
-       std::string const& _category)
+       std::string const& _category,
+       bool _magnetometer_enabled)
     : PhysicalObject(simulation, _id, _x, _y, config, _category),
     userdatasize(_userdatasize) {
     parse_configuration(config, simulation);
+
+    const bool config_magnetometer_enabled =
+        config["magnetometer_enabled"].get(true);
+    const bool enable_magnetometer =
+        _magnetometer_enabled && config_magnetometer_enabled && simulation != nullptr;
+
+    initialize_magnetometer(
+        enable_magnetometer ? &simulation->get_magnetometer_model() : nullptr,
+        enable_magnetometer
+    );
+}
+
+void PogobotObject::initialize_magnetometer(
+    const pogosim::magnetometer::raw_magnetometer_model* model,
+    bool enabled
+) {
+    magnetometer_model_ = model;
+    magnetometer_enabled = enabled && model != nullptr && !dummy;
+    magnetometer_read_index_ = 0;
+
+    if (magnetometer_enabled) {
+        magnetometer_profile_ = magnetometer_model_->create_robot_profile(id);
+    } else {
+        magnetometer_profile_ = {};
+    }
 }
 
 void PogobotObject::do_init([[maybe_unused]] b2WorldId world_id) {
@@ -690,6 +736,37 @@ void PogobotObject::sleep_µs(uint64_t microseconds) {
 }
 
 
+bool PogobotObject::magn_read_XYZ(int16_t* x, int16_t* y, int16_t* z) {
+    if (x == nullptr || y == nullptr || z == nullptr) {
+        return false;
+    }
+    if (!magnetometer_enabled || magnetometer_model_ == nullptr) {
+        return false;
+    }
+
+    pogosim::magnetometer::magnetometer_robot_state state;
+    const b2Vec2 position = get_position();
+
+    // Object positions are stored in Box2D units, while the magnetometer
+    // configuration uses the simulator's millimetre coordinate system.
+    state.x = static_cast<double>(position.x) * VISUALIZATION_SCALE;
+    state.y = static_cast<double>(position.y) * VISUALIZATION_SCALE;
+    state.theta = static_cast<double>(get_angle());
+
+    const pogosim::magnetometer::vector3 raw =
+        magnetometer_model_->sample_deterministic(
+            state,
+            magnetometer_profile_,
+            magnetometer_read_index_++
+        );
+
+    *x = saturating_round_to_int16(raw.x);
+    *y = saturating_round_to_int16(raw.y);
+    *z = saturating_round_to_int16(raw.z);
+    return true;
+}
+
+
 /************* Pogobject Objects *************/ // {{{1
 
 PogobjectObject::PogobjectObject(uint16_t _id, float _x, float _y,
@@ -705,12 +782,15 @@ PogobjectObject::PogobjectObject(uint16_t _id, float _x, float _y,
       _userdatasize, _communication_radius, std::move(_msg_success_rate),
       _temporal_noise_stddev, _linear_damping, _angular_damping,
       _density, _friction, _restitution,
-      0.0f, 0.0f, 0.0f, 0.0f, false, {0,0}, {0,0}, 0.0f,  _category) { }
+      0.0f, 0.0f, 0.0f, 0.0f, false, {0,0}, {0,0}, 0.0f,
+      _category, false, nullptr, false) { }
 
 PogobjectObject::PogobjectObject(Simulation* simulation, uint16_t _id, float _x, float _y,
        size_t _userdatasize, Configuration const& config,
        std::string const& _category)
-    : PogobotObject::PogobotObject(simulation, _id, _x, _y, _userdatasize, config, _category) { }
+    : PogobotObject::PogobotObject(
+          simulation, _id, _x, _y, _userdatasize, config, _category, false
+      ) { }
 
 void PogobjectObject::do_init([[maybe_unused]] b2WorldId world_id) {
     PogobotObject::do_init(world_id);
@@ -803,12 +883,15 @@ Pogowall::Pogowall(uint16_t _id, float _x, float _y,
       _density, _friction, _restitution,
       _max_linear_speed, _max_angular_speed,
       _linear_noise_stddev, _angular_noise_stddev,
-      false, {0, 0}, {0, 0}, 0.0f, _category) { }
+      false, {0, 0}, {0, 0}, 0.0f,
+      _category, false, nullptr, false) { }
 
 Pogowall::Pogowall(Simulation* simulation, uint16_t _id, float _x, float _y,
        size_t _userdatasize, Configuration const& config,
        std::string const& _category)
-    : PogobotObject::PogobotObject(simulation, _id, _x, _y, _userdatasize, config, _category) {
+    : PogobotObject::PogobotObject(
+          simulation, _id, _x, _y, _userdatasize, config, _category, false
+      ) {
 
     if (dynamic_cast<ArenaGeometry*>(geom) != nullptr && simulation->get_boundary_condition() == boundary_condition_t::periodic) {
         // Arena geometry and periodic boundary condition. Disable pogowall by default
@@ -1451,7 +1534,8 @@ ActiveObject::ActiveObject(uint16_t _id, float _x, float _y,
       _density, _friction, _restitution,
       _max_linear_speed, _max_angular_speed,
       _linear_noise_stddev, _angular_noise_stddev,
-      false, {0, 0}, {0, 0}, 0.0f, _category),
+      false, {0, 0}, {0, 0}, 0.0f,
+      _category, false, nullptr, false),
       colormap(_colormap) {
     // ...
 }
@@ -1459,7 +1543,9 @@ ActiveObject::ActiveObject(uint16_t _id, float _x, float _y,
 ActiveObject::ActiveObject(Simulation* simulation, uint16_t _id, float _x, float _y,
        size_t _userdatasize, Configuration const& config,
        std::string const& _category)
-    : PogobotObject::PogobotObject(simulation, _id, _x, _y, _userdatasize, config, _category) {
+    : PogobotObject::PogobotObject(
+          simulation, _id, _x, _y, _userdatasize, config, _category, false
+      ) {
     parse_configuration(config, simulation);
 }
 

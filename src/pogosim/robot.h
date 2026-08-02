@@ -14,6 +14,7 @@
 #include "colormaps.h"
 #include "spogobot.h"
 #include "objects.h"
+#include "raw_magnetometer_model.h"
 
 /**
  * @brief Returns a log string for the current robot.
@@ -168,6 +169,9 @@ public:
      * @param _angular_noise_stddev Standard deviation of the gaussian noise to apply to angular velocity, or 0.0 for deterministic velocity.
      * @param _rotate_LEDs_45_deg Whether or not the LEDs are rotated by 45 degrees to prevent the front LED from overlapping with the arrow.
      * @param category Name of the category of the object.
+     * @param dummy Whether this is a dummy robot of not.
+     * @param _magnetometer_model Shared simulation magnetometer model, or nullptr to disable it.
+     * @param _magnetometer_enabled Whether this object exposes a simulated magnetometer.
      */
     PogobotObject(uint16_t _id, float _x, float _y,
            ObjectGeometry& geom,
@@ -184,7 +188,9 @@ public:
            std::pair<int16_t, int16_t> photosensors_systematic_bias_domain = {0, 0},
            float _photosensors_noise_stddev = 0.0f,
            std::string const& _category = "robots",
-           bool dummy = false);
+           bool dummy = false,
+           const pogosim::magnetometer::raw_magnetometer_model* _magnetometer_model = nullptr,
+           bool _magnetometer_enabled = true);
 
     /**
      * @brief Constructs a PogobotObject from a configuration entry.
@@ -195,10 +201,12 @@ public:
      * @param y Initial y-coordinate in the simulation.
      * @param _userdatasize Size of the memory block allocated for user data.
      * @param config Configuration entry describing the object properties.
+     * @param _magnetometer_enabled Whether this class supports the simulated magnetometer.
      */
     PogobotObject(Simulation* simulation, uint16_t _id, float _x, float _y,
            size_t _userdatasize, Configuration const& config,
-           std::string const& _category = "robots");
+           std::string const& _category = "robots",
+           bool _magnetometer_enabled = true);
 
     /**
      * @brief Create serialization fields of the data logger
@@ -393,6 +401,17 @@ public:
      */
     bool enable_user_steps() const { return _enable_user_steps; }
 
+    /**
+     * @brief Measures the magnetic field on the x,y and z axis. 
+     *
+     * @param x x axis coordinate measured by the magnetometer (needs calibration)
+     * @param y y axis coordinate measured by the magnetometer (needs calibration)
+     * @param z z axis coordinate measured by the magnetometer (needs calibration)
+     * @param timeout_ms measurement timeout in ms.
+     * @return true if a magnetometer is available, false if not
+    **/
+    bool magn_read_XYZ(int16_t* x, int16_t* y, int16_t* z);
+
 
     /**
      * @brief Simulate a sleep on a single robot.
@@ -451,6 +470,23 @@ protected:
 
     // Dummy?
     bool dummy = false;
+
+    // Magnetometer variables
+    bool magnetometer_enabled = false;
+    const pogosim::magnetometer::raw_magnetometer_model* magnetometer_model_ = nullptr;
+    pogosim::magnetometer::magnetometer_robot_profile magnetometer_profile_;
+    uint64_t magnetometer_read_index_ = 0;
+
+    /**
+     * @brief Attach the shared model and generate this robot's persistent sensor profile.
+     *
+     * @param model Shared simulation model, or nullptr when unavailable.
+     * @param enabled Whether this class/configuration exposes a magnetometer.
+     */
+    void initialize_magnetometer(
+        const pogosim::magnetometer::raw_magnetometer_model* model,
+        bool enabled
+    );
 
     /**
      * @brief Parse a provided configuration and set associated members values.

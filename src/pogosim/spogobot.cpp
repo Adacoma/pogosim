@@ -484,6 +484,23 @@ void read_page_flash(uint8_t page, char *buf) {
     std::memcpy(buf, current_robot->flash_memory_authorized_section + 256*page, 256);
 }
 
+void magn_begin(void) {
+    // ...
+}
+
+void magn_end(void) {
+    // ...
+}
+
+int magn_read_XYZ(int16_t* x, int16_t* y, int16_t* z, uint16_t timeout_ms) {
+    return current_robot->magn_read_XYZ(x, y, z) ? 0 : 1; // Ignore the timeout_ms in the simulation
+}
+
+uint8_t magn_init(void) {
+    return 1; // Magnetometer is always present in the simulation
+}
+
+
 
 #pragma GCC diagnostic pop
 

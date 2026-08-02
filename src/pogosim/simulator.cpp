@@ -11,6 +11,8 @@
 #include <filesystem>
 #include <algorithm>
 #include <limits>
+#include <cstdint>
+#include <stdexcept>
 
 #include <cmath>
 #include <vector>
@@ -77,6 +79,271 @@ void set_current_robot(PogobotObject& robot) {
 /************* SIMULATION *************/ // {{{1
 
 std::unique_ptr<Simulation> simulation;
+
+namespace {
+
+using pogosim::magnetometer::angle_unit;
+using pogosim::magnetometer::csv_magnetometer_config;
+using pogosim::magnetometer::domain_interval;
+using pogosim::magnetometer::harmonic_parameter_ranges;
+using pogosim::magnetometer::out_of_domain_policy;
+using pogosim::magnetometer::procedural_magnetometer_config;
+using pogosim::magnetometer::raw_magnetometer_model;
+using pogosim::magnetometer::scalar_range;
+using pogosim::magnetometer::vector3;
+using pogosim::magnetometer::vector3_range;
+using pogosim::magnetometer::world_field_config;
+
+[[nodiscard]] double angle_scale_from_name(const std::string& unit_name) {
+    if (unit_name == "radians" || unit_name == "radian" || unit_name == "rad") {
+        return 1.0;
+    }
+    if (unit_name == "degrees" || unit_name == "degree" || unit_name == "deg") {
+        return pogosim::magnetometer::degrees_to_radians(1.0);
+    }
+    throw std::runtime_error(
+        "Unknown magnetometer angle unit '" + unit_name +
+        "'. Use 'degrees' or 'radians'."
+    );
+}
+
+[[nodiscard]] angle_unit parse_angle_unit(const std::string& unit_name) {
+    if (unit_name == "radians" || unit_name == "radian" || unit_name == "rad") {
+        return angle_unit::radians;
+    }
+    if (unit_name == "degrees" || unit_name == "degree" || unit_name == "deg") {
+        return angle_unit::degrees;
+    }
+    throw std::runtime_error(
+        "Unknown CSV magnetometer angle unit '" + unit_name +
+        "'. Use 'degrees' or 'radians'."
+    );
+}
+
+template<typename Node>
+[[nodiscard]] scalar_range read_range(
+    const Node& node,
+    scalar_range default_value,
+    double scale = 1.0
+) {
+    if (!node.exists()) {
+        return default_value;
+    }
+
+    const auto values = node.template get<std::vector<double>>(std::vector<double>{});
+    if (values.size() == 1) {
+        return {values[0] * scale, values[0] * scale};
+    }
+    if (values.size() == 2) {
+        return {values[0] * scale, values[1] * scale};
+    }
+
+    throw std::runtime_error(
+        "A magnetometer parameter range must contain one fixed value or two "
+        "values [minimum, maximum]."
+    );
+}
+
+template<typename Node>
+[[nodiscard]] vector3 read_vector3(const Node& node, vector3 default_value) {
+    if (!node.exists()) {
+        return default_value;
+    }
+
+    const auto values = node.template get<std::vector<double>>(std::vector<double>{});
+    if (values.size() != 3) {
+        throw std::runtime_error(
+            "A magnetometer vector must contain exactly three values [x, y, z]."
+        );
+    }
+    return {values[0], values[1], values[2]};
+}
+
+template<typename Node>
+[[nodiscard]] vector3_range read_vector3_range(
+    const Node& node,
+    vector3_range default_value,
+    double scale = 1.0
+) {
+    if (!node.exists()) {
+        return default_value;
+    }
+
+    default_value.x = read_range(node["x"], default_value.x, scale);
+    default_value.y = read_range(node["y"], default_value.y, scale);
+    default_value.z = read_range(node["z"], default_value.z, scale);
+    return default_value;
+}
+
+template<typename Node>
+[[nodiscard]] domain_interval read_domain_interval(
+    const Node& node,
+    double scale = 1.0
+) {
+    domain_interval result;
+    if (!node.exists()) {
+        return result;
+    }
+
+    const scalar_range range = read_range(node, {}, scale);
+    result.enabled = true;
+    result.minimum = range.minimum;
+    result.maximum = range.maximum;
+    return result;
+}
+
+template<typename Node>
+[[nodiscard]] char read_single_character(
+    const Node& node,
+    char default_value,
+    const std::string& parameter_name
+) {
+    if (!node.exists()) {
+        return default_value;
+    }
+
+    const std::string value = node.template get<std::string>(std::string(1, default_value));
+    if (value.size() != 1) {
+        throw std::runtime_error(
+            "Magnetometer parameter '" + parameter_name +
+            "' must contain exactly one character."
+        );
+    }
+    return value.front();
+}
+
+template<typename Node>
+[[nodiscard]] out_of_domain_policy read_domain_policy(const Node& node) {
+    const std::string policy = node.template get<std::string>("allow");
+    if (policy == "allow") {
+        return out_of_domain_policy::allow;
+    }
+    if (policy == "clamp") {
+        return out_of_domain_policy::clamp;
+    }
+    if (policy == "throw" || policy == "throw_error") {
+        return out_of_domain_policy::throw_error;
+    }
+    throw std::runtime_error(
+        "Unknown magnetometer domain policy '" + policy +
+        "'. Use 'allow', 'clamp', or 'throw_error'."
+    );
+}
+
+template<typename ModelConfig, typename Node>
+void read_common_magnetometer_config(
+    ModelConfig& model_config,
+    const Node& magnetometer_node,
+    double procedural_angle_scale,
+    std::uint64_t default_random_seed
+) {
+    model_config.random_seed = magnetometer_node["random_seed"].template get<std::uint64_t>(
+        default_random_seed
+    );
+    model_config.scale_signal_with_field_magnitude =
+        magnetometer_node["scale_signal_with_field_magnitude"].template get<bool>(true);
+
+    const auto world_field_node = magnetometer_node["world_field"];
+    if (world_field_node.exists()) {
+        world_field_config field_config;
+        if (world_field_node["vector"].exists()) {
+            field_config.base_field = read_vector3(
+                world_field_node["vector"],
+                field_config.base_field
+            );
+        } else if (
+            world_field_node["x"].exists() ||
+            world_field_node["y"].exists() ||
+            world_field_node["z"].exists()
+        ) {
+            field_config.base_field.x = world_field_node["x"].template get<double>(1.0);
+            field_config.base_field.y = world_field_node["y"].template get<double>(0.0);
+            field_config.base_field.z = world_field_node["z"].template get<double>(0.0);
+        } else {
+            const double magnetic_north_angle =
+                world_field_node["magnetic_north_angle"].template get<double>(0.0) *
+                procedural_angle_scale;
+            const double horizontal_magnitude =
+                world_field_node["horizontal_magnitude"].template get<double>(1.0);
+            const double vertical_component =
+                world_field_node["vertical_component"].template get<double>(0.0);
+            field_config = pogosim::magnetometer::make_uniform_world_field(
+                magnetic_north_angle,
+                horizontal_magnitude,
+                vertical_component
+            );
+        }
+
+        field_config.field_gradient_x = read_vector3(
+            world_field_node["gradient_x"],
+            field_config.field_gradient_x
+        );
+        field_config.field_gradient_y = read_vector3(
+            world_field_node["gradient_y"],
+            field_config.field_gradient_y
+        );
+
+        if (world_field_node["origin"].exists()) {
+            const auto origin = world_field_node["origin"].template get<std::vector<double>>(std::vector<double>{});
+            if (origin.size() != 2) {
+                throw std::runtime_error(
+                    "magnetometer.world_field.origin must contain [x, y]."
+                );
+            }
+            field_config.origin_x = origin[0];
+            field_config.origin_y = origin[1];
+        }
+        model_config.world_field = field_config;
+    }
+
+    const auto domain_node = magnetometer_node["domain"];
+    if (domain_node.exists()) {
+        model_config.domain.x = read_domain_interval(domain_node["x"]);
+        model_config.domain.y = read_domain_interval(domain_node["y"]);
+        model_config.domain.theta = read_domain_interval(
+            domain_node["theta"],
+            procedural_angle_scale
+        );
+        model_config.domain.wrap_theta = domain_node["wrap_theta"].template get<bool>(true);
+        model_config.domain.policy = read_domain_policy(domain_node["policy"]);
+    }
+
+    const auto output_node = magnetometer_node["output"];
+    if (output_node.exists()) {
+        model_config.output.quantization_step =
+            output_node["quantization_step"].template get<double>(1.0);
+        model_config.output.clamp_output =
+            output_node["clamp"].template get<bool>(false);
+        model_config.output.output_limits = read_vector3_range(
+            output_node["limits"],
+            model_config.output.output_limits
+        );
+    }
+
+    const auto variation_node = magnetometer_node["robot_variation"];
+    if (variation_node.exists()) {
+        model_config.robot_variation.additional_bias = read_vector3_range(
+            variation_node["additional_bias"],
+            model_config.robot_variation.additional_bias
+        );
+        model_config.robot_variation.signal_gain = read_range(
+            variation_node["signal_gain"],
+            model_config.robot_variation.signal_gain
+        );
+        model_config.robot_variation.angle_offset = read_range(
+            variation_node["angle_offset"],
+            model_config.robot_variation.angle_offset,
+            procedural_angle_scale
+        );
+        model_config.robot_variation.noise_stddev = read_vector3_range(
+            variation_node["noise_stddev"],
+            model_config.robot_variation.noise_stddev
+        );
+    }
+}
+
+} // namespace
+
 
 Simulation::Simulation(Configuration& _config)
         : config(_config) {
@@ -513,8 +780,209 @@ void Simulation::init_config() {
     GUI_speed_up = config["GUI_speed_up"].get(1.0f);
 
     data_logger_flush_row_count = config["data_logger_flush_row_count"].get(1048576);
+
+    init_magnetometer_model();
 }
 
+void Simulation::init_magnetometer_model() {
+    const auto magnetometer_node = config["magnetometer"];
+    const std::uint64_t default_random_seed =
+        config["seed"].get<std::uint64_t>(0);
+
+    if (!magnetometer_node.exists()) {
+        procedural_magnetometer_config default_config;
+        default_config.random_seed = default_random_seed;
+        magnetometer_model = std::make_unique<raw_magnetometer_model>(
+            raw_magnetometer_model::from_procedural_config(default_config)
+        );
+        glogger->info(
+            "No 'magnetometer' section found; using the default procedural "
+            "raw magnetometer model."
+        );
+        return;
+    }
+
+    const std::string angle_unit_name =
+        magnetometer_node["angle_unit"].get(std::string("degrees"));
+    const double procedural_angle_scale = angle_scale_from_name(angle_unit_name);
+    const std::string source =
+        magnetometer_node["source"].get(std::string("procedural"));
+
+    try {
+        if (source == "procedural") {
+            procedural_magnetometer_config model_config;
+            read_common_magnetometer_config(
+                model_config,
+                magnetometer_node,
+                procedural_angle_scale,
+                default_random_seed
+            );
+
+            const auto procedural_node = magnetometer_node["procedural"];
+            const auto ellipse_node = procedural_node["ellipse"];
+            if (ellipse_node.exists()) {
+                model_config.ellipse.center = read_vector3_range(
+                    ellipse_node["center"],
+                    model_config.ellipse.center
+                );
+                model_config.ellipse.major_radius = read_range(
+                    ellipse_node["major_radius"],
+                    model_config.ellipse.major_radius
+                );
+                model_config.ellipse.minor_radius = read_range(
+                    ellipse_node["minor_radius"],
+                    model_config.ellipse.minor_radius
+                );
+                model_config.ellipse.ellipse_rotation = read_range(
+                    ellipse_node["ellipse_rotation"],
+                    model_config.ellipse.ellipse_rotation,
+                    procedural_angle_scale
+                );
+                model_config.ellipse.sensor_phase_offset = read_range(
+                    ellipse_node["sensor_phase_offset"],
+                    model_config.ellipse.sensor_phase_offset,
+                    procedural_angle_scale
+                );
+                model_config.ellipse.z_cos_amplitude = read_range(
+                    ellipse_node["z_cos_amplitude"],
+                    model_config.ellipse.z_cos_amplitude
+                );
+                model_config.ellipse.z_sin_amplitude = read_range(
+                    ellipse_node["z_sin_amplitude"],
+                    model_config.ellipse.z_sin_amplitude
+                );
+            }
+
+            const auto harmonics_node = procedural_node["distortion_harmonics"];
+            if (harmonics_node.exists()) {
+                model_config.distortion_harmonics.clear();
+                for (const auto& [harmonic_name, harmonic_node] : harmonics_node.children()) {
+                    (void)harmonic_name;
+                    harmonic_parameter_ranges harmonic;
+                    harmonic.order = harmonic_node["order"].get<std::size_t>(2);
+                    harmonic.cos_coefficient = read_vector3_range(
+                        harmonic_node["cos"],
+                        harmonic.cos_coefficient
+                    );
+                    harmonic.sin_coefficient = read_vector3_range(
+                        harmonic_node["sin"],
+                        harmonic.sin_coefficient
+                    );
+                    model_config.distortion_harmonics.push_back(harmonic);
+                }
+            }
+
+            magnetometer_model = std::make_unique<raw_magnetometer_model>(
+                raw_magnetometer_model::from_procedural_config(model_config)
+            );
+            glogger->info(
+                "Initialized procedural raw magnetometer model with {} harmonic order(s).",
+                magnetometer_model->harmonic_order()
+            );
+            return;
+        }
+
+        if (source == "csv" || source == "csv_fit") {
+            csv_magnetometer_config model_config;
+            read_common_magnetometer_config(
+                model_config,
+                magnetometer_node,
+                procedural_angle_scale,
+                default_random_seed
+            );
+
+            const auto csv_node = magnetometer_node["csv"];
+            const std::string csv_file = csv_node["file"].get(std::string{});
+            if (csv_file.empty()) {
+                throw std::runtime_error(
+                    "magnetometer.source is 'csv', but magnetometer.csv.file is empty."
+                );
+            }
+            model_config.file_path = resolve_path(csv_file);
+            model_config.has_header = csv_node["has_header"].get(true);
+            model_config.delimiter = read_single_character(
+                csv_node["delimiter"],
+                ',',
+                "csv.delimiter"
+            );
+            model_config.comment_prefix = read_single_character(
+                csv_node["comment_prefix"],
+                '#',
+                "csv.comment_prefix"
+            );
+            model_config.input_angle_unit = parse_angle_unit(
+                csv_node["input_angle_unit"].get(std::string("degrees"))
+            );
+            model_config.harmonic_order =
+                csv_node["harmonic_order"].get<std::size_t>(2);
+            model_config.ridge_regularization =
+                csv_node["ridge_regularization"].get(1.0e-8);
+            model_config.skip_invalid_rows =
+                csv_node["skip_invalid_rows"].get(true);
+            model_config.add_fit_residual_as_noise =
+                csv_node["add_fit_residual_as_noise"].get(true);
+
+            const auto columns_node = csv_node["columns"];
+            if (columns_node.exists()) {
+                model_config.columns.angle_column =
+                    columns_node["angle"].get(std::string("angle"));
+                model_config.columns.magnetometer_x_column =
+                    columns_node["x"].get(std::string("mag_x"));
+                model_config.columns.magnetometer_y_column =
+                    columns_node["y"].get(std::string("mag_y"));
+                model_config.columns.magnetometer_z_column =
+                    columns_node["z"].get(std::string("mag_z"));
+            }
+
+            const auto column_indices_node = csv_node["column_indices"];
+            if (column_indices_node.exists()) {
+                model_config.columns.angle_index =
+                    column_indices_node["angle"].get<std::size_t>(0);
+                model_config.columns.magnetometer_x_index =
+                    column_indices_node["x"].get<std::size_t>(1);
+                model_config.columns.magnetometer_y_index =
+                    column_indices_node["y"].get<std::size_t>(2);
+                model_config.columns.magnetometer_z_index =
+                    column_indices_node["z"].get<std::size_t>(3);
+            }
+
+            if (csv_node["calibration_field_angle"].exists()) {
+                model_config.calibration_field_angle =
+                    csv_node["calibration_field_angle"].get<double>(0.0) *
+                    procedural_angle_scale;
+            }
+
+            magnetometer_model = std::make_unique<raw_magnetometer_model>(
+                raw_magnetometer_model::from_csv(model_config)
+            );
+
+            const auto& statistics = magnetometer_model->fit_statistics();
+            glogger->info(
+                "Initialized CSV-fitted raw magnetometer model from '{}': "
+                "accepted_rows={}, rejected_rows={}, harmonic_order={}, "
+                "rmse=({:.3f}, {:.3f}, {:.3f}).",
+                model_config.file_path,
+                statistics.accepted_rows,
+                statistics.rejected_rows,
+                statistics.harmonic_order,
+                statistics.root_mean_square_error.x,
+                statistics.root_mean_square_error.y,
+                statistics.root_mean_square_error.z
+            );
+            return;
+        }
+
+        throw std::runtime_error(
+            "Unknown magnetometer source '" + source +
+            "'. Use 'procedural' or 'csv'."
+        );
+    } catch (const std::exception& exception) {
+        throw std::runtime_error(
+            "Unable to initialize the raw magnetometer model: " +
+            std::string(exception.what())
+        );
+    }
+}
 
 void Simulation::init_SDL() {
     SDL_version version;
@@ -667,7 +1135,8 @@ void Simulation::create_robots() {
             std::pair<int16_t,int16_t>{0, 0},
             0.0f,
             std::string{"__system"},
-            true);
+            true,
+            nullptr);
     dummy_global_robot->init(worldId);
     set_current_robot(*dummy_global_robot.get());
     _pogobot_start(dummy_global_robot_init, callback_global_step, "__system");
@@ -1375,6 +1844,12 @@ LightLevelMap* Simulation::get_light_map() {
     return light_map.get();
 }
 
+const raw_magnetometer_model& Simulation::get_magnetometer_model() const {
+    if (!magnetometer_model) {
+        throw std::logic_error("The simulation magnetometer model is not initialized.");
+    }
+    return *magnetometer_model;
+}
 
 // MODELINE "{{{1
 // vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8

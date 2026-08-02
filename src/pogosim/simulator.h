@@ -9,6 +9,7 @@
 #include "data_logger.h"
 #include "SDL_FontCache.h"
 #include "trajectory_traces.h"
+#include "raw_magnetometer_model.h"
 
 #include <optional>
 #include <unordered_set>
@@ -140,6 +141,17 @@ class Simulation {
     // Dummy robot used as current robot in the global_step callback
     std::unique_ptr<PogobotObject> dummy_global_robot;
     DiskGeometry dummy_global_robot_geom = DiskGeometry(26.5);
+
+    // Magnetometer model
+    std::unique_ptr<pogosim::magnetometer::raw_magnetometer_model> magnetometer_model; ///< Shared magnetometer model for the entire simulation.
+
+    /**
+     * @brief Creates the shared magnetometer model from the YAML configuration.
+     *
+     * Supports both a procedural model and a Fourier model fitted from a CSV
+     * file containing robot angles and raw X/Y/Z measurements.
+     */
+    void init_magnetometer_model();
 
 
 public:
@@ -358,6 +370,16 @@ public:
      * @return LightLevelMap* Pointer to the LightLevelMap instance.
      */
     LightLevelMap* get_light_map();
+
+    /**
+     * @brief Retrieves the shared raw magnetometer model.
+     *
+     * The Simulation object owns the model. Returned references remain valid
+     * for the lifetime of the Simulation object.
+     *
+     * @return Shared raw magnetometer model.
+     */
+    const pogosim::magnetometer::raw_magnetometer_model& get_magnetometer_model() const;
 
     /**
      * @brief Retrieve the arena geometry.

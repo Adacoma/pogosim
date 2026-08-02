@@ -1076,6 +1076,69 @@ void write_page_flash(uint8_t page, const void *data);
 **/
 void read_page_flash(uint8_t page, char *buf);
 
+/**
+ * ## MAGNETOMETER API 
+ */
+
+/** This is a simple magnetometer configure, read and calibrate implementation.
+ * The magnetometer is located on the SRAM footprint on the head.
+ *.
+ * The LIS2MDL communicate through SPI with a defined configuration
+ * Measured data must be multiplied by 1.5mG to convert the measured values into physical quantities.
+*/
+
+/** (magn_begin)
+ * Starts the communication with the magnetometer through the SPI bus.
+ * 
+ * # Parameters
+ * - none
+ *
+ * # Return
+ * - none
+**/
+void magn_begin(void);
+
+/** (magn_end)
+ * Stops the communication with the magnetometer through the SPI bus.
+ * 
+ * # Parameters
+ * - none
+ *
+ * # Return
+ * - none
+**/
+void magn_end(void);
+
+/** (magn_read_XYZ)
+ * Measures the magnetic field on the x,y and z axis. 
+ *
+ * # Parameters : 
+ * x, y, z    - x, y and z axis coordinates measured by the magnetometer (needs calibration)
+ * timeout_ms - measurement timeout in ms.
+ *
+ * # Returns :
+ * - 1 if successfull else 0
+**/
+int magn_read_XYZ(int16_t* x, int16_t* y, int16_t* z, uint16_t timeout_ms);
+
+/** (magn_init)
+ * Check the magnetometer availability on the SPI bus and configures it.
+ * Configuration :
+ * - Temperature Compensation - ON
+ * - ODR = 50 Hz, MD = continuous mode
+ * - Digital LPF - ON
+ * - Offset cancellation - ON
+ * - 4WSPI - ON
+ * - BDU - ON
+ * 
+ * # Parameters
+ * - None
+ * 
+ * # Return
+ * - 1 if successfully detected the magnetometer, else 0
+**/
+uint8_t magn_init(void);
+
 
 #ifdef __cplusplus
 }
