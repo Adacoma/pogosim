@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded',() => { initNavTree('index.html',''
 <div class="contents">
 <div class="textblock"><p><a class="anchor" id="md_README"></a></p>
 <p>Pogosim is a simulator for the <a href="https://pogobot.github.io/">Pogobot robots</a>. It aims to reproduce the C API used on the robots, so that the exact same code can be used in simulations as in robotic experiments. An extensive description of the Pogosim can be found in this <a href="https://arxiv.org/pdf/2509.10968">article</a> or <a href="https://www.researchgate.net/publication/395526571_Pogosim_--_a_Simulator_for_Pogobot_robots">here (RG link)</a>. The full Doxygen documentation of Pogosim can be found <a href="https://adacoma.github.io/pogosim/">here</a>.</p>
-<p>Pogosim is coded in C++20 and C17, using SDL2 and Box2D 3.0.</p>
+<p>Pogosim is coded in C++20 and C17, using SDL2 and Box2D 3.x.</p>
 <h1 class="doxsection"><a class="anchor" id="autotoc_md120"></a>
 Overview</h1>
 <p>Here are the simulated runs of several examples (C code found [here](examples)). <img src="https://github.com/Adacoma/pogosim/blob/main/.description/gallery.gif" alt="gallery" class="inline"/></p>
@@ -121,13 +121,13 @@ Install on Linux</h1>
 <div class="line">sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb</div>
 <div class="line">sudo apt update</div>
 <div class="line">sudo apt install -y -V libarrow-dev</div>
-</div><!-- fragment --><p>Then compile and install Box2D 3.0: </p><div class="fragment"><div class="line">git clone https://github.com/erincatto/box2d.git</div>
+</div><!-- fragment --><p>Then compile and install Box2D 3.x: </p><div class="fragment"><div class="line">git clone https://github.com/erincatto/box2d.git</div>
 <div class="line">cd box2d</div>
 <div class="line">git checkout 28adacf82377d4113f2ed00586141463244b9d10</div>
 <div class="line">mkdir build &amp;&amp; cd build</div>
-<div class="line">cmake -DBOX2D_BUILD_DOCS=OFF -DGLFW_BUILD_WAYLAND=OFF -DCMAKE_INSTALL_PREFIX=/usr  ..</div>
+<div class="line">cmake -DBOX2D_SAMPLES=OFF -DBOX2D_UNIT_TESTS=OFF -DBOX2D_DOCS=OFF -DCMAKE_INSTALL_PREFIX=/usr ..</div>
 <div class="line">cmake --build .</div>
-<div class="line">sudo make install</div>
+<div class="line">sudo cmake --install .</div>
 <div class="line">cd ../..</div>
 </div><!-- fragment --><p>Clone the pogosim repository, compile pogosim and install it: </p><div class="fragment"><div class="line">git clone https://github.com/Adacoma/pogosim.git</div>
 <div class="line">cd pogosim</div>
@@ -145,13 +145,20 @@ Install on WSL</h1>
 Install on MacOSX</h1>
 <p>The installation requires brew to be installed on your computer, cf brew documentation <a href="https://brew.sh/">here</a>.</p>
 <p>You can then install the necessary packages to compile Pogosim: </p><div class="fragment"><div class="line">brew install cmake boost sdl2 sdl2_image sdl2_gfx sdl2_ttf yaml-cpp spdlog apache-arrow pkg-config fmt</div>
-</div><!-- fragment --><p>Then compile and install Box2D 3.0: </p><div class="fragment"><div class="line">git clone https://github.com/erincatto/box2d.git</div>
+</div><!-- fragment --><p>Then compile and install Box2D 3.x: </p><div class="fragment"><div class="line">git clone https://github.com/erincatto/box2d.git</div>
 <div class="line">cd box2d</div>
 <div class="line">git checkout 28adacf82377d4113f2ed00586141463244b9d10</div>
 <div class="line">mkdir build &amp;&amp; cd build</div>
-<div class="line">cmake -DBOX2D_BUILD_DOCS=OFF -DGLFW_BUILD_WAYLAND=OFF -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=/usr/local/lib -DCMAKE_INSTALL_INCLUDEDIR=/usr/local/include ..</div>
+<div class="line">cmake \</div>
+<div class="line">    -DBOX2D_SAMPLES=OFF \</div>
+<div class="line">    -DBOX2D_UNIT_TESTS=OFF \</div>
+<div class="line">    -DBOX2D_DOCS=OFF \</div>
+<div class="line">    -DCMAKE_INSTALL_PREFIX=/usr/local \</div>
+<div class="line">    -DCMAKE_INSTALL_LIBDIR=/usr/local/lib \</div>
+<div class="line">    -DCMAKE_INSTALL_INCLUDEDIR=/usr/local/include \</div>
+<div class="line">    ..</div>
 <div class="line">cmake --build .</div>
-<div class="line">sudo make install</div>
+<div class="line">sudo cmake --install .</div>
 <div class="line">cd ../..</div>
 </div><!-- fragment --><p>Clone the pogosim repository, compile pogosim and install it: </p><div class="fragment"><div class="line">git clone https://github.com/Adacoma/pogosim.git</div>
 <div class="line">cd pogosim</div>
