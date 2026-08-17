@@ -488,7 +488,12 @@ If you want to implement more complex deployment behaviors, you can write your o
 ## Install and use the simulator in an Apptainer/Singularity container
 The main image definition file for apptainer is based on Ubuntu 24.04 LTS ("pogosim-apptainer.def"). An alternative image based on Ubuntu 22.04 LTS can also be found ("pogosim-apptainer\_ubuntu22.04.def").
 
-To build the image:
+To simply retrieve a pre-built apptainer image of the Pogosim main-branch v0.10.10, use the following command:
+```shell
+apptainer pull library://leo.cazenille/pogosim/pogosim-full:v0.10.10
+```
+
+Alternatively, to build the image:
 ```shell
 sudo apptainer build -F pogosim.sif pogosim-apptainer.def
 ```
