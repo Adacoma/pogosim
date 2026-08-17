@@ -492,8 +492,14 @@ To simply retrieve a pre-built apptainer image of the Pogosim main-branch v0.10.
 ```shell
 apptainer pull library://leo.cazenille/pogosim/pogosim-full:v0.10.10
 ```
+If apptainer has an old version (1.4.x) and complains about a missing library client, ensure you run the following commands:
+```shell
+apptainer remote add --no-login SylabsCloud cloud.sycloud.io
+apptainer remote use SylabsCloud
+```
+then re-run the pull command.
 
-Alternatively, to build the image:
+Alternatively, to build the image on your computer:
 ```shell
 sudo apptainer build -F pogosim.sif pogosim-apptainer.def
 ```
