@@ -1,7 +1,7 @@
 # Pogosim ![Badge CI](https://github.com/Adacoma/pogosim/actions/workflows/ci.yaml/badge.svg) ![Version](https://img.shields.io/badge/version-v0.10.10-blue)
 Pogosim is a simulator for the [Pogobot robots](https://pogobot.github.io/). It aims to reproduce the C API used on the robots, so that the exact same code can be used in simulations as in robotic experiments. An extensive description of the Pogosim can be found in this [article](https://arxiv.org/pdf/2509.10968) or [here (RG link)](https://www.researchgate.net/publication/395526571_Pogosim_--_a_Simulator_for_Pogobot_robots). The full Doxygen documentation of Pogosim can be found [here](https://adacoma.github.io/pogosim/).
 
-Pogosim is coded in C++20 and C17, using SDL2 and Box2D 3.0.
+Pogosim is coded in C++20 and C17, using SDL2 and Box2D 3.x.
 
 ## Overview
 Here are the simulated runs of several examples (C code found [here](examples)).
@@ -26,15 +26,15 @@ sudo apt update
 sudo apt install -y -V libarrow-dev
 ```
 
-Then compile and install Box2D 3.0:
+Then compile and install Box2D 3.x:
 ```shell
 git clone https://github.com/erincatto/box2d.git
 cd box2d
 git checkout 28adacf82377d4113f2ed00586141463244b9d10
 mkdir build && cd build
-cmake -DBOX2D_BUILD_DOCS=OFF -DGLFW_BUILD_WAYLAND=OFF -DCMAKE_INSTALL_PREFIX=/usr  ..
+cmake -DBOX2D_SAMPLES=OFF -DBOX2D_UNIT_TESTS=OFF -DBOX2D_DOCS=OFF -DCMAKE_INSTALL_PREFIX=/usr ..
 cmake --build .
-sudo make install
+sudo cmake --install .
 cd ../..
 ```
 
@@ -72,15 +72,22 @@ You can then install the necessary packages to compile Pogosim:
 brew install cmake boost sdl2 sdl2_image sdl2_gfx sdl2_ttf yaml-cpp spdlog apache-arrow pkg-config fmt
 ```
 
-Then compile and install Box2D 3.0:
+Then compile and install Box2D 3.x:
 ```shell
 git clone https://github.com/erincatto/box2d.git
 cd box2d
 git checkout 28adacf82377d4113f2ed00586141463244b9d10
 mkdir build && cd build
-cmake -DBOX2D_BUILD_DOCS=OFF -DGLFW_BUILD_WAYLAND=OFF -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=/usr/local/lib -DCMAKE_INSTALL_INCLUDEDIR=/usr/local/include ..
+cmake \
+    -DBOX2D_SAMPLES=OFF \
+    -DBOX2D_UNIT_TESTS=OFF \
+    -DBOX2D_DOCS=OFF \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DCMAKE_INSTALL_LIBDIR=/usr/local/lib \
+    -DCMAKE_INSTALL_INCLUDEDIR=/usr/local/include \
+    ..
 cmake --build .
-sudo make install
+sudo cmake --install .
 cd ../..
 ```
 
@@ -481,7 +488,18 @@ If you want to implement more complex deployment behaviors, you can write your o
 ## Install and use the simulator in an Apptainer/Singularity container
 The main image definition file for apptainer is based on Ubuntu 24.04 LTS ("pogosim-apptainer.def"). An alternative image based on Ubuntu 22.04 LTS can also be found ("pogosim-apptainer\_ubuntu22.04.def").
 
-To build the image:
+To simply retrieve a pre-built apptainer image of the Pogosim main-branch v0.10.10, use the following command:
+```shell
+apptainer pull library://leo.cazenille/pogosim/pogosim-full:v0.10.10
+```
+If apptainer has an old version (1.4.x) and complains about a missing library client, ensure you run the following commands:
+```shell
+apptainer remote add --no-login SylabsCloud cloud.sycloud.io
+apptainer remote use SylabsCloud
+```
+then re-run the pull command.
+
+Alternatively, to build the image on your computer:
 ```shell
 sudo apptainer build -F pogosim.sif pogosim-apptainer.def
 ```
