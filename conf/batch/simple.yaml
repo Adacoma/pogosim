@@ -1,14 +1,46 @@
 ---
 
-# Batch configuration use the key "batch_options" to specify configuration values options for a given key.
-#  The key "result_filename_format" contains the format of the exported feather files, depending on selected batch values.
+#
+## Batch configuration use the key "batch_options" to specify configuration values options for a given key.
+##  The key "result_filename_format" contains the format of the exported feather files, depending on selected batch values.
+#
+## Format of the generated dataframes, one for each configuration
+#result_filename_format: "result_{objects.robots.nb}.feather"
+#
+## List of new columns to add in the generated dataframes
+##result_new_columns: ["arena_file", "objects.robots.msg_success_rate"]
+#result_new_columns: ["arena_file", "msg_success_rate"]
 
-# Format of the generated dataframes, one for each configuration
-result_filename_format: "result_{objects.robots.nb}.feather"
+# TODO new system
+pogobatch:
+  result_filename_format: "result_{objects.robots.nb}.feather"
 
-# List of new columns to add in the generated dataframes
-#result_new_columns: ["arena_file", "objects.robots.msg_success_rate"]
-result_new_columns: ["arena_file", "msg_success_rate"]
+  result_new_columns:
+    - arena_file
+    - msg_success_rate
+
+  rundra:
+    sync:
+      exclude:
+        - results/
+        - libs/
+        - "*.back"
+        - "*.sif"
+        - pogobot
+        - pogobot-sdk
+        - tmp
+        - "*.gif"
+        - old/
+        - template_prj/
+        - frames/
+        - docs/
+        - build/
+        - large_data/
+        - old_results/
+        - .rundra/
+        - opt_out/
+        - TODO
+
 
 window_width: 600       # In pixels
 window_height: 600      # In pixels
