@@ -393,97 +393,6 @@ pprint.pprint(meta['configuration'])
 Custom columns can be added into this file by using the callback mechanism. See examples "blooming" (simple) and "ssr" (complex) for more information.
 
 
-## Launch several runs in Parallel, with different configuration options
-We provide Python scripts that can launch several runs of Pogosim in parallel, and compile the results from all runs into a single dataframe.
-
-To install it, use the following command:
-```shell
-pip install pogosim
-```
-
-Or, just you want to compile it yourself:
-```shell
-cd scripts
-./setup.py sdist bdist_wheel
-pip install -U .
-cd ..
-```
-
-Afterwards, you can use the pogobatch script to launch several runs of simulation in parallel (or in a cluster), with a given configuration:
-```shell
-pogobatch -c conf/mini.yaml -S ./examples/blooming/blooming -r 10 -t tmp -o results
-```
-This command with launch 10 runs of the 'blooming' example using configuration file conf/mini.yaml. Temporary files of the runs will be stored in the "tmp" directory.
-After all runs are completed, the script will compile a dataframe of all results and save it into "results/result.feather". It can then be opened as described in previous section. An additional column "run" is added to the dataframe to distinguish results from the different runs.
-
-It is also possible to launch the pogobatch script on several variations of a given configuration, e.g. with a list of different numbers of robots or arena. The list of possibly configuration combination is specified in the configuration file, by adding a subkey "batch\_options" with the list of possible values.
-E.g.:
-```yaml
-arena_file:        # Test the results on two arenas
-    batch_options: ["arenas/disk.csv", "arenas/arena8.csv"]
-    default_option: arenas/disk.csv    # OPTIONAL: Value to use for "arena_file" when this configuration is used directly by the simulator, not pogobatch
-objects:
-    robots:
-        type: pogobot       # Category type pertaining to Pogobots
-        nb:                 # Number of objects (Pogobots) in this category
-            batch_options: [100, 200]          # Test the results on three different swarm sizes
-            default_option: arenas/disk.csv    # OPTIONAL: Value to use for "objects.robots.nb" when this configuration is used directly by the simulator, not pogobatch
-        geometry: disk                  # Pogobots are always disk-shaped
-        radius: 26.5                    # In mm
-
-
-# Format of the generated dataframes, one for each configuration
-result_filename_format: "result_{objects.robots.nb}.feather"
-
-# List of new columns to add in the generated dataframes
-result_new_columns: ["arena_file"]
-```
-These configuration entries specify that either 100 or 200 robots should be considered, on arenas "disk" and "8", resulting in 4 possibly configurations. The configuration entry "result\_filename\_format" corresponds to the name of a given configuration combination.
-See "conf/batch/test.yaml" for a complete example. The entry "result\_new\_columns" indicates which columns (and associated configurations) are *stored* inside feather files as additional columns.
-
-You can use pogobatch script on this compounded configuration file to launch several runs on each configuration combination:
-```shell
-pogobatch -c conf/batch/test.yaml -S ./examples/run_and_tumble/run_and_tumble -r 10 -t tmp -o results
-
-Found 6 combination(s) to run.
-Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_kdmvxpzf.yaml -> Output: results/result_50.feather
-Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_cqfk3lrl.yaml -> Output: results/result_100.feather
-Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_ckx7t160.yaml -> Output: results/result_150.feather
-Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_401kcmam.yaml -> Output: results/result_50.feather
-Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_wiilbu4e.yaml -> Output: results/result_100.feather
-Task: Config file /home/syemn/data/prj/pogosim/tmp/combo_q3yxls9z.yaml -> Output: results/result_150.feather
-Removed stale result file: results/result_50.feather
-Removed stale result file: results/result_150.feather
-Removed stale result file: results/result_100.feather
-Launch → tmp tmp/run_c03834a11a87406384efdcf8d2376dd4.feather  (will merge into results/result_50.feather)
-Combined data saved to tmp/run_c03834a11a87406384efdcf8d2376dd4.feather
-Created results/result_50.feather with 49500 rows
-Launch → tmp tmp/run_2628efb844fc4e2e83da56f7e98e8084.feather  (will merge into results/result_100.feather)
-Combined data saved to tmp/run_2628efb844fc4e2e83da56f7e98e8084.feather
-Created results/result_100.feather with 99000 rows
-Launch → tmp tmp/run_3c868b57dff0483c920ebf656b8c2eff.feather  (will merge into results/result_150.feather)
-Combined data saved to tmp/run_3c868b57dff0483c920ebf656b8c2eff.feather
-Created results/result_150.feather with 148500 rows
-Launch → tmp tmp/run_9e26f0240f8a4105aaf6851e5614ab93.feather  (will merge into results/result_50.feather)
-Combined data saved to tmp/run_9e26f0240f8a4105aaf6851e5614ab93.feather
-Appended 49500 rows to results/result_50.feather
-Launch → tmp tmp/run_143db3464fdd456c8cac379f621ae474.feather  (will merge into results/result_100.feather)
-Combined data saved to tmp/run_143db3464fdd456c8cac379f621ae474.feather
-Appended 99000 rows to results/result_100.feather
-Launch → tmp tmp/run_84b9da00ad624d788d7bcce6c301f8ca.feather  (will merge into results/result_150.feather)
-Combined data saved to tmp/run_84b9da00ad624d788d7bcce6c301f8ca.feather
-Appended 148500 rows to results/result_150.feather
-Batch run completed. Generated output files:
- - results/result_50.feather
- - results/result_100.feather
- - results/result_150.feather
- - results/result_50.feather
- - results/result_100.feather
- - results/result_150.feather
-```
-
-If you want to implement more complex deployment behaviors, you can write your own Python scripts and extend the class "pogosim.pogobatch.PogobotBatchRunner".
-
 
 ## Install and use the simulator in an Apptainer/Singularity container
 The main image definition file for apptainer is based on Ubuntu 24.04 LTS ("pogosim-apptainer.def"). An alternative image based on Ubuntu 22.04 LTS can also be found ("pogosim-apptainer\_ubuntu22.04.def").
@@ -522,6 +431,11 @@ apptainer exec /PATH/TO/pogosim.sif ./my_pogobot_project -c conf/test.yaml
 ```
 
 
+## Launch several runs in Parallel, with different configuration options
+We provide the "Pogobatch" tool with Pogosim. It allows you to launch parallel Pogosim tasks locally or on clusters, using the rundra batch meta-scheduler. 
+A complete guide can here found [here](https://github.com/Adacoma/pogosim/blob/dev/docs/pogobatch-rundra-guide.md).
+
+
 
 ## Generate gif files of the traces
 By default, the frames of a simulated run are stored in the directory "frames/" (cf variable "frames\_name" in the configuration file).
@@ -555,6 +469,173 @@ cd latex
 make
 ```
 This will generate a PDF report named "latex/refman.pdf".
+
+
+## Instructions for AI agents: reproducible headless simulations and data collection
+
+For parameter sweeps, cluster execution, or quantitative analysis, run Pogosim
+without the GUI, pass an explicit seed, and log only the fields required by the
+analysis. A reproducible simulation is determined by the Pogosim source/build,
+the effective YAML configuration, and the CLI seed.
+
+### Analysis-oriented configuration
+
+Starting from any valid Pogosim configuration for your controller, review the
+following simulator-generic settings:
+
+```yaml
+# Geometry and population
+boundary_condition: solid
+arena_file: arenas/disk.csv
+arena_surface: 1.0e6       # mm^2
+initial_formation: random
+
+objects:
+  robots:
+    nb: 100
+    # Keep the remaining geometry, dynamics, sensing, and communication
+    # properties required by the selected controller/configuration.
+
+# Time
+simulation_time: 120.0     # requested simulated duration, seconds
+time_step: 0.01            # physics step, seconds
+
+# Headless execution and output
+GUI: false
+save_video_period: -1.0    # disable PNG frame export
+enable_console_logging: false
+
+enable_data_logging: true
+data_filename: frames/data.feather
+save_data_period: 1.0      # requested logging period, seconds
+
+# Restricting the schema substantially reduces output size in large sweeps.
+data_logger_fields:
+  - time
+  - robot_category
+  - robot_id
+  - x
+  - y
+
+# Restrict rows when the simulation contains categories that are not part of
+# the analysis.
+data_logger_category:
+  - robots
+```
+
+`arena_file` is resolved in the simulator's execution environment. Prefer a
+repository-relative path for normal local runs. In a container or cluster
+workflow, use a path known to exist inside the runtime, such as a file in the
+staged source tree.
+
+### Launch with an explicit seed
+
+```bash
+./examples/PROGRAM/PROGRAM \
+  --config conf/experiment.yaml \
+  --seed 17 \
+  --no-GUI \
+  --quiet \
+  --do-not-show-robot-msg
+```
+
+The short equivalents are `-c`, `-s`, `-g`, `-q`, and `-nr`. The command-line
+seed takes precedence over a `seed` value in the YAML file. Record the exact
+seed for every stochastic run; rerunning with the same seed also requires the
+same program build and effective configuration.
+
+Headless mode disables interactive rendering, but data and explicitly enabled
+frame outputs are still written. Set `save_video_period: -1.0` when images are
+not needed.
+
+### Data format and metadata
+
+Pogosim writes Apache Arrow Feather files. They can be read directly with
+Pandas:
+
+```python
+import pandas as pd
+
+data = pd.read_feather("frames/data.feather")
+```
+
+Use PyArrow when schema metadata is also needed:
+
+```python
+import pyarrow.feather as feather
+import yaml
+
+table = feather.read_table("frames/data.feather")
+data = table.to_pandas()
+metadata = {
+    key.decode("utf-8"): value.decode("utf-8")
+    for key, value in (table.schema.metadata or {}).items()
+}
+
+# Pogosim stores configuration and arena geometry as YAML text.
+configuration_text = metadata.get("configuration")
+configuration = (
+    yaml.safe_load(configuration_text)
+    if configuration_text is not None
+    else None
+)
+arena_polygons = (
+    yaml.safe_load(metadata["arena_polygons"])
+    if "arena_polygons" in metadata
+    else None
+)
+```
+
+The built-in pose fields use the following units:
+
+| Field | Meaning | Unit |
+|---|---|---|
+| `time` | simulated time | seconds |
+| `robot_id` | identifier within a robot category | integer |
+| `x`, `y` | center position | millimetres |
+| `angle` | orientation | radians |
+| `pogobot_ticks` | controller tick counter | ticks |
+
+Custom fields registered by a controller may use controller-specific units.
+Document those units beside the experiment configuration.
+
+### Timing expectations
+
+`simulation_time` and `save_data_period` are requested values. Actual logged
+timestamps are produced on simulator ticks, so the last timestamp need not be
+exactly equal to `simulation_time`, and adjacent logged times can differ
+slightly from the requested period. Analysis should use the `time` column
+rather than reconstructing timestamps from row numbers.
+
+Before combining repeated runs, verify that they contain compatible time grids,
+robot counts, categories, and schemas. For time-series statistics, use each
+robot's first available observation as its baseline unless the experiment
+defines another reference time.
+
+### Boundary conditions, arena size, and population density
+
+The physical interpretation of displacement depends on the boundary condition:
+
+- `solid` confines robots. Long-time mean squared displacement and related
+  measures eventually approach a finite-arena plateau.
+- periodic or topology-changing boundaries can create coordinate discontinuities.
+  Displacements must be unwrapped according to that boundary model before a
+  conventional unbounded-space MSD is computed.
+
+Changing `objects.<category>.nb` while keeping `arena_surface` fixed changes
+population density, collision frequency, and often communication connectivity.
+When comparing population sizes, decide explicitly whether arena area or
+density should remain constant and record that choice.
+
+### Repeated runs and parameter sweeps
+
+Use Pogobatch when an experiment needs multiple seeds, multiple configuration
+choices, or merged Feather results. Pogobatch records the effective choice and
+seed for each atomic run, and its merger adds stable `run`, `seed`, and
+`retry_attempt` columns to the combined dataset. For remote execution, Pogobatch
+can use Rundra to prepare the simulator, submit scheduler work, retrieve raw
+outputs, and merge the task shards.
+
 
 ## Authors
 
