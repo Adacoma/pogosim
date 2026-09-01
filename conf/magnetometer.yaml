@@ -32,7 +32,7 @@ save_data_period: 0.05       # In s, or -1 to disable data export (see also "ena
 #data_logger_category:
 #  - robots
 
-save_video_period: 2.00      # In s, or -1 to disable frame export
+save_video_period: 0.50      # In s, or -1 to disable frame export
 frames_name: "frames/f{:010.4f}.png"
 
 seed: 0

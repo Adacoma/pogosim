@@ -103,6 +103,7 @@ examples/test_misc_functions/test_misc_functions
 examples/test_magnetometer/test_magnetometer
 examples/magnetometer_calibration/magnetometer_calibration
 examples/magnetometer_vicsek/magnetometer_vicsek
+examples/magnetometer_test/magnetometer_test
 
 # Apptainer
 *.sif
