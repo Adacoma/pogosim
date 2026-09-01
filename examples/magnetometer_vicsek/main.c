@@ -21,8 +21,8 @@
 /* Magnetometer calibration                                                   */
 /* ------------------------------------------------------------------------- */
 
-#define N_CAL 30
-#define N_CAL_MIN 15
+#define N_CAL 120
+#define N_CAL_MIN 60
 #define N_AVG_CAL 8
 #define N_BINS 36
 #define N_BINS_MIN 12
