@@ -104,6 +104,7 @@ examples/test_magnetometer/test_magnetometer
 examples/magnetometer_calibration/magnetometer_calibration
 examples/magnetometer_vicsek/magnetometer_vicsek
 examples/magnetometer_test/magnetometer_test
+examples/test_go_straight/test_go_straight
 
 # Apptainer
 *.sif
