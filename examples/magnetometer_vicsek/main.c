@@ -21,8 +21,8 @@
 /* Magnetometer calibration                                                   */
 /* ------------------------------------------------------------------------- */
 
-#define N_CAL 120
-#define N_CAL_MIN 60
+#define N_CAL 30
+#define N_CAL_MIN 15
 #define N_AVG_CAL 8
 #define N_BINS 36
 #define N_BINS_MIN 12
@@ -107,7 +107,8 @@ typedef enum {
     SHOW_ANGLE
 } main_led_display_type_t;
 
-main_led_display_type_t main_led_display_enum = SHOW_STATE;
+//main_led_display_type_t main_led_display_enum = SHOW_STATE;
+main_led_display_type_t main_led_display_enum = SHOW_ANGLE;
 
 #define VMSGF_CLUSTER_UTURN 0x01
 
@@ -1214,7 +1215,8 @@ static void vicsek_update_and_build_diff(void) {
     purge_old_neighbors();
 
     uint32_t now = now_ms();
-    if (!magnetometer_heading_is_fresh(now)) {
+    /* Keep using the latest valid heading during a transient read miss. */
+    if (!mydata->magnetometer_heading_valid) {
         mydata->diff_cmd = 0;
         return;
     }
@@ -1459,11 +1461,9 @@ void user_step(void) {
     magnetometer_heading_update();
     uint32_t now = now_ms();
 
-    if (!magnetometer_heading_is_fresh(now)) {
-        motor_stop();
-        update_main_led();
-        return;
-    }
+    /* Do not stop for transient magnetometer read misses. The latest valid
+     * heading remains available to the controller, and the motors keep their
+     * continuous Vicsek/wall-avoidance motion. */
 
     bool wall_avoidance = wall_avoidance_step(&mydata->wall_avoidance, true);
     mydata->prev_doing_wall_avoidance = mydata->doing_wall_avoidance;
