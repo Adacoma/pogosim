@@ -12,7 +12,7 @@
 #include "pogo-utils/wall_avoidance.h"
 
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
+#define M_PI 3.14159265358979323846f
 #endif
 
 #define PI_F 3.14159265f
@@ -69,16 +69,16 @@ static int calibration_turn_speed = motorHalf;
 uint32_t max_age = 600;
 uint32_t vicsek_period_ms = 17;
 
-double noise_eta_rad = 1.5;
-double align_gain = 1.0;
+float noise_eta_rad = 1.5f;
+float align_gain = 1.0f;
 bool include_self_in_avg = true;
 bool broadcast_angle_when_avoiding_walls = true;
-double vicsek_turn_gain = 0.8;
+float vicsek_turn_gain = 0.8f;
 
 bool vicsek_time_continuous = false;
-double vicsek_beta_rad_per_s = 3.0;
-double cont_noise_sigma_rad = 0.0;
-double cont_max_dt_s = 0.05;
+float vicsek_beta_rad_per_s = 3.0f;
+float cont_noise_sigma_rad = 0.0f;
+float cont_max_dt_s = 0.05f;
 
 /* Mandatory post-calibration hold requested for the experiment. */
 uint32_t post_calibration_wait_ms = 5000;
@@ -87,10 +87,10 @@ uint32_t post_calibration_wait_ms = 5000;
  * express the resulting magnetic angle in the convention shared by the swarm.
  * "cw" means the calibrated angle already increases clockwise; "ccw" negates
  * it. The offset is applied after that sign conversion. */
-double magnetometer_heading_offset_rad = 0.0;
-double magnetometer_heading_filter_gain = 1.0;
+float magnetometer_heading_offset_rad = 0.0f;
+float magnetometer_heading_filter_gain = 1.0f;
 uint32_t magnetometer_heading_max_age_ms = 250;
-static double magnetometer_heading_sign = 1.0;
+static float magnetometer_heading_sign = 1.0f;
 
 uint32_t cluster_u_turn_duration_ms = 1500;
 float phi_rad_min = 0.2f;
@@ -207,14 +207,14 @@ typedef struct {
     int16_t last_mag_x;
     int16_t last_mag_y;
     int16_t last_mag_z;
-    double magnetometer_heading_rad;
+    float magnetometer_heading_rad;
     bool magnetometer_heading_valid;
     uint32_t last_magnetometer_heading_ms;
 
     neighbor_t neighbors[MAX_NEIGHBORS];
     uint8_t nb_neighbors;
     uint32_t last_beacon_ms;
-    double theta_cmd_rad;
+    float theta_cmd_rad;
     uint32_t last_vicsek_update_ms;
     int diff_cmd;
 
@@ -223,7 +223,7 @@ typedef struct {
     bool prev_doing_wall_avoidance;
 
     bool cluster_turn_active;
-    double cluster_target_rad;
+    float cluster_target_rad;
     uint32_t cluster_wall_t0_ms;
     uint32_t cluster_active_until_ms;
     uint16_t cluster_msg_uid;
@@ -250,19 +250,24 @@ static bool deadline_reached(uint32_t deadline_ms) {
     return (int32_t)(now_ms() - deadline_ms) >= 0;
 }
 
-static double wrap_pi(double a) {
+static float wrap_pi(float a) {
     while (a > M_PI) {
-        a -= 2.0 * M_PI;
+        a -= 2.0f * M_PI;
     }
     while (a < -M_PI) {
-        a += 2.0 * M_PI;
+        a += 2.0f * M_PI;
     }
     return a;
 }
 
-static int16_t rad_to_mrad(double a) {
+static int round_float_to_int(float v) {
+    return (int)(v >= 0.0f ? v + 0.5f : v - 0.5f);
+}
+
+static int16_t rad_to_mrad(float a) {
     a = wrap_pi(a);
-    long v = lround(a * 1000.0);
+
+    int v = round_float_to_int(a * 1000.0f);
     if (v > 32767) {
         v = 32767;
     }
@@ -272,17 +277,17 @@ static int16_t rad_to_mrad(double a) {
     return (int16_t)v;
 }
 
-static double mrad_to_rad(int16_t m) {
-    return ((double)m) / 1000.0;
+static float mrad_to_rad(int16_t m) {
+    return ((float)m) / 1000.0f;
 }
 
-static double noise_uniform(double eta) {
-    double u = (double)rand() / (double)RAND_MAX;
-    return (u - 0.5) * eta;
+static float noise_uniform(float eta) {
+    float u = (float)rand() / (float)RAND_MAX;
+    return (u - 0.5f) * eta;
 }
 
-static double rand_uniform(double a, double b) {
-    double u = (double)rand() / (double)RAND_MAX;
+static float rand_uniform(float a, float b) {
+    float u = (float)rand() / (float)RAND_MAX;
     return a + (b - a) * u;
 }
 
@@ -615,9 +620,10 @@ static float calibrated_heading_deg(float mx, float my, float mz) {
     return angle;
 }
 
-static double calibrated_heading_rad(float mx, float my, float mz) {
-    double raw_rad = (double)calibrated_heading_deg(mx, my, mz) * M_PI / 180.0;
-    return wrap_pi(magnetometer_heading_sign * raw_rad + magnetometer_heading_offset_rad);
+static float calibrated_heading_rad(float mx, float my, float mz) {
+    float raw_rad = calibrated_heading_deg(mx, my, mz) * PI_F / 180.0f;
+    return wrap_pi(magnetometer_heading_sign * raw_rad +
+                   magnetometer_heading_offset_rad);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -703,12 +709,12 @@ static void calibration_fit_and_wait(void) {
         cmat[1][2] += dy * dz;
     }
 
-    cmat[0][0] /= n_used;
-    cmat[1][1] /= n_used;
-    cmat[2][2] /= n_used;
-    cmat[0][1] /= n_used;
-    cmat[0][2] /= n_used;
-    cmat[1][2] /= n_used;
+    cmat[0][0] /= (float)n_used;
+    cmat[1][1] /= (float)n_used;
+    cmat[2][2] /= (float)n_used;
+    cmat[0][1] /= (float)n_used;
+    cmat[0][2] /= (float)n_used;
+    cmat[1][2] /= (float)n_used;
     cmat[1][0] = cmat[0][1];
     cmat[2][0] = cmat[0][2];
     cmat[2][1] = cmat[1][2];
@@ -1037,15 +1043,15 @@ static bool magnetometer_heading_update(void) {
     float fx = median_i16(bx, n);
     float fy = median_i16(by, n);
     float fz = median_i16(bz, n);
-    double new_heading = calibrated_heading_rad(fx, fy, fz);
+    float new_heading = calibrated_heading_rad(fx, fy, fz);
 
     if (mydata->magnetometer_heading_valid) {
-        double gain = magnetometer_heading_filter_gain;
-        if (gain < 0.0) {
-            gain = 0.0;
+        float gain = magnetometer_heading_filter_gain;
+        if (gain < 0.0f) {
+            gain = 0.0f;
         }
-        if (gain > 1.0) {
-            gain = 1.0;
+        if (gain > 1.0f) {
+            gain = 1.0f;
         }
 
         mydata->magnetometer_heading_rad = wrap_pi(
@@ -1213,10 +1219,12 @@ static void vicsek_update_and_build_diff(void) {
         return;
     }
 
-    double heading = mydata->magnetometer_heading_rad;
-    double theta_cmd;
+    float heading = mydata->magnetometer_heading_rad;
+    float theta_cmd;
 
-    double dt_s = (double)(uint32_t)(now - mydata->last_vicsek_update_ms) * 1e-3;
+    float dt_s =
+        (float)(uint32_t)(now - mydata->last_vicsek_update_ms) * 1e-3f;
+
     if (dt_s > cont_max_dt_s) {
         dt_s = cont_max_dt_s;
     }
@@ -1224,50 +1232,69 @@ static void vicsek_update_and_build_diff(void) {
     if (cluster_window_active(now)) {
         theta_cmd = mydata->cluster_target_rad;
     } else {
-        double sx = 0.0;
-        double sy = 0.0;
+        float sx = 0.0f;
+        float sy = 0.0f;
 
         if (include_self_in_avg) {
-            sx += cos(heading);
-            sy += sin(heading);
+            sx += cosf(heading);
+            sy += sinf(heading);
         }
 
         for (uint8_t i = 0; i < mydata->nb_neighbors; ++i) {
-            double theta = mrad_to_rad(mydata->neighbors[i].theta_mrad);
-            sx += cos(theta);
-            sy += sin(theta);
+            float theta = mrad_to_rad(mydata->neighbors[i].theta_mrad);
+            sx += cosf(theta);
+            sy += sinf(theta);
         }
 
-        double theta_mean = heading;
-        if (!(sx == 0.0 && sy == 0.0)) {
-            theta_mean = atan2(sy, sx);
+        float theta_mean = heading;
+        if (!(sx == 0.0f && sy == 0.0f)) {
+            theta_mean = atan2f(sy, sx);
         }
 
         if (vicsek_time_continuous) {
-            double dtheta = vicsek_beta_rad_per_s *
-                            sin(wrap_pi(theta_mean - heading)) * dt_s;
+            float dtheta =
+                vicsek_beta_rad_per_s *
+                sinf(wrap_pi(theta_mean - heading)) *
+                dt_s;
 
-            if (cont_noise_sigma_rad > 0.0) {
-                double u1 = (rand() + 1.0) / (RAND_MAX + 2.0);
-                double u2 = (rand() + 1.0) / (RAND_MAX + 2.0);
-                double z = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
-                dtheta += cont_noise_sigma_rad * sqrt(dt_s) * z;
+            if (cont_noise_sigma_rad > 0.0f) {
+                float u1 =
+                    ((float)rand() + 1.0f) /
+                    ((float)RAND_MAX + 2.0f);
+
+                float u2 =
+                    ((float)rand() + 1.0f) /
+                    ((float)RAND_MAX + 2.0f);
+
+                float z =
+                    sqrtf(-2.0f * logf(u1)) *
+                    cosf(2.0f * PI_F * u2);
+
+                dtheta +=
+                    cont_noise_sigma_rad * sqrtf(dt_s) * z;
             }
 
             theta_cmd = wrap_pi(heading + dtheta);
         } else {
-            /* Circular interpolation avoids the -pi/+pi artefact present in a
-             * direct linear blend of wrapped angles. */
-            double theta_blend = wrap_pi(
-                heading + align_gain * wrap_pi(theta_mean - heading));
-            theta_cmd = wrap_pi(theta_blend + noise_uniform(noise_eta_rad));
+            float theta_blend = wrap_pi(
+                heading +
+                align_gain * wrap_pi(theta_mean - heading));
+
+            theta_cmd =
+                wrap_pi(theta_blend +
+                        noise_uniform(noise_eta_rad));
         }
     }
 
-    double err = wrap_pi(theta_cmd - heading);
-    const double err_norm = err / (30.0 * M_PI / 180.0);
+    float err = wrap_pi(theta_cmd - heading);
+    const float err_norm =
+        err / (30.0f * PI_F / 180.0f);
 
-    int diff = (int)lround(vicsek_turn_gain * err_norm * (double)forward_speed);
+    int diff = round_float_to_int(
+        vicsek_turn_gain *
+        err_norm *
+        (float)forward_speed);
+
     if (diff > forward_speed) {
         diff = forward_speed;
     }
@@ -1278,6 +1305,7 @@ static void vicsek_update_and_build_diff(void) {
     mydata->theta_cmd_rad = theta_cmd;
     mydata->diff_cmd = diff;
 }
+
 
 static void vicsek_enter(void) {
     mydata->controller_state = CONTROLLER_VICSEK;
@@ -1338,10 +1366,10 @@ static void update_main_led(void) {
 
     float angle = (float)mydata->magnetometer_heading_rad;
     if (angle < 0.0f) {
-        angle += 2.0f * (float)M_PI;
+        angle += 2.0f * M_PI;
     }
 
-    float hue_deg = angle * 180.0f / (float)M_PI;
+    float hue_deg = angle * 180.0f / M_PI;
     uint8_t r8;
     uint8_t g8;
     uint8_t b8;
@@ -1397,7 +1425,7 @@ void user_init(void) {
                               wall_avoidance_chiralty_policy, 0);
 
     mydata->cluster_turn_active = false;
-    mydata->cluster_target_rad = 0.0;
+    mydata->cluster_target_rad = 0.0f;
     mydata->cluster_wall_t0_ms = 0u;
     mydata->cluster_active_until_ms = 0u;
     mydata->cluster_msg_uid = 0u;
@@ -1442,8 +1470,8 @@ void user_step(void) {
     mydata->doing_wall_avoidance = wall_avoidance;
 
     if (!mydata->prev_doing_wall_avoidance && mydata->doing_wall_avoidance) {
-        double phi_sample = rand_uniform(phi_rad_min, phi_rad_max);
-        double target = wrap_pi(mydata->magnetometer_heading_rad + phi_sample);
+        float phi_sample = rand_uniform(phi_rad_min, phi_rad_max);
+        float target = wrap_pi(mydata->magnetometer_heading_rad + phi_sample);
 
         mydata->cluster_target_rad = target;
         mydata->cluster_wall_t0_ms = now;
@@ -1534,9 +1562,9 @@ static void global_setup(void) {
     char magnetometer_heading_chirality[128] = "cw";
     init_array_from_configuration(magnetometer_heading_chirality);
     if (strcasecmp(magnetometer_heading_chirality, "cw") == 0) {
-        magnetometer_heading_sign = 1.0;
+        magnetometer_heading_sign = 1.0f;
     } else if (strcasecmp(magnetometer_heading_chirality, "ccw") == 0) {
-        magnetometer_heading_sign = -1.0;
+        magnetometer_heading_sign = -1.0f;
     } else {
         printf("ERROR: unknown magnetometer_heading_chirality '%s' (use 'cw' or 'ccw').\n",
                magnetometer_heading_chirality);
