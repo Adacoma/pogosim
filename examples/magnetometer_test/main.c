@@ -27,7 +27,9 @@
 #define N_CAL 120
 #define N_CAL_MIN 60
 #define N_AVG_CAL 8
-#define N_AVG_MES 12
+//#define N_AVG_MES 12
+#define N_AVG_MES_AUTO 12
+#define N_AVG_MES_MANUAL 8
 
 #define N_BINS 36
 #define N_BINS_MIN 12
@@ -46,6 +48,8 @@
 #define JACOBI_MAX_SWEEPS 15
 #define JACOBI_EPSILON 1e-6f
 
+#define ENABLE_MEASUREMENT_MOTORS 1
+
 /* ------------------------------------------------------------------------- */
 /* Post-calibration behavior                                                  */
 /* ------------------------------------------------------------------------- */
@@ -54,11 +58,14 @@
  *   stop -> settle -> robust heading read -> show angle -> rotate -> repeat.
  */
 static uint32_t measurement_settle_ms = 350;
+static uint32_t manual_measurement_period_ms = 200; /* 5 Hz */
 static uint32_t angle_display_ms = 700;
 static uint32_t rotation_ms = 300;
 
 static int calibration_turn_speed = motorHalf;
-static int measurement_turn_speed = motorHalf;
+//static int measurement_turn_speed = motorHalf;
+//static int calibration_turn_speed = 200;
+static int measurement_turn_speed = 200;
 
 /* main(10).c convention: calibrated magnetic angle is converted to the common
  * swarm/body convention using a sign and offset before being displayed. */
@@ -104,6 +111,7 @@ typedef struct {
 
     controller_state_t state;
     uint32_t state_deadline_ms;
+    uint32_t measurement_next_ms;
 
     int n_collected;
     int step_ms;
@@ -796,7 +804,14 @@ static void calibration_fit_and_start_measurements(void) {
 
     motor_stop();
     mydata->heading_valid = false;
-    measurement_begin_settle();
+
+    if (ENABLE_MEASUREMENT_MOTORS) {
+        measurement_begin_settle();
+    } else {
+        mydata->measurement_next_ms = now_ms();
+        mydata->state_deadline_ms = mydata->measurement_next_ms;
+        mydata->state = STATE_MEAS_SETTLING;
+    }
 }
 
 static void calibration_finish_collection(void) {
@@ -934,7 +949,17 @@ static void controller_step(void) {
         if (!deadline_reached(mydata->state_deadline_ms)) {
             return;
         }
-        mag_read_robust_start(N_AVG_MES);
+
+        if (ENABLE_MEASUREMENT_MOTORS) {
+            mag_read_robust_start(N_AVG_MES_AUTO);
+        } else {
+            mag_read_robust_start(N_AVG_MES_MANUAL);
+
+            /* Schedule the next measurement start, not 200 ms after
+             * completion of this measurement. */
+            mydata->measurement_next_ms += manual_measurement_period_ms;
+        }
+
         mydata->state = STATE_MEAS_READING;
         return;
 
@@ -950,7 +975,12 @@ static void controller_step(void) {
 
         if (result == MAG_READ_FAILURE) {
             DIAG_PRINTF("# [WARN] post-calibration magnetometer read failed\n");
-            mydata->state_deadline_ms = deadline_after_ms(100);
+            if (ENABLE_MEASUREMENT_MOTORS) {
+                mydata->state_deadline_ms = deadline_after_ms(100);
+            } else {
+                mydata->state_deadline_ms = mydata->measurement_next_ms;
+            }
+
             mydata->state = STATE_MEAS_SETTLING;
             return;
         }
@@ -960,8 +990,13 @@ static void controller_step(void) {
         mydata->pending_z = z;
         print_and_display_heading(x, y, z);
 
-        mydata->state_deadline_ms = deadline_after_ms(angle_display_ms);
-        mydata->state = STATE_MEAS_DISPLAY;
+        if (ENABLE_MEASUREMENT_MOTORS) {
+            mydata->state_deadline_ms = deadline_after_ms(angle_display_ms);
+            mydata->state = STATE_MEAS_DISPLAY;
+        } else {
+            mydata->state_deadline_ms = mydata->measurement_next_ms;
+            mydata->state = STATE_MEAS_SETTLING;
+        }
         return;
     }
 
@@ -1033,6 +1068,7 @@ static void global_setup(void) {
     init_from_configuration(angle_display_ms);
     init_from_configuration(rotation_ms);
     init_from_configuration(magnetometer_heading_offset_rad);
+    init_from_configuration(manual_measurement_period_ms);
 }
 #endif
 
