@@ -48,7 +48,7 @@
 #define JACOBI_MAX_SWEEPS 15
 #define JACOBI_EPSILON 1e-6f
 
-#define ENABLE_MEASUREMENT_MOTORS 1
+#define ENABLE_MEASUREMENT_MOTORS 0
 
 /* ------------------------------------------------------------------------- */
 /* Post-calibration behavior                                                  */

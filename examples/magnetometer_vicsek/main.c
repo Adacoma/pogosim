@@ -63,7 +63,7 @@
 #define BEACON_HZ 10u
 #define BEACON_PERIOD_MS (1000u / BEACON_HZ)
 
-static int forward_speed = motorHalf;
+static int forward_speed = 200; // motorHalf;
 static int calibration_turn_speed = motorHalf;
 
 uint32_t max_age = 600;
@@ -76,7 +76,7 @@ bool broadcast_angle_when_avoiding_walls = true;
 float vicsek_turn_gain = 0.8f;
 
 bool vicsek_time_continuous = false;
-float vicsek_beta_rad_per_s = 3.0f;
+float vicsek_beta_rad_per_s = 0.0f;
 float cont_noise_sigma_rad = 0.0f;
 float cont_max_dt_s = 0.05f;
 
