@@ -43,7 +43,7 @@
 
 /* Recent raw magnetometer samples used during Vicsek locomotion. */
 #define MAG_HEADING_WINDOW 5
-#define MAG_HEADING_TIMEOUT_MS 5
+#define MAG_HEADING_TIMEOUT_MS 20
 
 #ifndef ENABLE_CALIBRATION_UART
 #define ENABLE_CALIBRATION_UART 0
@@ -67,9 +67,9 @@ static int forward_speed = motorHalf;
 static int calibration_turn_speed = motorHalf;
 
 uint32_t max_age = 600;
-uint32_t vicsek_period_ms = 17;
+uint32_t vicsek_period_ms = 100;
 
-float noise_eta_rad = 1.5f;
+float noise_eta_rad = 0.0f;
 float align_gain = 1.0f;
 bool include_self_in_avg = true;
 bool broadcast_angle_when_avoiding_walls = true;
@@ -89,7 +89,7 @@ uint32_t post_calibration_wait_ms = 5000;
  * it. The offset is applied after that sign conversion. */
 float magnetometer_heading_offset_rad = 0.0f;
 float magnetometer_heading_filter_gain = 1.0f;
-uint32_t magnetometer_heading_max_age_ms = 250;
+uint32_t magnetometer_heading_max_age_ms = 500;
 static float magnetometer_heading_sign = 1.0f;
 
 uint32_t cluster_u_turn_duration_ms = 1500;
@@ -154,6 +154,8 @@ typedef enum {
 typedef struct {
     uint8_t motor_dir_left_fwd;
     uint8_t motor_dir_right_fwd;
+    uint16_t motor_power_left;
+    uint16_t motor_power_right;
 
     controller_state_t controller_state;
     uint32_t controller_deadline_ms;
@@ -301,16 +303,57 @@ static void motor_stop(void) {
     pogobot_motor_set(motorR, motorStop);
 }
 
-static void motor_set_signed(motor_id id, int spd_signed, uint8_t fwd_dir_mem) {
-    int mag = spd_signed >= 0 ? spd_signed : -spd_signed;
-    if (mag > motorFull) {
-        mag = motorFull;
+static int calibrated_motor_power(int nominal_power,
+                                  uint16_t calibrated_full_power) {
+    if (nominal_power <= 0) {
+        return motorStop;
     }
 
-    uint8_t dir = (spd_signed >= 0) ? fwd_dir_mem : ((fwd_dir_mem == 0) ? 1 : 0);
-    pogobot_motor_dir_set(id, dir);
-    pogobot_motor_set(id, mag);
+    if (nominal_power > motorFull) {
+        nominal_power = motorFull;
+    }
+
+    uint32_t scaled =
+        (uint32_t)calibrated_full_power *
+        (uint32_t)nominal_power;
+
+    scaled += (uint32_t)motorFull / 2u;
+    scaled /= (uint32_t)motorFull;
+
+    return (int)scaled;
 }
+
+static void motor_set_signed(motor_id id,
+                             int speed_signed,
+                             uint8_t fwd_dir_mem) {
+    int magnitude =
+        speed_signed >= 0 ? speed_signed : -speed_signed;
+
+    if (magnitude > motorFull) {
+        magnitude = motorFull;
+    }
+
+    uint8_t dir =
+        speed_signed >= 0
+            ? fwd_dir_mem
+            : (fwd_dir_mem == 0 ? 1 : 0);
+
+    uint16_t calibrated_full_power;
+
+    if (id == motorL) {
+        calibrated_full_power = mydata->motor_power_left;
+    } else {
+        calibrated_full_power = mydata->motor_power_right;
+    }
+
+    int calibrated_power =
+        calibrated_motor_power(magnitude,
+                               calibrated_full_power);
+
+    pogobot_motor_dir_set(id, dir);
+    pogobot_motor_set(id, calibrated_power);
+}
+
 
 static void calibration_motor_step_start(void) {
     motor_set_signed(motorL, calibration_turn_speed, mydata->motor_dir_left_fwd);
@@ -333,6 +376,8 @@ static float median_i16(int16_t *a, int n) {
     }
     return 0.5f * ((float)a[n / 2 - 1] + (float)a[n / 2]);
 }
+
+
 
 /* ------------------------------------------------------------------------- */
 /* Non-blocking robust reader used during calibration                         */
@@ -1396,7 +1441,7 @@ void user_init(void) {
     /* The calibration state machine benefits from the same 100 Hz loop as the
      * standalone calibration controller. Vicsek itself remains rate-limited by
      * vicsek_period_ms. */
-    main_loop_hz = 100;
+    main_loop_hz = 20;
     max_nb_processed_msg_per_tick = 3;
     percent_msgs_sent_per_ticks = 50;
     msg_rx_fn = process_message;
@@ -1408,10 +1453,15 @@ void user_init(void) {
     mydata->motor_dir_right_fwd = dir_mem[0];
     mydata->motor_dir_left_fwd = dir_mem[1];
 
+    uint16_t power_mem[3] = {0, 0, 0};
+    pogobot_motor_power_mem_get(power_mem);
+    mydata->motor_power_right = power_mem[0];
+    mydata->motor_power_left = power_mem[1];
+
     motor_calibration_t motors = {
-        .motor_left = motorFull,
+        .motor_left = mydata->motor_power_left,
         .dir_left = mydata->motor_dir_left_fwd,
-        .motor_right = motorFull,
+        .motor_right = mydata->motor_power_right,
         .dir_right = mydata->motor_dir_right_fwd
     };
 
