@@ -28,6 +28,7 @@
 #include "render.h"
 #include "distances.h"
 #include "spogobot.h"
+#include "flash_state.h"
 #undef main         // We defined main() as robot_main() in pogobot.h
 
 void dummy_global_robot_init() {}
@@ -374,6 +375,7 @@ void Simulation::init_all() {
     //create_walls();
     create_arena();
     create_objects();
+    load_flash_state();
     create_robots();
 }
 
@@ -781,7 +783,42 @@ void Simulation::init_config() {
 
     data_logger_flush_row_count = config["data_logger_flush_row_count"].get(1048576);
 
+    // Persistence is opt-in independently for loading and saving.
+    const auto flash_state_config = config["flash_state"];
+    const auto flash_state_input = flash_state_config["input_file"];
+    const auto flash_state_output = flash_state_config["output_file"];
+    flash_state_input_file = flash_state_input.exists()
+        ? flash_state_input.get<std::string>()
+        : std::string{};
+    flash_state_output_file = flash_state_output.exists()
+        ? flash_state_output.get<std::string>()
+        : std::string{};
+
     init_magnetometer_model();
+}
+
+void Simulation::load_flash_state() {
+    if (flash_state_input_file.empty()) {
+        return;
+    }
+    pogosim::flash_state::load(flash_state_input_file, robots);
+    glogger->info(
+        "Restored persistent memory for {} robots from '{}'",
+        robots.size(),
+        flash_state_input_file
+    );
+}
+
+void Simulation::export_flash_state() {
+    if (flash_state_output_file.empty()) {
+        return;
+    }
+    pogosim::flash_state::save_atomic(flash_state_output_file, robots);
+    glogger->info(
+        "Saved persistent memory for {} robots to '{}'",
+        robots.size(),
+        flash_state_output_file
+    );
 }
 
 void Simulation::init_magnetometer_model() {
@@ -1810,6 +1847,9 @@ void Simulation::main_loop() {
             robot->callback_robot_end();
         }
     }
+
+    // End callbacks may make their final persistent-memory writes.
+    export_flash_state();
 }
 
 

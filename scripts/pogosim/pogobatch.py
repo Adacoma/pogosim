@@ -1060,6 +1060,14 @@ def _prepare_runtime_config(
             frames_dir / os.path.basename(str(runtime["frames_name"]))
         )
 
+    # Each task needs its own output archive. The input path is intentionally
+    # left unchanged so every task can start from the same supplied checkpoint.
+    flash_state = runtime.get("flash_state")
+    if isinstance(flash_state, dict) and flash_state.get("output_file"):
+        flash_state["output_file"] = str(
+            frames_dir / os.path.basename(str(flash_state["output_file"]))
+        )
+
     return runtime, frames_dir / data_basename
 
 

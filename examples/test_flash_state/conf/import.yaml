@@ -1,0 +1,32 @@
+---
+
+# This run restores the first run's archive before user_init(), verifies every
+# stored field there, then atomically exports back to the same pathname.
+boundary_condition: solid
+arena_file: arenas/square.csv
+arena_surface: 1.0e5
+
+enable_data_logging: false
+enable_console_logging: false
+simulation_time: 0.0
+time_step: 0.01
+initial_formation: disk
+
+objects:
+    robots:
+        type: pogobot
+        nb: 2
+        geometry: disk
+        radius: 26.5
+        communication_radius: 80.0
+        msg_success_rate:
+            type: static
+            rate: 1.0
+
+parameters:
+    flash_state_test_mode: 2
+
+flash_state:
+    input_file: "frames/test_flash_state.pgflash"
+    output_file: "frames/test_flash_state.pgflash"
+

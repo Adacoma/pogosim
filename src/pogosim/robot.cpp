@@ -723,7 +723,9 @@ void PogobotObject::initialize_time() {
 }
 
 void PogobotObject::initialize_flash_memory() {
-    //memset(flash_memory_authorized_section, 0x00, flash_memory_authorized_section_size);
+    // Deliberately leave fresh simulated flash indeterminate, like a real robot
+    // whose previous flash contents are not known. A configured flash-state
+    // archive overwrites the complete array before controller initialization.
 }
 
 void PogobotObject::update_time() {

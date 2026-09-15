@@ -1,0 +1,31 @@
+---
+
+# This run creates deterministic persistent memory during robot_end(), then
+# asks the simulator to export it after all robot callbacks have completed.
+boundary_condition: solid
+arena_file: arenas/square.csv
+arena_surface: 1.0e5
+
+enable_data_logging: false
+enable_console_logging: false
+simulation_time: 0.0
+time_step: 0.01
+initial_formation: disk
+
+objects:
+    robots:
+        type: pogobot
+        nb: 2
+        geometry: disk
+        radius: 26.5
+        communication_radius: 80.0
+        msg_success_rate:
+            type: static
+            rate: 1.0
+
+parameters:
+    flash_state_test_mode: 1
+
+flash_state:
+    output_file: "frames/test_flash_state.pgflash"
+

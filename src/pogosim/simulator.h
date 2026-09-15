@@ -145,6 +145,17 @@ class Simulation {
     // Magnetometer model
     std::unique_ptr<pogosim::magnetometer::raw_magnetometer_model> magnetometer_model; ///< Shared magnetometer model for the entire simulation.
 
+    // Optional persistent-memory checkpoint files. Empty names disable the
+    // corresponding import/export operation without touching robot flash.
+    std::string flash_state_input_file;
+    std::string flash_state_output_file;
+
+    /** Restore robot flash and motor calibration memories before user code runs. */
+    void load_flash_state();
+
+    /** Save robot flash and motor calibration memories after end callbacks run. */
+    void export_flash_state();
+
     /**
      * @brief Creates the shared magnetometer model from the YAML configuration.
      *

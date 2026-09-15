@@ -10,8 +10,10 @@
 
 - [Pogobatch and Rundra guide](pogobatch-rundra-guide.md) — local parameter sweeps, cluster execution, task manifests, retrieval, merging, recovery, and provenance.
 - [Pogoptim guide](pogoptim-guide.md) — parameter domains, optimization algorithms, objectives, parallel execution, seeds, failure handling, and outputs.
+- [Persistent robot flash state](flash-state.md) — export/import lifecycle, stored fields, identity validation, and Pogobatch behavior.
 - [Template controller](../template_prj/main.c) and [template Makefile](../template_prj/Makefile) — minimal controller that can target both the simulator and physical Pogobots.
 - [Example controllers](../examples) — runnable demonstrations of locomotion, communication, sensing, localization, synchronization, and collective-behavior algorithms.
+- [Flash-state import/export test](../examples/test_flash_state/README.md) — minimal two-run validation of persistent user flash and motor calibration memories.
 - [Example configurations](../conf) — YAML configurations for individual runs, batches, and optimization.
 
 ## APIs and implementation

@@ -18,6 +18,7 @@ Last updated: 2026-09-15
 - The object model covers Pogobots, Pogobjects, Pogowalls, flexible membranes, active/passive objects, and static or time-varying lights. Communication supports directional range, optional occlusion, and static or density-dependent reception probability.
 - Results are buffered into compressed Arrow/Feather files with configuration, arena, and version metadata. Pogobatch expands parameter choices and seeds, runs tasks locally or through Rundra, records manifests, and merges task outputs.
 - Pogoptim now reuses Pogobatch's public local-campaign API for Random Search, CMA-ES, and MAP-Elites, with YAML/CLI precedence and recorded evaluation provenance.
+- Optional flash-state archives now carry each robot's 64 KiB user flash plus motor direction/power calibration memories between simulator invocations, without checkpointing transient or physical state.
 - CI combines multi-platform builds and headless simulator smoke runs with focused Python regression tests for Pogobatch and Pogoptim.
 
 ## Remains unknown
@@ -32,6 +33,8 @@ Last updated: 2026-09-15
 
 - No analysis is currently running as part of this milestone.
 - The Pogoptim/Pogobatch migration has passed focused unit tests, optional CMA-ES/QDpy smoke tests, a nested-worker fake-simulator campaign, and one-evaluation Random/MAP-Elites runs against the built `run_and_tumble` controller; longer scientific runs have not been benchmarked.
+- Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
+- A dedicated `test_flash_state` example now provides a reproducible two-run simulator smoke test and a two-boot real-robot test while preserving hardware motor calibration values.
 - The worktree contains untracked quadrant-motility and magnetometer-related examples/configurations; their scientific status has not been assessed.
 
 ## Current scientific decisions
@@ -44,6 +47,7 @@ Last updated: 2026-09-15
 - Give each optimization candidate a deterministic, disjoint simulation-seed block; do not reuse common random numbers across candidates.
 - Require explicit descriptor domains for custom MAP-Elites features and reject out-of-domain values rather than clipping them.
 - Preserve simulation/hardware controller parity by storing mutable per-robot controller state in `USERDATA`.
+- Treat only the user flash section and motor calibration memories as persistent robot state; fresh user flash remains indeterminate unless an archive is loaded.
 - Use Feather output with embedded provenance and restrict logged fields/categories for large experiments.
 
 ## Known data limitations
@@ -55,6 +59,7 @@ Last updated: 2026-09-15
 - Empirical calibration/validation datasets were not inspected, so model fidelity must not be inferred solely from API coverage.
 - Generated results in local ignored directories are not canonical repository data and were not used to establish scientific conclusions.
 - Pogoptim is local-only, has no resume/checkpoint workflow, and relies on the optional QDpy package for MAP-Elites.
+- Flash archives validate simulator-level structure and robot identity but cannot determine whether controller-defined byte layouts are application-compatible.
 
 ## Next concrete tasks
 
