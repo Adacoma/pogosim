@@ -1,44 +1,45 @@
 #!/usr/bin/env python3
-"""
-Pogoptim – black-box & quality-diversity optimizer for Pogosim controllers
+"""Black-box and quality-diversity optimization for Pogosim controllers.
 
-Changes vs previous version:
-  • Internal search space is now NORMALIZED to [0,1]^d for every variable
-    (float, int, categorical). This makes sigma0/popsize scale-agnostic.
-  • Optional QD optimizer (MAP-Elites via QDpy). If chosen, we build and
-    return a repertoire/container of elites instead of a single best.
-  • Default QD feature descriptors (when no objective script is provided):
-      ( max per-agent MSD over all runs+arenas,
-        std deviation of per-agent MSD over all runs+arenas )
-  • Objective function compatibility:
-      - If your objective returns a scalar → we’ll compute default QD features.
-      - Optionally, your objective may return (fitness, features) where
-        `features` is a 1-D list/tuple/np.array of floats.
+Float, integer, and categorical domains are represented in a normalized
+``[0, 1]^d`` search space. Random Search and CMA-ES return a best configuration;
+MAP-Elites uses QDpy to produce a repertoire. Objectives may return fitness or
+``(fitness, features)``. The default fitness is mean MSD and the built-in QD
+descriptors are polar order and trajectory straightness.
+
+Each candidate is executed through Pogobatch's public local-campaign API, so
+normal batch expansion, retries, task manifests, merging, and provenance are
+shared between batch runs and optimization.
 """
 
 from __future__ import annotations
 
-from multiprocessing import current_process
 import argparse
 import copy
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 import importlib.util
 import json
 import logging
 import warnings
 import math
 import os
-import pickle
+from pathlib import Path
+import random
 import shutil
 import sys
 import tempfile
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Sequence
+from multiprocessing import current_process
+from typing import Any, Callable, Dict, List, Optional, Tuple, Sequence
 import traceback
 
 logger = logging.getLogger("pogoptim")
 _worker_logging_inited = False  # module-level flag
 
+import matplotlib
+matplotlib.use("Agg")  # Optimization is a headless batch workflow.
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -46,8 +47,14 @@ import pyarrow as pa
 import pyarrow.feather as paw
 import yaml
 
-from locomotion import compute_msd_per_agent
-from pogobatch import PogobotBatchRunner, set_in_dict  # type: ignore
+if __package__:
+    from .locomotion import compute_msd_per_agent
+    from .pogobatch import LocalCampaignError, run_local_campaign
+else:
+    # Preserve direct execution from scripts/pogosim while installed/module use
+    # follows normal package-relative imports.
+    from locomotion import compute_msd_per_agent
+    from pogobatch import LocalCampaignError, run_local_campaign
 
 # ----------------------------------------------------------------------------
 # Default objective and QD features
@@ -66,8 +73,14 @@ def fd_polar_order_phi(df: pd.DataFrame) -> float:
 
 def fd_straightness(df: pd.DataFrame) -> float:
     """Mean straightness S in [0,1] across tracks (run, arena_file, robot_id)."""
-    cols = ["run", "arena_file", "robot_id", "time", "x", "y", "robot_category"]
-    g = df[cols].copy()
+    required = ["robot_id", "time", "x", "y", "robot_category"]
+    missing = [column for column in required if column not in df.columns]
+    if missing:
+        raise KeyError(f"Straightness requires columns: {', '.join(missing)}")
+    group_columns = [
+        column for column in ("run", "arena_file") if column in df.columns
+    ] + ["robot_id"]
+    g = df[group_columns + ["time", "x", "y", "robot_category"]].copy()
     g = g[g["robot_category"] == "robots"].dropna(subset=["time", "x", "y"])
     if g.empty:
         return 0.0
@@ -86,13 +99,13 @@ def fd_straightness(df: pd.DataFrame) -> float:
 
     # New pandas (>=2.2): exclude grouping columns from the DataFrame seen by apply
     try:
-        s_vals = g.groupby(["run", "arena_file", "robot_id"], sort=False).apply(
+        s_vals = g.groupby(group_columns, sort=False).apply(
             one_track, include_groups=False
         )
     except TypeError:
         # Older pandas: explicitly select only the columns the function needs
         s_vals = (
-            g.groupby(["run", "arena_file", "robot_id"], sort=False)
+            g.groupby(group_columns, sort=False)
              .apply(lambda t: one_track(t[["time", "x", "y"]]))
         )
 
@@ -356,6 +369,23 @@ def _resolve_node(cfg: Dict[str, Any], dotted: str) -> Any:
     return node
 
 
+def _set_dotted_value(cfg: Dict[str, Any], dotted: str, value: Any) -> None:
+    """Set a dotted mapping path, creating intermediate mappings as needed."""
+    parts = dotted.split(".") if dotted else []
+    if not parts:
+        raise KeyError("Cannot assign an empty configuration path")
+    node: Dict[str, Any] = cfg
+    for part in parts[:-1]:
+        child = node.get(part)
+        if child is None:
+            child = {}
+            node[part] = child
+        if not isinstance(child, dict):
+            raise KeyError(f"Cannot create {dotted}: {part} is not a mapping")
+        node = child
+    node[parts[-1]] = value
+
+
 def set_optimized_values_in_config(base_cfg: Dict[str, Any], values: Dict[str, Any]) -> Dict[str, Any]:
     cfg = copy.deepcopy(base_cfg)
     for dotted, val in values.items():
@@ -382,10 +412,10 @@ def set_optimized_values_in_config(base_cfg: Dict[str, Any], values: Dict[str, A
                     node["default_option"] = val
             else:
                 # scalar path
-                set_in_dict(cfg, dotted, val)
+                _set_dotted_value(cfg, dotted, val)
         except KeyError:
             # Create a dict owner with default_option when the path is missing
-            set_in_dict(cfg, dotted, {"default_option": val})
+            _set_dotted_value(cfg, dotted, {"default_option": val})
     return cfg
 
 
@@ -395,139 +425,220 @@ def write_yaml(obj: Dict[str, Any], path: str) -> None:
 
 
 # ----------------------------------------------------------------------------
-# Run a single evaluation (batch grid x runs) and compute fitness/features
+# Run one candidate (batch grid x seeds) and compute fitness/features
 # ----------------------------------------------------------------------------
+
+PENALTY = -1e9
+PORTABLE_SEED_LIMIT = 2**31
+
+
+class ObjectiveContractError(RuntimeError):
+    """The objective's return value is incompatible with the selected optimizer."""
+
+
+@dataclass
+class EvaluationResult:
+    index: int
+    u_internal: np.ndarray
+    values: Dict[str, Any]
+    base_seeds: tuple[int, ...]
+    effective_seeds: tuple[int, ...]
+    fitness: float = PENALTY
+    features: np.ndarray | None = None
+    dataframe: pd.DataFrame | None = None
+    success: bool = False
+    error: str | None = None
+
+
+class CandidateSeedAllocator:
+    """Allocate deterministic, non-overlapping initial and retry seed blocks."""
+
+    def __init__(
+        self,
+        *,
+        optimizer_seed: int,
+        evaluations: int,
+        runs: int,
+        retries: int,
+        retry_new_seed: bool,
+    ) -> None:
+        attempts = retries + 1 if retry_new_seed else 1
+        self.block_size = runs * attempts
+        total_slots = evaluations * self.block_size
+        if total_slots <= 0 or total_slots > PORTABLE_SEED_LIMIT:
+            raise RuntimeError("Requested evaluation/run/retry budget exceeds the portable seed space")
+        seed_rng = np.random.default_rng(
+            np.random.SeedSequence([optimizer_seed, 0x504F474F])
+        )
+        self.offset = int(seed_rng.integers(0, PORTABLE_SEED_LIMIT - total_slots + 1))
+        self.runs = runs
+
+    def seeds_for(self, evaluation_index: int) -> tuple[int, ...]:
+        start = self.offset + evaluation_index * self.block_size
+        return tuple(range(start, start + self.runs))
+
+
+def _effective_seeds(df: pd.DataFrame, base_seeds: tuple[int, ...]) -> tuple[int, ...]:
+    if "seed" not in df.columns:
+        return base_seeds
+    if "run" in df.columns:
+        rows = df[["run", "seed"]].drop_duplicates().sort_values("run")
+        return tuple(int(seed) for seed in rows["seed"].tolist())
+    return tuple(int(seed) for seed in df["seed"].drop_duplicates().tolist())
+
 
 def run_evaluation(
     cfg_for_eval: Dict[str, Any],
     simulator_binary: str,
-    runs: int,
+    seeds: tuple[int, ...],
     temp_base: str,
     backend: str,
+    batch_jobs: int,
     keep_temp: bool,
     retries: int,
+    retry_new_seed: bool,
 ) -> pd.DataFrame:
-    os.makedirs(temp_base, exist_ok=True)
-    eval_tmp = tempfile.mkdtemp(prefix="eval_", dir=temp_base)
+    Path(temp_base).mkdir(parents=True, exist_ok=True)
+    eval_tmp = Path(tempfile.mkdtemp(prefix="eval_", dir=temp_base))
+    completed = False
     try:
         cfg_for_eval = copy.deepcopy(cfg_for_eval)
-        rnc: List[str] = list(cfg_for_eval.get("result_new_columns", []) or [])
-        wants_arena_basename = "arena_file" in rnc
+        batch_settings = cfg_for_eval.setdefault("pogobatch", {})
+        if not isinstance(batch_settings, dict):
+            raise RuntimeError("The top-level 'pogobatch' setting must be a mapping")
+        rnc: List[str] = list(batch_settings.get("result_new_columns", []) or [])
         arena_paths = _find_dotted_paths_for_key(cfg_for_eval, "arena_file")
-        arena_path = sorted(arena_paths, key=len)[0] if arena_paths else None
-        if arena_path and (wants_arena_basename or "arena_file" not in cfg_for_eval):
-            if arena_path not in rnc:
-                rnc.append(arena_path)
-        if not wants_arena_basename and arena_path and ("arena_file" not in rnc):
+        arena_paths = [path for path in arena_paths if not path.startswith("pogobatch.")]
+        arena_path = min(arena_paths, key=len) if arena_paths else None
+        if arena_path and arena_path not in rnc:
             rnc.append(arena_path)
         if rnc:
-            cfg_for_eval["result_new_columns"] = rnc
+            batch_settings["result_new_columns"] = rnc
 
-        cfg_path = os.path.join(eval_tmp, "multi.yaml")
-        write_yaml(cfg_for_eval, cfg_path)
-        os.makedirs(os.path.join(eval_tmp, "tmp"), exist_ok=True)
-        os.makedirs(os.path.join(eval_tmp, "out"), exist_ok=True)
-
-        runner = PogobotBatchRunner(
-            multi_config_file=cfg_path,
-            runs=runs,
-            simulator_binary=simulator_binary,
-            temp_base=os.path.join(eval_tmp, "tmp"),
-            output_dir=os.path.join(eval_tmp, "out"),
+        cfg_path = eval_tmp / "multi.yaml"
+        write_yaml(cfg_for_eval, str(cfg_path))
+        result = run_local_campaign(
+            cfg_path,
+            simulator_binary,
+            seeds=seeds,
+            temp_base=eval_tmp / "tmp",
+            output_dir=eval_tmp / "out",
             backend=backend,
+            jobs=batch_jobs,
             keep_temp=keep_temp,
-            verbose=False,
             retries=retries,
+            retry_new_seed=retry_new_seed,
+            simulator_output="quiet",
         )
-        prev_level = logger.level
-        if prev_level > logging.INFO:
-            logger.setLevel(logging.WARNING)
-        try:
-            outputs = runner.run_all()
-        finally:
-            logger.setLevel(prev_level)
-
-        if not outputs:
-            raise RuntimeError("No output files produced by batch runner.")
-        dfs = [pd.read_feather(p) for p in outputs if os.path.exists(p)]
-        if not dfs:
-            raise RuntimeError("Produced output files are missing or unreadable.")
-        df = pd.concat(dfs, ignore_index=True)
-
-        for c in list(df.columns):
-            if c.endswith(".arena_file") and "arena_file" not in df.columns:
-                df = df.rename(columns={c: "arena_file"})
-            elif c.endswith(".arena_file") and "arena_file" in df.columns:
-                df = df.drop(columns=[c])
+        if not result.outputs:
+            raise RuntimeError("No output files produced by Pogobatch")
+        frames = [pd.read_feather(path) for path in result.outputs if path.exists()]
+        if not frames:
+            raise RuntimeError("Pogobatch outputs are missing or unreadable")
+        df = pd.concat(frames, ignore_index=True)
+        for column in list(df.columns):
+            if column.endswith(".arena_file") and "arena_file" not in df.columns:
+                df = df.rename(columns={column: "arena_file"})
+            elif column.endswith(".arena_file") and "arena_file" in df.columns:
+                df = df.drop(columns=[column])
+        completed = True
         return df
     finally:
-        if not keep_temp:
+        # Failed Pogobatch campaigns deliberately retain their diagnostic shards.
+        if completed and not keep_temp:
             shutil.rmtree(eval_tmp, ignore_errors=True)
 
 
-def eval_fitness_and_features(
+def evaluate_candidate(
+    *,
+    index: int,
     u_internal: np.ndarray,
     specs: List[VarSpec],
     base_cfg: Dict[str, Any],
     simulator_binary: str,
-    runs: int,
+    seeds: tuple[int, ...],
     temp_base: str,
     backend: str,
+    batch_jobs: int,
     keep_temp: bool,
     retries: int,
-    objective_fn,
-    objective_returns_features: bool,
-    default_features_fn,
-) -> Tuple[float, np.ndarray, pd.DataFrame, Dict[str, Any]]:
-    PENALTY = -1e9  # finite big negative fitness
-
+    retry_new_seed: bool,
+    objective_fn: Callable[[pd.DataFrame], Any],
+    default_features_fn: Callable[[pd.DataFrame], np.ndarray],
+    qd_mode: bool,
+    custom_objective: bool,
+    qd_domains_explicit: bool,
+    feature_domains: tuple[tuple[float, float], ...],
+) -> EvaluationResult:
     values = decode_unit_vector(specs, u_internal)
-    cfg_eval = set_optimized_values_in_config(base_cfg, values)
-
+    result = EvaluationResult(
+        index=index,
+        u_internal=np.asarray(u_internal, dtype=float),
+        values=values,
+        base_seeds=seeds,
+        effective_seeds=seeds,
+    )
     try:
         df = run_evaluation(
-            cfg_for_eval=cfg_eval,
-            simulator_binary=simulator_binary,
-            runs=runs,
-            temp_base=temp_base,
-            backend=backend,
-            keep_temp=keep_temp,
-            retries=retries,
+            set_optimized_values_in_config(base_cfg, values),
+            simulator_binary,
+            seeds,
+            temp_base,
+            backend,
+            batch_jobs,
+            keep_temp,
+            retries,
+            retry_new_seed,
         )
-    except Exception as exc:
-        logger.error("Evaluation error: %s; penalizing candidate.", exc)
-        return PENALTY, np.zeros(2, dtype=float), pd.DataFrame(), values
+    except LocalCampaignError as exc:
+        result.error = f"{exc}; campaign_dir={exc.campaign_dir}"
+        logger.error("Evaluation %d failed; penalizing candidate: %s", index + 1, exc)
+        return result
 
-    fitness = None
-    features = None
+    result.dataframe = df
+    result.effective_seeds = _effective_seeds(df, seeds)
     try:
-        out = objective_fn(df)
-        if isinstance(out, (tuple, list)) and len(out) >= 2:
-            fitness = float(out[0])
-            feats = out[1]
-            if isinstance(feats, dict):
-                feats = list(feats.values())
-            features = np.asarray(feats, dtype=float).ravel()
-        else:
-            fitness = float(out)
-    except Exception as exc:
-        logger.error("Objective error: %s; penalizing candidate.", exc)
-        fitness = PENALTY
+        objective_output = objective_fn(df)
+    except Exception as exc:  # An objective can fail for candidate-specific data.
+        result.error = f"objective failed: {exc}"
+        logger.error("Evaluation %d objective failed; penalizing candidate: %s", index + 1, exc)
+        return result
 
-    # Default features if none provided
-    if features is None:
-        try:
-            features = np.asarray(default_features_fn(df), dtype=float).ravel()
-        except Exception:
-            features = np.zeros(2, dtype=float)
+    custom_features = False
+    if isinstance(objective_output, (tuple, list)) and len(objective_output) >= 2:
+        fitness = float(objective_output[0])
+        raw_features = objective_output[1]
+        if isinstance(raw_features, dict):
+            raw_features = list(raw_features.values())
+        features = np.asarray(raw_features, dtype=float).ravel()
+        custom_features = True
+    else:
+        fitness = float(objective_output)
+        features = np.asarray(default_features_fn(df), dtype=float).ravel()
 
-    # Clamp to finite values
+    if qd_mode:
+        if custom_objective and custom_features and not qd_domains_explicit:
+            raise ObjectiveContractError(
+                "A custom MAP-Elites descriptor requires optimization.qd.features_domain"
+            )
+        if len(features) != len(feature_domains):
+            raise ObjectiveContractError(
+                f"Objective returned {len(features)} descriptors; expected {len(feature_domains)}"
+            )
+        if not np.all(np.isfinite(features)):
+            result.error = "objective returned non-finite descriptors"
+            return result
+        if any(not (lo <= value <= hi) for value, (lo, hi) in zip(features, feature_domains)):
+            result.error = "objective descriptors lie outside optimization.qd.features_domain"
+            return result
+
     if not np.isfinite(fitness):
-        fitness = PENALTY
-    if not np.all(np.isfinite(features)):
-        features = np.nan_to_num(features, nan=0.0, posinf=0.0, neginf=0.0)
-
-    return float(fitness), features, df, values
+        result.error = "objective returned non-finite fitness"
+        return result
+    result.fitness = float(fitness)
+    result.features = features
+    result.success = True
+    return result
 
 
 
@@ -545,20 +656,25 @@ class BaseOptimizer:
         raise NotImplementedError
 
 class RandomSearch(BaseOptimizer):
-    def __init__(self, dim: int, max_evals: int, seed: int = 42):
+    def __init__(self, dim: int, max_evals: int, seed: int = 42, batch_size: int = 1):
         super().__init__(dim)
         self.max_evals = max_evals
+        self.batch_size = max(1, batch_size)
         self.rng = np.random.default_rng(seed)
 
-    def run(self, ask_tell_loop):
+    def run(self, evaluate_many):
         evals = 0
         while evals < self.max_evals:
-            u = self.rng.uniform(0.0, 1.0, size=self.dim).astype(float)
-            f = ask_tell_loop(u)
-            if f > self.best_f:
-                self.best_f = f
-                self.best_u = u.copy()
-            evals += 1
+            count = min(self.batch_size, self.max_evals - evals)
+            candidates = [
+                self.rng.uniform(0.0, 1.0, size=self.dim).astype(float)
+                for _ in range(count)
+            ]
+            for candidate, fitness in zip(candidates, evaluate_many(candidates)):
+                if fitness > self.best_f:
+                    self.best_f = fitness
+                    self.best_u = candidate.copy()
+            evals += count
         logger.info("random: evals=%d  best=%.6g", evals, self.best_f)
 
 
@@ -589,7 +705,7 @@ class CMAES(BaseOptimizer):
         self.max_evals = int(max_evals)
         self._pop = pop  # remember for ask(number=...)
 
-    def run(self, ask_tell_loop):
+    def run(self, evaluate_many):
         evals = 0
         gen_idx = 0
 
@@ -610,8 +726,7 @@ class CMAES(BaseOptimizer):
 
             fs = []
             pop_f = []
-            for u_eval in xs_eval:
-                f = ask_tell_loop(u_eval)
+            for u_eval, f in zip(xs_eval, evaluate_many(xs_eval)):
                 if not np.isfinite(f):
                     f = -1e9  # finite penalty
                 fs.append(-float(f))       # CMA minimizes
@@ -647,51 +762,35 @@ class CMAES(BaseOptimizer):
 
 def run_qdpy_map_elites(
     specs: List[VarSpec],
-    base_cfg: Dict[str, Any],
-    simulator_binary: str,
-    runs: int,
-    temp_base: str,
-    backend: str,
-    keep_temp: bool,
-    retries: int,
-    objective_fn,
-    default_features_fn,
+    evaluate_many: Callable[[Sequence[np.ndarray]], List[EvaluationResult]],
     qd_shape: Sequence[int],
-    qd_init_samples: int,
+    feature_domains: tuple[tuple[float, float], ...],
     qd_batch: int,
     max_evals: int,
-    sigma0: float,
     seed: int,
     out_dir: str,
-    qd_algo_kwargs: Optional[Dict[str, Any]] = None,   # <<< NEW
+    qd_algo_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    from qdpy import algorithms, containers, plots, base
-    rng = np.random.default_rng(seed)
+    try:
+        from qdpy import algorithms, containers, plots
+    except ImportError as exc:
+        raise RuntimeError(
+            "MAP-Elites requested but QDpy is unavailable; install pogosim[optim]"
+        ) from exc
+
+    # QDpy uses the module-level Python and NumPy RNGs when producing genomes.
+    library_seed = int(np.random.SeedSequence(seed).generate_state(1)[0])
+    random.seed(library_seed)
+    np.random.seed(library_seed)
     max_evals = int(max_evals)
-
-    def evaluate_one(u_vec: np.ndarray):
-        f, feats, df, _values = eval_fitness_and_features(
-            u_internal=u_vec, specs=specs, base_cfg=base_cfg, simulator_binary=simulator_binary,
-            runs=runs, temp_base=temp_base, backend=backend, keep_temp=keep_temp, retries=retries,
-            objective_fn=objective_fn, objective_returns_features=True, default_features_fn=default_qd_features_unit
-        )
-        if isinstance(feats, (list, tuple, np.ndarray)):
-            feats = tuple(map(float, np.asarray(feats, float).ravel()))
-        else:
-            feats = (float(feats),)
-        return (float(f),), feats
-
-    features_domain = ((0.0, 1.0), (0.0, 1.0))
-    fitness_domain = ((-np.inf, np.inf),)
 
     grid = containers.Grid(
         shape=tuple(int(x) for x in qd_shape),
         max_items_per_bin=1,
-        fitness_domain=fitness_domain,
-        features_domain=features_domain
+        fitness_domain=((-np.inf, np.inf),),
+        features_domain=feature_domains,
     )
 
-    # Defaults (preserve current behavior) + override from YAML kwargs
     algo_hparams = {"mut_pb": 0.2, "eta": 20.0}
     if qd_algo_kwargs:
         algo_hparams.update(qd_algo_kwargs)
@@ -703,31 +802,76 @@ def run_qdpy_map_elites(
         dimension=len(specs),
         optimisation_task="maximisation",
         ind_domain=(0., 1.),
-        **algo_hparams,                     # <<< pass sel_pb, init_pb, mut_pb, eta, etc.
+        **algo_hparams,
     )
 
-    qdlogger = algorithms.TQDMAlgorithmLogger(algo, log_base_path=out_dir)
-    with base.ParallelismManager("none") as pMgr:
-        _ = algo.optimise(lambda ind: evaluate_one(np.clip(np.asarray(ind, float), 0.0, 1.0)),
-                          executor=pMgr.executor, batch_mode=True)
+    qdlogger = algorithms.AlgorithmLogger(algo, log_base_path=out_dir, verbose=False)
+    successful_genomes: set[tuple[float, ...]] = set()
+    evaluations = 0
+    while evaluations < max_evals:
+        count = min(qd_batch, max_evals - evaluations)
+        individuals = [algo.ask() for _ in range(count)]
+        candidates = [
+            np.clip(np.asarray(individual, dtype=float), 0.0, 1.0)
+            for individual in individuals
+        ]
+        results = evaluate_many(candidates)
+        for individual, result in zip(individuals, results):
+            if result.success and result.features is not None:
+                features = tuple(float(value) for value in result.features)
+                successful_genomes.add(tuple(float(value) for value in individual))
+            else:
+                # A failed point remains a worst-fitness parent but is never
+                # exported as an elite; this lets MAP-Elites keep exploring.
+                features = tuple((lo + hi) / 2.0 for lo, hi in feature_domains)
+            algo.tell(individual, fitness=(result.fitness,), features=features)
+        evaluations += count
 
     rows = []
     for elite in grid:
-        if elite is None:
+        if elite is None or tuple(float(value) for value in elite) not in successful_genomes:
             continue
-        f = getattr(elite, "fitness", None)
-        fs = float(f[0]) if isinstance(f, (list, tuple)) else float(f.values[0])
+        fitness = getattr(elite, "fitness", None)
+        score = (
+            float(fitness[0])
+            if isinstance(fitness, (list, tuple))
+            else float(fitness.values[0])
+        )
         desc = getattr(elite, "features", ())
         desc = tuple(map(float, np.asarray(desc, float).ravel()))
-        r = {"fitness": fs}
-        for i, v in enumerate(desc):
-            r[f"feat_{i}"] = v
-        rows.append(r)
+        genome = np.asarray(elite, dtype=float)
+        row: Dict[str, Any] = {"fitness": score}
+        row.update({f"feature_{i}": value for i, value in enumerate(desc)})
+        row.update({f"u_{i}": float(value) for i, value in enumerate(genome)})
+        row["values"] = json.dumps(decode_unit_vector(specs, genome), sort_keys=True)
+        rows.append(row)
 
-    print("\n" + algo.summary())
-    plots.default_plots_grid(qdlogger, output_dir=out_dir)
+    output_path = Path(out_dir)
+    archive_path = output_path / "qd_archive.csv"
+    pd.DataFrame(rows).to_csv(archive_path, index=False)
+    pickle_path = output_path / "qd_final.p"
+    qdlogger.save(str(pickle_path))
+    try:
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message=r"set_ticklabels\(\) should only be used"
+            )
+            plots.default_plots_grid(qdlogger, output_dir=str(output_path))
+    except Exception as exc:
+        logger.warning("Could not generate QDpy grid plots: %s", exc)
 
-    return {"qd_shape": list(qd_shape), "features_domain": features_domain, "budget": max_evals}
+    logger.debug("%s", algo.summary())
+    logger.info("MAP-Elites completed with %d exported elite(s)", len(rows))
+    return {
+        "qd_shape": list(qd_shape),
+        "features_domain": [list(domain) for domain in feature_domains],
+        "budget": max_evals,
+        "elite_count": len(rows),
+        "files": {
+            "container_pickle": str(pickle_path),
+            "archive_csv": str(archive_path),
+        },
+    }
 
 
 
@@ -736,259 +880,503 @@ def run_qdpy_map_elites(
 # Main optimization driver
 # ----------------------------------------------------------------------------
 
+@dataclass(frozen=True)
+class OptimizationSettings:
+    algorithm: str = "cmaes"
+    seed: int = 42
+    budget: int = 50
+    runs: int = 1
+    retries: int = 5
+    retry_new_seed: bool = True
+    backend: str = "multiprocessing"
+    candidate_jobs: int = 1
+    batch_jobs: int = 0
+    output_dir: str = "opt_out"
+    temp_base: str = "tmp_opt"
+    keep_temp: bool = False
+    objective_path: str | None = None
+    objective_func: str = "compute_objective"
+    sigma0: float = 0.3
+    popsize: int | None = None
+    qd_shape: tuple[int, ...] = (48, 48)
+    qd_batch: int = 32
+    qd_features_domain: tuple[tuple[float, float], ...] = ((0.0, 1.0), (0.0, 1.0))
+    qd_domains_explicit: bool = False
+    qd_algo_kwargs: Dict[str, Any] | None = None
+
+
+def _parse_shape(value: Any) -> tuple[int, ...]:
+    if isinstance(value, str):
+        values = value.split(",")
+    elif isinstance(value, (list, tuple)):
+        values = value
+    else:
+        raise RuntimeError("optimization.qd.shape must be a list or comma-separated string")
+    shape = tuple(int(item) for item in values)
+    if not shape or any(item <= 0 for item in shape):
+        raise RuntimeError("Every optimization.qd.shape entry must be positive")
+    return shape
+
+
+def _parse_feature_domains(value: Any) -> tuple[tuple[float, float], ...]:
+    if isinstance(value, str):
+        value = [item.split(":") for item in value.split(",")]
+    if not isinstance(value, (list, tuple)):
+        raise RuntimeError("optimization.qd.features_domain must be a sequence")
+    domains: list[tuple[float, float]] = []
+    for item in value:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            raise RuntimeError("Each QD feature domain must contain [minimum, maximum]")
+        lo, hi = float(item[0]), float(item[1])
+        if not math.isfinite(lo) or not math.isfinite(hi) or lo >= hi:
+            raise RuntimeError("QD feature domains require finite minimum < maximum")
+        domains.append((lo, hi))
+    return tuple(domains)
+
+
+def resolve_optimization_settings(
+    full_cfg: Dict[str, Any], cli: argparse.Namespace
+) -> OptimizationSettings:
+    raw = full_cfg.get("optimization", {}) or {}
+    if not isinstance(raw, dict):
+        raise RuntimeError("The top-level 'optimization' setting must be a mapping")
+    values: Dict[str, Any] = {
+        field: getattr(OptimizationSettings(), field)
+        for field in OptimizationSettings.__dataclass_fields__
+    }
+    for key in (
+        "algorithm", "seed", "budget", "runs", "retries", "retry_new_seed",
+        "backend", "output_dir", "temp_base", "keep_temp",
+    ):
+        if key in raw:
+            values[key] = raw[key]
+
+    parallel = raw.get("parallelism", {}) or {}
+    if not isinstance(parallel, dict):
+        raise RuntimeError("optimization.parallelism must be a mapping")
+    for key in ("candidate_jobs", "batch_jobs"):
+        if key in parallel:
+            values[key] = parallel[key]
+
+    objective = raw.get("objective", {}) or {}
+    if not isinstance(objective, dict):
+        raise RuntimeError("optimization.objective must be a mapping")
+    values["objective_path"] = objective.get("path", values["objective_path"])
+    values["objective_func"] = objective.get("func", values["objective_func"])
+
+    cmaes = raw.get("cmaes", {}) or {}
+    if not isinstance(cmaes, dict):
+        raise RuntimeError("optimization.cmaes must be a mapping")
+    values["sigma0"] = cmaes.get("sigma0", values["sigma0"])
+    values["popsize"] = cmaes.get("popsize", values["popsize"])
+
+    qd = raw.get("qd", {}) or {}
+    if not isinstance(qd, dict):
+        raise RuntimeError("optimization.qd must be a mapping")
+    values["qd_shape"] = _parse_shape(qd.get("shape", values["qd_shape"]))
+    values["qd_batch"] = qd.get("batch", values["qd_batch"])
+    if "features_domain" in qd:
+        values["qd_features_domain"] = _parse_feature_domains(qd["features_domain"])
+        values["qd_domains_explicit"] = True
+    algo_kwargs = dict(qd.get("algo_kwargs", {}) or {})
+    for key in ("sel_pb", "init_pb", "mut_pb", "eta"):
+        if key in qd:
+            algo_kwargs[key] = qd[key]
+    values["qd_algo_kwargs"] = algo_kwargs
+    if "init_samples" in qd or hasattr(cli, "qd_init_samples"):
+        logger.warning(
+            "qd.init_samples/--qd-init-samples is deprecated and ignored; "
+            "configure qd.features_domain"
+        )
+
+    cli_mapping = {
+        "optimizer": "algorithm",
+        "max_evals": "budget",
+        "objective": "objective_path",
+        "objective_func": "objective_func",
+        "qd_shape": "qd_shape",
+        "qd_batch": "qd_batch",
+        "qd_features_domain": "qd_features_domain",
+    }
+    for cli_key, target in cli_mapping.items():
+        if hasattr(cli, cli_key):
+            value = getattr(cli, cli_key)
+            if target == "qd_shape":
+                value = _parse_shape(value)
+            elif target == "qd_features_domain":
+                value = _parse_feature_domains(value)
+                values["qd_domains_explicit"] = True
+            values[target] = value
+    for key in (
+        "runs", "temp_base", "output_dir", "sigma0", "popsize", "seed",
+        "backend", "keep_temp", "retries", "retry_new_seed",
+        "candidate_jobs", "batch_jobs",
+    ):
+        if hasattr(cli, key):
+            values[key] = getattr(cli, key)
+
+    settings = OptimizationSettings(**values)
+    if settings.algorithm not in {"random", "cmaes", "mapelites"}:
+        raise RuntimeError(f"Unknown optimizer: {settings.algorithm}")
+    if settings.backend not in {"sequential", "multiprocessing", "ray"}:
+        raise RuntimeError(f"Unknown batch backend: {settings.backend}")
+    if settings.seed < 0 or settings.budget <= 0 or settings.runs <= 0:
+        raise RuntimeError("seed must be non-negative and budget/runs must be positive")
+    if settings.retries < 0 or settings.candidate_jobs <= 0 or settings.batch_jobs < 0:
+        raise RuntimeError("retries/batch_jobs must be non-negative and candidate_jobs positive")
+    if settings.sigma0 <= 0 or (settings.popsize is not None and settings.popsize <= 0):
+        raise RuntimeError("CMA-ES sigma0 and popsize must be positive")
+    if settings.qd_batch <= 0:
+        raise RuntimeError("optimization.qd.batch must be positive")
+    if len(settings.qd_shape) != len(settings.qd_features_domain):
+        raise RuntimeError("QD shape and features_domain must have the same dimension")
+    return settings
+
+
+def _available_cpu_count() -> int:
+    process_count = getattr(os, "process_cpu_count", None)
+    count = process_count() if process_count is not None else os.cpu_count()
+    return max(1, count or 1)
+
+
+@contextmanager
+def _shared_ray_runtime(backend: str, candidate_jobs: int):
+    if backend != "ray" or candidate_jobs <= 1:
+        yield
+        return
+    try:
+        import ray
+    except ImportError as exc:
+        raise RuntimeError("Ray backend requested but Ray is not installed") from exc
+    owns_runtime = not ray.is_initialized()
+    if owns_runtime:
+        ray.init(ignore_reinit_error=True)
+    try:
+        yield
+    finally:
+        if owns_runtime:
+            ray.shutdown()
+
+
 def optimize(
     multi_config_path: str,
     simulator_binary: str,
-    objective_path: Optional[str],
-    objective_func_name: str,
-    runs: int,
-    temp_base: str,
-    backend: str,
-    keep_temp: bool,
-    retries: int,
-    optimizer_name: str,
-    max_evals: int,
-    sigma0: float,
-    popsize: Optional[int],
-    seed: int,
-    out_dir: str,
-    qd_shape: Optional[str],
-    qd_init_samples: int,
-    qd_batch: int,
-):
-    os.makedirs(out_dir, exist_ok=True)
+    settings: OptimizationSettings,
+) -> Dict[str, Any]:
+    config_path = Path(multi_config_path)
+    with config_path.open("r", encoding="utf-8") as stream:
+        full_cfg = yaml.safe_load(stream)
+    if not isinstance(full_cfg, dict):
+        raise RuntimeError("Optimization configuration must be a YAML mapping")
+    if os.sep in simulator_binary and not Path(simulator_binary).is_file():
+        raise RuntimeError(f"Simulator binary does not exist: {simulator_binary}")
+    if os.sep not in simulator_binary and shutil.which(simulator_binary) is None:
+        raise RuntimeError(f"Simulator binary is not on PATH: {simulator_binary}")
 
-    with open(multi_config_path, "r", encoding="utf-8") as f:
-        full_cfg = yaml.safe_load(f)
     specs = discover_optimization_domains(full_cfg)
-    base_cfg = strip_optimization_domains(full_cfg)
+    scientific_cfg = copy.deepcopy(full_cfg)
+    scientific_cfg.pop("optimization", None)
+    base_cfg = strip_optimization_domains(scientific_cfg)
+    objective_fn = load_objective(settings.objective_path, settings.objective_func)
+    output_dir = Path(settings.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    Path(settings.temp_base).mkdir(parents=True, exist_ok=True)
 
-    # Collect QD kwargs from YAML (either nested or flat)
-    qd_algo_kwargs = {}
-    opt_cfg = (full_cfg.get("optimization") or {})
-    qd_cfg = (opt_cfg.get("qd") or {})
-    if isinstance(qd_cfg.get("algo_kwargs"), dict):
-        qd_algo_kwargs.update(qd_cfg["algo_kwargs"])
-    for k in ("sel_pb", "init_pb", "mut_pb", "eta"):
-        if k in qd_cfg:
-            qd_algo_kwargs[k] = qd_cfg[k]
-
-    objective_fn = load_objective(objective_path, objective_func_name)
-    u0 = encode_x0_unit(specs)
-
-    # History for single-solution optimizers
-    history_rows = []
-    best_f = -np.inf
-    best_values: Optional[Dict[str, Any]] = None
-    best_df: Optional[pd.DataFrame] = None
-
-    def eval_one(u_internal: np.ndarray) -> float:
-        nonlocal best_f, best_values, best_df
-        f, feats, df, values = eval_fitness_and_features(
-            u_internal=u_internal, specs=specs, base_cfg=base_cfg, simulator_binary=simulator_binary,
-            runs=runs, temp_base=temp_base, backend=backend, keep_temp=keep_temp, retries=retries,
-            objective_fn=objective_fn, objective_returns_features=False, default_features_fn=default_qd_features_maxstd_msd
+    cpu_count = _available_cpu_count()
+    candidate_jobs = min(settings.candidate_jobs, settings.budget, cpu_count)
+    requested_batch_jobs = settings.batch_jobs or cpu_count
+    batch_jobs = min(requested_batch_jobs, max(1, cpu_count // candidate_jobs))
+    if settings.backend == "sequential":
+        batch_jobs = 1
+    if candidate_jobs != settings.candidate_jobs or (
+        settings.batch_jobs > 0 and batch_jobs != settings.batch_jobs
+    ):
+        logger.warning(
+            "Capping parallelism to candidate_jobs=%d, batch_jobs=%d for %d CPUs",
+            candidate_jobs,
+            batch_jobs,
+            cpu_count,
         )
-        now = time.time()
-        nonlocal_eval_idx = len(history_rows) + 1
-        if f >= best_f:
-            best_f = f
-            best_values = values
-            best_df = df
-        history_rows.append({
-            "eval": nonlocal_eval_idx,
-            "fitness": float(f),
-            "best_so_far": float(best_f),
-            "u_internal": json.dumps(list(map(float, u_internal))),
-            "values": json.dumps(values),
-            "timestamp": now,
-        })
-        logger.debug("Eval %d → fitness=%.6g | best=%.6g (u=%s)", nonlocal_eval_idx, f, best_f, np.array2string(u_internal, precision=3))
-        return float(f)
-
-    optimizer_name_l = optimizer_name.lower()
-    if optimizer_name_l in ("mapelites"):
-        # QD path
-        shape_tuple: Tuple[int, ...]
-        if qd_shape is None or qd_shape.strip() == "":
-            #shape_tuple = (48, 48)  # sensible default for 2-D
-            shape_tuple = (10, 10)  # sensible default for 2-D
-        else:
-            shape_tuple = tuple(int(s) for s in qd_shape.split(","))
-        qd_info = run_qdpy_map_elites(
-            specs=specs,
-            base_cfg=base_cfg,
-            simulator_binary=simulator_binary,
-            runs=runs,
-            temp_base=temp_base,
-            backend=backend,
-            keep_temp=keep_temp,
-            retries=retries,
-            objective_fn=objective_fn,
-            default_features_fn=default_qd_features_maxstd_msd,
-            qd_shape=shape_tuple,
-            qd_init_samples=qd_init_samples,
-            qd_batch=qd_batch,
-            max_evals=max_evals,
-            sigma0=sigma0,
-            seed=seed,
-            out_dir=out_dir,
-            qd_algo_kwargs=qd_algo_kwargs,
-        )
-        # Persist a short summary JSON; return the QD artifacts instead of best config
-        summary = {
-            "optimizer": "qdpy-mapelites",
-            "budget": max_evals,
-            "qd": qd_info,
-            #"files": {
-            #    "qd_container_pkl": qd_info["qd_container_pkl"],
-            #    "qd_archive_csv": qd_info["qd_archive_csv"],
-            #    "qd_heatmap_png": os.path.join(out_dir, "qd_heatmap.png"),
-            #},
-        }
-        with open(os.path.join(out_dir, "summary.json"), "w", encoding="utf-8") as f:
-            json.dump(summary, f, indent=2)
-        #logger.info("QD done. Container: %s | Archive CSV: %s", qd_info["qd_container_pkl"], qd_info["qd_archive_csv"])
-        return
-
-    # Single-solution optimization path (Random/CMA-ES)
-    if optimizer_name_l == "random":
-        opt = RandomSearch(dim=len(specs), max_evals=max_evals, seed=seed)
-    elif optimizer_name_l == "cmaes":
-        opt = CMAES(dim=len(specs), u0=u0, sigma0=sigma0, popsize=popsize, seed=seed, max_evals=max_evals)
     else:
-        raise RuntimeError(f"Unknown optimizer: {optimizer_name}")
+        logger.info("Parallelism: candidate_jobs=%d, batch_jobs=%d", candidate_jobs, batch_jobs)
 
-    logger.info("Starting optimization: %s | dim=%d | max_evals=%d (normalized space)", optimizer_name.upper(), len(specs), max_evals)
-    opt.run(eval_one)
+    seed_allocator = CandidateSeedAllocator(
+        optimizer_seed=settings.seed,
+        evaluations=settings.budget,
+        runs=settings.runs,
+        retries=settings.retries,
+        retry_new_seed=settings.retry_new_seed,
+    )
+    history_rows: List[Dict[str, Any]] = []
+    next_evaluation = 0
+    best_fitness = -np.inf
+    best_values: Dict[str, Any] | None = None
+    best_df: pd.DataFrame | None = None
 
-    # Save history
-    hist_df = pd.DataFrame(history_rows)
-    hist_csv = os.path.join(out_dir, "opt_history.csv")
-    hist_df.to_csv(hist_csv, index=False)
+    def evaluate_many(candidates: Sequence[np.ndarray]) -> List[EvaluationResult]:
+        nonlocal next_evaluation, best_fitness, best_values, best_df
+        indexed = [
+            (next_evaluation + offset, np.asarray(candidate, dtype=float))
+            for offset, candidate in enumerate(candidates)
+        ]
+        next_evaluation += len(indexed)
 
-    # Plot best-so-far
-    fig = plt.figure(figsize=(8, 4.5))
-    ax = fig.add_subplot(111)
-    ax.plot(hist_df["eval"], hist_df["best_so_far"], label="best so far")
-    ax.set_xlabel("evaluation")
-    ax.set_ylabel("fitness")
-    ax.grid(True, alpha=0.3)
-    ax.legend()
-    png_path = os.path.join(out_dir, "fitness_vs_eval.png")
-    fig.tight_layout()
-    fig.savefig(png_path, dpi=144)
-    plt.close(fig)
+        def evaluate(item: tuple[int, np.ndarray]) -> EvaluationResult:
+            index, candidate = item
+            return evaluate_candidate(
+                index=index,
+                u_internal=candidate,
+                specs=specs,
+                base_cfg=base_cfg,
+                simulator_binary=simulator_binary,
+                seeds=seed_allocator.seeds_for(index),
+                temp_base=settings.temp_base,
+                backend=settings.backend,
+                batch_jobs=batch_jobs,
+                keep_temp=settings.keep_temp,
+                retries=settings.retries,
+                retry_new_seed=settings.retry_new_seed,
+                objective_fn=objective_fn,
+                default_features_fn=default_qd_features_unit,
+                qd_mode=settings.algorithm == "mapelites",
+                custom_objective=settings.objective_path is not None,
+                qd_domains_explicit=settings.qd_domains_explicit,
+                feature_domains=settings.qd_features_domain,
+            )
 
-    if best_values is None or best_df is None:
-        raise RuntimeError("No successful evaluations; cannot produce best config/results.")
+        workers = min(candidate_jobs, len(indexed))
+        if workers <= 1:
+            results = [evaluate(item) for item in indexed]
+        else:
+            with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="pogoptim") as executor:
+                results = list(executor.map(evaluate, indexed))
 
-    best_cfg = set_optimized_values_in_config(base_cfg, best_values)
-    best_cfg = strip_optimization_domains(best_cfg)
-    best_yaml = os.path.join(out_dir, "best_config.yaml")
-    write_yaml(best_cfg, best_yaml)
+        for result in results:
+            if result.success and result.fitness >= best_fitness:
+                best_fitness = result.fitness
+                best_values = result.values
+                best_df = result.dataframe
+            retry_attempts = None
+            if result.dataframe is not None and "retry_attempt" in result.dataframe.columns:
+                retry_attempts = int(result.dataframe["retry_attempt"].max())
+            history_rows.append({
+                "eval": result.index + 1,
+                "status": "success" if result.success else "failed",
+                "fitness": result.fitness,
+                "best_so_far": best_fitness if np.isfinite(best_fitness) else None,
+                "features": json.dumps(result.features.tolist()) if result.features is not None else None,
+                "u_internal": json.dumps(result.u_internal.tolist()),
+                "values": json.dumps(result.values, sort_keys=True),
+                "base_seeds": json.dumps(result.base_seeds),
+                "effective_seeds": json.dumps(result.effective_seeds),
+                "max_retry_attempt": retry_attempts,
+                "error": result.error,
+                "timestamp": time.time(),
+            })
+        return results
 
-    table = pa.Table.from_pandas(best_df)
-    with open(best_yaml, "r", encoding="utf-8") as f:
-        cfg_text = f.read()
-    table = table.replace_schema_metadata({b"configuration": cfg_text.encode("utf-8")})
-    best_feather = os.path.join(out_dir, "best_results.feather")
-    paw.write_feather(table, best_feather)
+    qd_info: Dict[str, Any] | None = None
+    logger.info(
+        "Starting optimization: %s | dim=%d | max_evals=%d",
+        settings.algorithm.upper(),
+        len(specs),
+        settings.budget,
+    )
+    with _shared_ray_runtime(settings.backend, candidate_jobs):
+        if settings.algorithm == "random":
+            optimizer = RandomSearch(
+                len(specs), settings.budget, settings.seed, batch_size=candidate_jobs
+            )
+            optimizer.run(lambda points: [result.fitness for result in evaluate_many(points)])
+        elif settings.algorithm == "cmaes":
+            library_seed = (
+                int(np.random.SeedSequence(settings.seed).generate_state(1)[0])
+                % (2**31 - 1)
+            ) + 1
+            optimizer = CMAES(
+                len(specs), encode_x0_unit(specs), settings.sigma0,
+                settings.popsize, library_seed, settings.budget,
+            )
+            optimizer.run(lambda points: [result.fitness for result in evaluate_many(points)])
+        else:
+            qd_info = run_qdpy_map_elites(
+                specs,
+                evaluate_many,
+                settings.qd_shape,
+                settings.qd_features_domain,
+                settings.qd_batch,
+                settings.budget,
+                settings.seed,
+                str(output_dir),
+                settings.qd_algo_kwargs,
+            )
 
-    summary = {
-        "optimizer": optimizer_name,
-        "max_evals": max_evals,
-        "best_fitness": float(np.max(hist_df["best_so_far"])) if len(hist_df) else None,
-        "best_values": best_values,
-        "files": {
-            "history_csv": hist_df.shape[0] and hist_csv,
-            "plot_png": png_path,
-            "best_config_yaml": best_yaml,
-            "best_results_feather": best_feather,
+    history = pd.DataFrame(history_rows).sort_values("eval")
+    history_path = output_dir / "opt_history.csv"
+    history.to_csv(history_path, index=False)
+    success_count = int((history["status"] == "success").sum())
+    common_summary: Dict[str, Any] = {
+        "status": "complete" if success_count else "failed",
+        "optimizer": settings.algorithm,
+        "budget": settings.budget,
+        "successful_evaluations": success_count,
+        "failed_evaluations": len(history) - success_count,
+        "seed": settings.seed,
+        "seed_block_offset": seed_allocator.offset,
+        "runs": settings.runs,
+        "parallelism": {
+            "candidate_jobs": candidate_jobs,
+            "batch_jobs": batch_jobs,
+            "backend": settings.backend,
         },
+        "settings": {
+            "retries": settings.retries,
+            "retry_new_seed": settings.retry_new_seed,
+            "keep_temp": settings.keep_temp,
+            "objective_path": settings.objective_path,
+            "objective_func": settings.objective_func,
+            "cmaes": {"sigma0": settings.sigma0, "popsize": settings.popsize},
+            "qd": {
+                "shape": list(settings.qd_shape),
+                "batch": settings.qd_batch,
+                "features_domain": [list(domain) for domain in settings.qd_features_domain],
+                "algo_kwargs": settings.qd_algo_kwargs,
+            },
+        },
+        "files": {"history_csv": str(history_path)},
     }
-    with open(os.path.join(out_dir, "summary.json"), "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
 
-    logger.info("Done. Best fitness: %.6g", summary["best_fitness"])
-    logger.info("Best values: %s", json.dumps(best_values))
+    summary_path = output_dir / "summary.json"
+    if not success_count:
+        summary_path.write_text(json.dumps(common_summary, indent=2), encoding="utf-8")
+        raise RuntimeError("No successful evaluations; see opt_history.csv for failures")
+
+    if settings.algorithm == "mapelites":
+        common_summary["qd"] = qd_info
+        common_summary["files"].update((qd_info or {}).get("files", {}))
+        summary_path.write_text(json.dumps(common_summary, indent=2), encoding="utf-8")
+        return common_summary
+
+    plot_path = output_dir / "fitness_vs_eval.png"
+    figure, axis = plt.subplots(figsize=(8, 4.5))
+    axis.plot(history["eval"], history["best_so_far"], label="best so far")
+    axis.set(xlabel="evaluation", ylabel="fitness")
+    axis.grid(True, alpha=0.3)
+    axis.legend()
+    figure.tight_layout()
+    figure.savefig(plot_path, dpi=144)
+    plt.close(figure)
+
+    assert best_values is not None and best_df is not None
+    best_config = strip_optimization_domains(
+        set_optimized_values_in_config(base_cfg, best_values)
+    )
+    best_config_path = output_dir / "best_config.yaml"
+    write_yaml(best_config, str(best_config_path))
+    table = pa.Table.from_pandas(best_df)
+    metadata = dict(table.schema.metadata or {})
+    metadata[b"configuration"] = best_config_path.read_bytes()
+    table = table.replace_schema_metadata(metadata)
+    best_results_path = output_dir / "best_results.feather"
+    paw.write_feather(table, best_results_path)
+
+    common_summary["best_fitness"] = best_fitness
+    common_summary["best_values"] = best_values
+    common_summary["files"].update({
+        "plot_png": str(plot_path),
+        "best_config_yaml": str(best_config_path),
+        "best_results_feather": str(best_results_path),
+    })
+    summary_path.write_text(json.dumps(common_summary, indent=2), encoding="utf-8")
+    logger.info("Done. Best fitness: %.6g", best_fitness)
+    return common_summary
 
 
 # ----------------------------------------------------------------------------
 # CLI
 # ----------------------------------------------------------------------------
 
-def main():
-    p = argparse.ArgumentParser(
-        description="Optimize Pogosim controllers via CMA-ES/Random, or illuminate a repertoire via QDpy MAP-Elites."
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Optimize Pogosim controllers with Random Search, CMA-ES, or MAP-Elites.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("-c", "--config", required=True, help="Path to multi-value YAML.")
-    p.add_argument("-S", "--simulator-binary", required=True, help="Path to pogosim executable.")
-    p.add_argument("-r", "--runs", type=int, default=1, help="Number of runs per batch combination (default: 1).")
-    p.add_argument("-t", "--temp-base", default="tmp_opt", help="Base temp directory (default: tmp_opt).")
-    p.add_argument("-o", "--output-dir", default="opt_out", help="Directory to store outputs (default: opt_out).")
-    p.add_argument("-O", "--objective", required=False, default=None,
-                   help="Optional path to Python file exposing the fitness function. If omitted: DEFAULT fitness is mean MSD; QD features default to (polar order, straightness).")
-    p.add_argument("--objective-func", default="compute_objective", help="Function name inside --objective (default: compute_objective).")
+    parser.add_argument("-c", "--config", required=True, help="Optimization-enabled Pogosim YAML")
+    parser.add_argument("-S", "--simulator-binary", required=True, help="Pogosim executable")
+    parser.add_argument("-v", "--verbose", action="store_true")
 
-    p.add_argument("--optimizer", choices=["cmaes", "random", "mapelites"], default="cmaes",
-                   help="Optimizer to use (default: cmaes).")
+    # SUPPRESS distinguishes an omitted option from an explicit YAML override.
+    optional = {"default": argparse.SUPPRESS}
+    parser.add_argument("-r", "--runs", type=int, **optional)
+    parser.add_argument("-t", "--temp-base", **optional)
+    parser.add_argument("-o", "--output-dir", **optional)
+    parser.add_argument("-O", "--objective", **optional)
+    parser.add_argument("--objective-func", **optional)
+    parser.add_argument("--optimizer", choices=("cmaes", "random", "mapelites"), **optional)
+    parser.add_argument("--max-evals", type=int, **optional)
+    parser.add_argument("--sigma0", type=float, **optional)
+    parser.add_argument("--popsize", type=int, **optional)
+    parser.add_argument("--seed", type=int, **optional)
+    parser.add_argument(
+        "--backend", choices=("multiprocessing", "ray", "sequential"), **optional
+    )
+    parser.add_argument("--candidate-jobs", type=int, **optional)
+    parser.add_argument("--batch-jobs", type=int, **optional)
+    parser.add_argument(
+        "--keep-temp", action=argparse.BooleanOptionalAction, **optional
+    )
+    parser.add_argument("-R", "--retries", type=int, **optional)
+    retry_group = parser.add_mutually_exclusive_group()
+    retry_group.add_argument(
+        "--retry-new-seed", dest="retry_new_seed", action="store_true", **optional
+    )
+    retry_group.add_argument(
+        "--retry-same-seed", dest="retry_new_seed", action="store_false", **optional
+    )
+    parser.add_argument("--qd-shape", **optional)
+    parser.add_argument("--qd-batch", type=int, **optional)
+    parser.add_argument(
+        "--qd-features-domain",
+        metavar="MIN:MAX,MIN:MAX",
+        help="Explicit MAP-Elites descriptor ranges",
+        **optional,
+    )
+    parser.add_argument(
+        "--qd-init-samples",
+        type=int,
+        help="Deprecated compatibility option; use --qd-features-domain",
+        **optional,
+    )
+    return parser
 
-    p.add_argument("--max-evals", type=int, default=50, help="Max number of evaluations (budget).")
-    p.add_argument("--sigma0", type=float, default=0.3, help="Initial step size in NORMALIZED space (default: 0.3).")
-    p.add_argument("--popsize", type=int, default=None, help="CMA-ES population size override (optional).")
-    p.add_argument("--seed", type=int, default=42, help="Random seed (default: 42).")
 
-    p.add_argument("--backend", choices=["multiprocessing", "ray"], default="multiprocessing", help="Parallel backend for *batch evaluation* (default: multiprocessing).")
-    p.add_argument("--keep-temp", action="store_true", help="Keep per-eval temp directories (debug).")
-    p.add_argument("-R", "--retries", type=int, default=5, help="Relaunch a run upon simulator crash (default: 5).")
-    p.add_argument("-v", "--verbose", action="store_true")
-
-    # QD options
-    p.add_argument("--qd-shape", default="48,48", help="Grid shape for MAP-Elites (comma-separated). Default: 48,48 (2-D).")
-    p.add_argument("--qd-init-samples", type=int, default=64, help="Warm-start random samples to estimate feature bounds. Default: 64.")
-    p.add_argument("--qd-batch", type=int, default=32, help="Batch of offspring per QD iteration (steady-state). Default: 32.")
-
-    args = p.parse_args()
-
-    # Init logging
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
     init_logging(args.verbose)
-    pogobatch_logger = logging.getLogger("pogobatch")
-    # Ensure the library logger does not add its own handlers:
-    pogobatch_logger.handlers.clear()
-    pogobatch_logger.propagate = True  # bubble up to root handler we own
-    # Show pogobatch DEBUG only when -v
-    pogobatch_logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-
+    batch_logger = logging.getLogger("pogobatch")
+    batch_logger.handlers.clear()
+    for handler in logger.handlers:
+        batch_logger.addHandler(handler)
+    batch_logger.propagate = False
+    batch_logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     try:
-        optimize(
-            multi_config_path=args.config,
-            simulator_binary=args.simulator_binary,
-            objective_path=args.objective,
-            objective_func_name=args.objective_func,
-            runs=args.runs,
-            temp_base=args.temp_base,
-            backend=args.backend,
-            keep_temp=args.keep_temp,
-            retries=args.retries,
-            optimizer_name=args.optimizer,
-            max_evals=args.max_evals,
-            sigma0=args.sigma0,
-            popsize=args.popsize,
-            seed=args.seed,
-            out_dir=args.output_dir,
-            qd_shape=args.qd_shape,
-            qd_init_samples=args.qd_init_samples,
-            qd_batch=args.qd_batch,
-        )
+        with open(args.config, "r", encoding="utf-8") as stream:
+            full_cfg = yaml.safe_load(stream)
+        if not isinstance(full_cfg, dict):
+            raise RuntimeError("Optimization configuration must be a YAML mapping")
+        settings = resolve_optimization_settings(full_cfg, args)
+        optimize(args.config, args.simulator_binary, settings)
+        return 0
     except Exception as exc:
         logger.error("Fatal: %s", exc)
-        traceback.print_exc()
-        sys.exit(2)
+        if args.verbose:
+            traceback.print_exc()
+        return 2
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
 
 # MODELINE "{{{1
 # vim:expandtab:softtabstop=4:shiftwidth=4:fileencoding=utf-8

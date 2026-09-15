@@ -1,6 +1,23 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Added
+
+- add a public `pogobatch.run_local_campaign` API with structured results and task-failure details
+- package the `pogoptim` console command and optional CMA-ES/MAP-Elites dependencies
+- add deterministic per-candidate simulation seeds, nested parallelism controls, unified histories, and MAP-Elites archive artifacts
+
+### Changed
+
+- migrate Pogoptim to the refactored Pogobatch task/manifest/merge implementation
+- read optimization defaults from YAML while retaining explicit command-line precedence
+
+### Fixed
+
+- restore Pogoptim package/direct-script imports and compatibility with current Matplotlib colormap APIs
+
 ## [0.10.10] - 2026-06-22
 
 ### Added
@@ -341,4 +358,3 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
  - Large number of minor fixes so that the code can compile on MacOS X with Apple Clang
-

@@ -108,6 +108,28 @@ listed by `pogobatch.result_new_columns`. It also writes
 `pogobatch_run.json` beside the merged results. Files produced by a new `run`
 replace same-named results rather than appending to them.
 
+Python callers can use the same implementation without constructing an
+`argparse.Namespace`:
+
+```python
+from pathlib import Path
+from pogosim.pogobatch import run_local_campaign
+
+result = run_local_campaign(
+    Path("conf/batch/simple.yaml"),
+    "./examples/test_go_straight/test_go_straight",
+    seeds=(10, 11),
+    output_dir=Path("results/test_go_straight"),
+    temp_base=Path("tmp"),
+    jobs=4,
+)
+print(result.outputs)
+```
+
+The function returns output paths, counts, seeds, effective worker count, and
+manifest/temp paths. Exhausted simulator retries raise `LocalCampaignError`,
+which carries the retained campaign directory and structured task failures.
+
 ### Choose repeats and seeds explicitly
 
 If no seed option is present and the configuration has no `_rundr.seeds`,

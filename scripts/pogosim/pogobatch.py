@@ -41,7 +41,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
-from multiprocessing import Pool
+from multiprocessing import get_context
 from typing import Any, Sequence
 import uuid
 
@@ -65,11 +65,26 @@ RUNDRA_METADATA_KEY = "_rundr"
 POGOBATCH_CONFIG_KEY = "pogobatch"
 POGOBATCH_CHOICE_KEY = "_pogobatch_choice"
 LEGACY_RESULT_KEYS = ("result_filename_format", "result_new_columns")
-POGOBATCH_SCRIPT_VERSION = "21"
+POGOBATCH_SCRIPT_VERSION = "22"
 
 
 class PogobatchError(RuntimeError):
     """Expected user-facing Pogobatch failure."""
+
+
+class LocalCampaignError(PogobatchError):
+    """A local campaign whose simulator tasks exhausted their retries."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        campaign_dir: Path,
+        failures: Sequence[dict[str, Any]],
+    ) -> None:
+        super().__init__(message)
+        self.campaign_dir = campaign_dir
+        self.failures = tuple(copy.deepcopy(list(failures)))
 
 
 class RundraOperationError(PogobatchError):
@@ -143,6 +158,19 @@ class TaskArtifact:
     logical_run: int | None
     combination_ordinal: int | None
     task_uuid: str
+
+
+@dataclass(frozen=True)
+class LocalCampaignResult:
+    """Outputs and execution metadata returned by :func:`run_local_campaign`."""
+
+    outputs: tuple[Path, ...]
+    manifest_path: Path
+    task_count: int
+    combination_count: int
+    seeds: tuple[int, ...]
+    effective_jobs: int
+    retained_temp_dir: Path | None
 
 
 # ---------------------------------------------------------------------------
@@ -1297,12 +1325,11 @@ def _run_local_task_worker(spec: LocalTaskSpec) -> dict[str, Any]:
                 attempt + 1,
                 spec.max_retries + 1,
             )
-            shutil.rmtree(attempt_dir, ignore_errors=True)
             if attempt == spec.max_retries:
                 break
+            shutil.rmtree(attempt_dir, ignore_errors=True)
         except Exception as exc:  # noqa: BLE001 - worker must return structured failure
             last_error = str(exc)
-            shutil.rmtree(attempt_dir, ignore_errors=True)
             break
 
     return {
@@ -1340,7 +1367,9 @@ def _execute_local_specs(
         ]
 
     if backend == "multiprocessing":
-        with Pool(processes=jobs) as pool:
+        # ``spawn`` is safe when Pogobatch is called from Pogoptim's candidate
+        # coordinator threads and is also portable across supported platforms.
+        with get_context("spawn").Pool(processes=jobs) as pool:
             results = pool.imap_unordered(_run_local_task_worker, specs)
             return list(_progress_iterator(results, len(specs), progress))
 
@@ -1349,7 +1378,9 @@ def _execute_local_specs(
             import ray
         except ImportError as exc:
             raise PogobatchError("Ray is not installed") from exc
-        ray.init(ignore_reinit_error=True)
+        owns_runtime = not ray.is_initialized()
+        if owns_runtime:
+            ray.init(ignore_reinit_error=True)
         try:
             remote_worker = ray.remote(_run_local_task_worker)
             pending = [remote_worker.remote(spec) for spec in specs]
@@ -1360,7 +1391,8 @@ def _execute_local_specs(
                 results.append(ray.get(ready[0]))
             return results
         finally:
-            ray.shutdown()
+            if owns_runtime:
+                ray.shutdown()
 
     raise PogobatchError(f"Unknown local backend: {backend}")
 
@@ -2785,15 +2817,58 @@ def command_merge(args: argparse.Namespace) -> int:
     return 0
 
 
-def command_run(args: argparse.Namespace) -> int:
-    source = _load_yaml(args.config)
-    seeds = _resolve_seeds(source, args.runs, args.seeds, args.seed)
-    combinations = _filter_combinations(build_combinations(source), args.only_output)
+def run_local_campaign(
+    config_path: Path,
+    simulator_binary: str,
+    *,
+    seeds: Sequence[int],
+    output_dir: Path,
+    temp_base: Path,
+    backend: str = "multiprocessing",
+    jobs: int = 0,
+    retries: int = 5,
+    retry_new_seed: bool = True,
+    keep_temp: bool = False,
+    progress: bool = False,
+    gui: bool = False,
+    simulator_output: str = "normal",
+    only_output: str | None = None,
+) -> LocalCampaignResult:
+    """Execute and merge one local batch campaign.
 
-    args.temp_base.mkdir(parents=True, exist_ok=True)
-    campaign_dir = Path(
-        tempfile.mkdtemp(prefix="pogobatch_", dir=str(args.temp_base))
-    )
+    Unlike the CLI seed options, this library entry point accepts the exact seed
+    sequence to use.  This keeps seed allocation in the calling experiment while
+    retaining Pogobatch's task, retry, manifest, and merge semantics.
+    """
+    config_path = Path(config_path)
+    output_dir = Path(output_dir)
+    temp_base = Path(temp_base)
+    resolved_seeds = tuple(seeds)
+    if not resolved_seeds:
+        raise PogobatchError("A local campaign requires at least one seed")
+    if any(type(seed) is not int or seed < 0 or seed > 2**32 - 1 for seed in resolved_seeds):
+        raise PogobatchError("Campaign seeds must be integers in the uint32 range")
+    if len(set(resolved_seeds)) != len(resolved_seeds):
+        raise PogobatchError("Campaign seeds must be unique")
+    if retries < 0:
+        raise PogobatchError("retries must be non-negative")
+    if jobs < 0:
+        raise PogobatchError("jobs must be non-negative")
+    if backend not in {"multiprocessing", "ray", "sequential"}:
+        raise PogobatchError(f"Unknown local backend: {backend}")
+    if simulator_output not in {"quiet", "normal", "verbose"}:
+        raise PogobatchError(f"Unknown simulator output mode: {simulator_output}")
+    if retry_new_seed and any(
+        _replacement_seed(seed, logical_run, resolved_seeds, retries) > 2**32 - 1
+        for logical_run, seed in enumerate(resolved_seeds)
+    ):
+        raise PogobatchError("Replacement retry seed would exceed the uint32 range")
+
+    source = _load_yaml(config_path)
+    combinations = _filter_combinations(build_combinations(source), only_output)
+
+    temp_base.mkdir(parents=True, exist_ok=True)
+    campaign_dir = Path(tempfile.mkdtemp(prefix="pogobatch_", dir=str(temp_base)))
     specs = [
         LocalTaskSpec(
             combination_ordinal=combination.ordinal,
@@ -2803,34 +2878,34 @@ def command_run(args: argparse.Namespace) -> int:
             config_hash=combination.config_hash,
             logical_run=logical_run,
             base_seed=seed,
-            all_seeds=seeds,
-            simulator_binary=args.simulator_binary,
+            all_seeds=resolved_seeds,
+            simulator_binary=simulator_binary,
             campaign_dir=str(campaign_dir),
-            gui=args.gui,
-            max_retries=args.retries,
-            retry_new_seed=args.retry_new_seed,
-            simulator_output=_simulator_output_mode(args),
+            gui=gui,
+            max_retries=retries,
+            retry_new_seed=retry_new_seed,
+            simulator_output=simulator_output,
         )
         for combination in combinations
-        for logical_run, seed in enumerate(seeds)
+        for logical_run, seed in enumerate(resolved_seeds)
     ]
 
-    jobs = args.jobs if args.jobs > 0 else min(len(specs), len(seeds))
-    jobs = max(1, jobs)
+    effective_jobs = jobs if jobs > 0 else min(len(specs), len(resolved_seeds))
+    effective_jobs = max(1, min(effective_jobs, len(specs)))
     logger.info(
         "Running %d local task(s): %d combination(s) x %d seed(s), jobs=%d",
         len(specs),
         len(combinations),
-        len(seeds),
-        jobs,
+        len(resolved_seeds),
+        effective_jobs,
     )
 
     try:
         results = _execute_local_specs(
             specs,
-            args.backend,
-            jobs,
-            progress=args.progress,
+            backend,
+            effective_jobs,
+            progress=progress,
         )
         failures = [result for result in results if not result.get("ok")]
         if failures:
@@ -2840,25 +2915,30 @@ def command_run(args: argparse.Namespace) -> int:
                 )
                 for failure in failures
             )
-            raise PogobatchError(
-                f"{len(failures)} local task(s) failed after retries: {failure_text}"
+            raise LocalCampaignError(
+                f"{len(failures)} local task(s) failed after retries: {failure_text}",
+                campaign_dir=campaign_dir,
+                failures=failures,
             )
 
         artifacts = discover_task_artifacts([campaign_dir])
         outputs = merge_task_artifacts(
             artifacts,
-            args.output_dir,
-            configuration_path=args.config,
+            output_dir,
+            configuration_path=config_path,
             append=False,
         )
+        manifest_path = output_dir / RUN_MANIFEST_NAME
         _atomic_write_json(
-            args.output_dir / RUN_MANIFEST_NAME,
+            manifest_path,
             {
                 "schema_version": 1,
                 "executor": "local",
                 "task_count": len(artifacts),
                 "combinations": len(combinations),
-                "seeds": list(seeds),
+                "seeds": list(resolved_seeds),
+                "backend": backend,
+                "jobs": effective_jobs,
                 "outputs": [str(path) for path in outputs],
             },
         )
@@ -2868,10 +2948,41 @@ def command_run(args: argparse.Namespace) -> int:
         )
         raise
     else:
-        if not args.keep_temp:
+        if not keep_temp:
             shutil.rmtree(campaign_dir, ignore_errors=True)
         else:
             logger.info("Keeping local task shards at %s", campaign_dir)
+
+    return LocalCampaignResult(
+        outputs=tuple(outputs),
+        manifest_path=manifest_path,
+        task_count=len(specs),
+        combination_count=len(combinations),
+        seeds=resolved_seeds,
+        effective_jobs=effective_jobs,
+        retained_temp_dir=campaign_dir if keep_temp else None,
+    )
+
+
+def command_run(args: argparse.Namespace) -> int:
+    source = _load_yaml(args.config)
+    seeds = _resolve_seeds(source, args.runs, args.seeds, args.seed)
+    result = run_local_campaign(
+        args.config,
+        args.simulator_binary,
+        seeds=seeds,
+        output_dir=args.output_dir,
+        temp_base=args.temp_base,
+        backend=args.backend,
+        jobs=args.jobs,
+        retries=args.retries,
+        retry_new_seed=args.retry_new_seed,
+        keep_temp=args.keep_temp,
+        progress=args.progress,
+        gui=args.gui,
+        simulator_output=_simulator_output_mode(args),
+        only_output=args.only_output,
+    )
 
     if args.json:
         print(
@@ -2879,16 +2990,20 @@ def command_run(args: argparse.Namespace) -> int:
                 {
                     "operation": "run",
                     "ok": True,
-                    "task_count": len(specs),
-                    "outputs": [str(path) for path in outputs],
-                    "temp_dir": str(campaign_dir) if args.keep_temp else None,
+                    "task_count": result.task_count,
+                    "outputs": [str(path) for path in result.outputs],
+                    "temp_dir": (
+                        str(result.retained_temp_dir)
+                        if result.retained_temp_dir is not None
+                        else None
+                    ),
                 },
                 sort_keys=True,
             )
         )
     elif not args.quiet:
-        print(f"Completed {len(specs)} local task(s).")
-        for output in outputs:
+        print(f"Completed {result.task_count} local task(s).")
+        for output in result.outputs:
             print(f"  {output}")
     return 0
 

@@ -77,7 +77,7 @@ jobs:
           python3 -m pip install --upgrade pip
           cd scripts
           python3 -m pip install -r requirements.txt
-          python3 -m pip install .
+          python3 -m pip install '.[optim]'
 
       # Step 2: Install dependencies (macOS)
       - name: Install dependencies (macOS)
@@ -187,6 +187,21 @@ jobs:
           dos2unix ./build.sh || true
           bash ./build.sh Release
 
+      - name: Test Python batch and optimization tools
+        if: matrix.os != 'windows-latest'
+        run: |
+          source .venv/bin/activate
+          python3 -m unittest discover -s scripts/python_tests -v
+
+      - name: Test Python batch and optimization tools (Windows+WSL2)
+        if: matrix.os == 'windows-latest'
+        shell: wsl-bash {0}
+        run: |
+          REPO="$(wslpath -u '${{ github.workspace }}')"
+          cd "$REPO"
+          source .venv/bin/activate
+          python3 -m unittest discover -s scripts/python_tests -v
+
       # Step 4: Run tests
       - name: Launch Pogosim
         if: matrix.os != 'windows-latest'
@@ -197,7 +212,7 @@ jobs:
           ./examples/neighbor_counter/neighbor_counter -c conf/pair.yaml -g -nr
           ./examples/walls/walls -c conf/pair.yaml -g -nr
           ./examples/cpp_helloworld/cpp_helloworld -c conf/pair.yaml -g -nr
-          ./scripts/pogosim/pogobatch.py -c conf/pair.yaml -S examples/blooming/blooming -r 1 -t tmp -o results/tmp
+          ./scripts/pogosim/pogobatch.py run -c conf/pair.yaml -S examples/blooming/blooming -r 1 -t tmp -o results/tmp
           cd template_prj && make clean sim && ./template_prj -c conf/test.yaml -g -nr && cd ..
 
       # Step 4: Run tests
@@ -214,7 +229,7 @@ jobs:
           ./examples/neighbor_counter/neighbor_counter -c conf/pair.yaml -g -nr
           ./examples/walls/walls -c conf/pair.yaml -g -nr
           ./examples/cpp_helloworld/cpp_helloworld -c conf/pair.yaml -g -nr
-          python ./scripts/pogosim/pogobatch.py -c conf/pair.yaml -S examples/blooming/blooming -r 1 -t tmp -o results/tmp
+          python ./scripts/pogosim/pogobatch.py run -c conf/pair.yaml -S examples/blooming/blooming -r 1 -t tmp -o results/tmp
           cd template_prj && make clean sim && ./template_prj -c conf/test.yaml -g -nr && cd ..
 
 #      # Step 4: Run tests

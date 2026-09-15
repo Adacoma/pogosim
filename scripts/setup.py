@@ -15,6 +15,7 @@ setup(
     entry_points={
         "console_scripts": [
             "pogobatch = pogosim.pogobatch:main",
+            "pogoptim = pogosim.pogoptim:main",
         ],
     },
     install_requires=[
@@ -27,6 +28,12 @@ setup(
         "scikit-learn>=1.7.1",
         # "ray>=2.0",
     ],
+    extras_require={
+        "optim": [
+            "cma>=3.4.0",
+            "qdpy>=0.1.2.2",
+        ],
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",

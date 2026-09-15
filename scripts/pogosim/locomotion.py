@@ -12,7 +12,7 @@ from typing import List, Dict, Tuple, Optional, Tuple
 
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
-from matplotlib.cm import get_cmap
+from matplotlib import colormaps
 from matplotlib.collections import LineCollection
 import numpy as np
 from numpy.typing import ArrayLike
@@ -674,7 +674,7 @@ def _render_single_run(
 
     times      = run_df["time"].unique()
     robot_ids  = np.sort(run_df["robot_id"].unique())
-    cmap       = get_cmap(robot_cmap_name)
+    cmap       = colormaps.get_cmap(robot_cmap_name)
     colour_map = {rid: cmap(i % cmap.N)[:3] for i, rid in enumerate(robot_ids)}
 
     tail_times: List[float] = []

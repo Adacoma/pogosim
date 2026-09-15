@@ -1,38 +1,45 @@
 ---
 
-## Batch configuration use the key "batch_options" to specify configuration values options for a given key.
-##  The key "result_filename_format" contains the format of the exported feather files, depending on selected batch values.
-#
-## Format of the generated dataframes, one for each configuration
-#result_filename_format: "result_{objects.robots.nb}_{arena_file}.feather"
+# Pogoptim reads this block and removes it before launching Pogosim.
 
 optimization:
-    algorithm: mapelites         # "cmaes" | "random" | "mapelites"
+    algorithm: random             # "cmaes" | "random" | "mapelites"
     seed: 42
-    budget: 1                  # total evaluations
-    runs: 2                      # runs per batch combo
+    budget: 4                    # candidate evaluations
+    runs: 2                      # simulations per batch combination and candidate
     retries: 5
-    backend: multiprocessing     # for PogobotBatchRunner
+    retry_new_seed: true
+    backend: multiprocessing     # sequential | multiprocessing | ray
+    parallelism:
+        candidate_jobs: 1        # candidates evaluated concurrently
+        batch_jobs: 0            # 0 = automatically share available CPUs
 
-    output_dir: opt_out          # where to write artifacts
+    output_dir: opt_out
+    temp_base: tmp_opt
+    keep_temp: false
 
 #    objective:
 #        path: scripts/my_objective.py
-#        func: compute_objective     # def compute_objective(df): ...
+#        func: compute_objective     # returns fitness or (fitness, features)
 
     cmaes:
         sigma0: 0.25
         popsize: 24
 
     qd:
-        shape: [48, 48]            # or "48,48"
-        init_samples: 1
+        shape: [48, 48]
         batch: 32
-        parallel: none # concurrent       # ← enables parallel QD (uses ProcessPool)
-        sel_pb: 0.9
-        init_pb: 0.1
-        mut_pb: 0.4
-        eta: 20.0
+        features_domain: [[0.0, 1.0], [0.0, 1.0]]
+        algo_kwargs:
+            sel_pb: 0.9
+            init_pb: 0.1
+            mut_pb: 0.4
+            eta: 20.0
+
+# Batch-only output settings use Pogobatch's reserved namespace.
+pogobatch:
+    result_filename_format: "result_{arena_file}.feather"
+    result_new_columns: [arena_file]
 
 window_width: 600       # In pixels
 window_height: 600      # In pixels

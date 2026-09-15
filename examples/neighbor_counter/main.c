@@ -28,7 +28,8 @@
 // "Global" variables set by the YAML configuration file (in simulation) by the function global_setup, or with a fixed values (in experiments). These values should be seen as constants shared by all robots.
 
 /** Age threshold (ms) after which a neighbour entry is considered obsolete.  */
-uint32_t max_age = 1200;
+//uint32_t max_age = 1200;
+uint32_t max_age = 300;
 
 /** Set to true to have moving robots.                                       */
 bool moving_robots = false;
