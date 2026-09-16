@@ -37,7 +37,8 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest]  # Test on multiple OS
+        # The Windows entry exercises WSL2; native Windows has its own job below.
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -105,24 +106,6 @@ jobs:
           cd scripts
           python -m pip install -r requirements.txt
           python -m pip install .
-
-
-#      # Step 2: Install dependencies (Windows)
-#      - name: Install dependencies (Windows)
-#        if: matrix.os == 'windows-latest'
-#        run: |
-#          choco install cmake git boost sdl2 sdl2_image sdl2_ttf yaml-cpp spdlog apache-arrow fmt -y
-#
-#          # Install Box2D
-#          git clone https://github.com/erincatto/box2d.git
-#          cd box2d
-#          git checkout 28adacf82377d4113f2ed00586141463244b9d10
-#          mkdir build
-#          cd build
-#          cmake -DBOX2D_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX="C:/Program Files/Box2D" ..
-#          cmake --build .
-#          cmake --install . --prefix "C:/Program Files/Box2D"
-#          cd ../..
 
       - name: Setup WSL2 (Ubuntu 24.04)
         if: matrix.os == 'windows-latest'
@@ -231,6 +214,90 @@ jobs:
           ./examples/cpp_helloworld/cpp_helloworld -c conf/pair.yaml -g -nr
           python ./scripts/pogosim/pogobatch.py run -c conf/pair.yaml -S examples/blooming/blooming -r 1 -t tmp -o results/tmp
           cd template_prj && make clean sim && ./template_prj -c conf/test.yaml -g -nr && cd ..
+
+  windows-native-build-and-test:
+    name: Native Windows (MSYS2 UCRT64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        # UCRT64 produces native Windows executables; it is not a WSL shell.
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up native Windows toolchain and dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            make
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-boost
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-SDL2_image
+            mingw-w64-ucrt-x86_64-SDL2_gfx
+            mingw-w64-ucrt-x86_64-SDL2_ttf
+            mingw-w64-ucrt-x86_64-yaml-cpp
+            mingw-w64-ucrt-x86_64-spdlog
+            mingw-w64-ucrt-x86_64-arrow
+            mingw-w64-ucrt-x86_64-fmt
+
+      - name: Build the pinned Box2D 3.x revision
+        run: |
+          set -euxo pipefail
+          # Match the Box2D 3.x revision used by the Linux, macOS, and WSL2 jobs.
+          git clone https://github.com/erincatto/box2d.git box2d-windows-native
+          git -C box2d-windows-native checkout 28adacf82377d4113f2ed00586141463244b9d10
+          cmake -S box2d-windows-native -B box2d-windows-native/build -G Ninja \
+            -DBOX2D_SAMPLES=OFF \
+            -DBOX2D_UNIT_TESTS=OFF \
+            -DBOX2D_DOCS=OFF \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/ucrt64
+          cmake --build box2d-windows-native/build --parallel
+          cmake --install box2d-windows-native/build
+
+      - name: Build Pogosim natively
+        run: |
+          set -euxo pipefail
+          cmake -S . -B build-windows-native -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/ucrt64
+          cmake --build build-windows-native --parallel
+          cmake --install build-windows-native
+
+      - name: Build and run native simulator smoke test
+        run: |
+          set -euxo pipefail
+          # Override the target suffix because MinGW appends .exe automatically.
+          make -C examples/test_flash_state clean sim SIM_TARGET=test_flash_state.exe
+          # The hosted Windows runner has no interactive display.
+          export SDL_VIDEODRIVER=dummy
+          ./examples/test_flash_state/test_flash_state.exe \
+            -c examples/test_flash_state/conf/export.yaml -g -nr
+          ./examples/test_flash_state/test_flash_state.exe \
+            -c examples/test_flash_state/conf/import.yaml -g -nr
+
+      - name: Set up native CPython
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test Python batch and optimization tools natively
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          Push-Location scripts
+          python -m pip install .
+          Pop-Location
+          python -m unittest discover -s scripts/python_tests -v
 
 #      # Step 4: Run tests
 #      - name: Run tests

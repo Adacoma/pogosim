@@ -16,6 +16,16 @@
 #include <type_traits>
 #include <utility>
 
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 namespace pogosim::flash_state {
 namespace {
 
@@ -368,7 +378,29 @@ void save_atomic(
 
     try {
         write_archive(temporary, robots);
+#ifdef _WIN32
+        // std::filesystem::rename cannot replace an existing file on Windows.
+        // MoveFileExW preserves the same-path import/export workflow while
+        // keeping replacement within one filesystem operation.
+        if (!MoveFileExW(
+                temporary.c_str(),
+                filename.c_str(),
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
+            )) {
+            const std::error_code error(
+                static_cast<int>(GetLastError()),
+                std::system_category()
+            );
+            throw std::filesystem::filesystem_error(
+                "Unable to replace flash-state archive",
+                temporary,
+                filename,
+                error
+            );
+        }
+#else
         std::filesystem::rename(temporary, filename);
+#endif
     } catch (...) {
         std::error_code ignored;
         std::filesystem::remove(temporary, ignored);

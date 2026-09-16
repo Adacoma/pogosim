@@ -1,6 +1,6 @@
 # Current project state
 
-Last updated: 2026-09-15
+Last updated: 2026-09-16
 
 ## Inspected
 
@@ -19,7 +19,7 @@ Last updated: 2026-09-15
 - Results are buffered into compressed Arrow/Feather files with configuration, arena, and version metadata. Pogobatch expands parameter choices and seeds, runs tasks locally or through Rundra, records manifests, and merges task outputs.
 - Pogoptim now reuses Pogobatch's public local-campaign API for Random Search, CMA-ES, and MAP-Elites, with YAML/CLI precedence and recorded evaluation provenance.
 - Optional flash-state archives now carry each robot's 64 KiB user flash plus motor direction/power calibration memories between simulator invocations, without checkpointing transient or physical state.
-- CI combines multi-platform builds and headless simulator smoke runs with focused Python regression tests for Pogobatch and Pogoptim.
+- CI combines Linux, macOS, WSL2, and native Windows builds and headless simulator smoke runs with focused Python regression tests for Pogobatch and Pogoptim.
 
 ## Remains unknown
 
@@ -28,6 +28,7 @@ Last updated: 2026-09-15
 - Which untracked configurations and example directories are active research work intended for integration.
 - Compatibility of optional analysis tools other than Pogoptim with current dependency releases.
 - Whether every example remains suitable for physical firmware as well as simulation, especially examples using optional `pogo-utils` functionality.
+- The native Windows CI definition has not yet been observed on a hosted Windows runner; local validation cannot reproduce that toolchain.
 
 ## Working analyses
 
@@ -35,6 +36,7 @@ Last updated: 2026-09-15
 - The Pogoptim/Pogobatch migration has passed focused unit tests, optional CMA-ES/QDpy smoke tests, a nested-worker fake-simulator campaign, and one-evaluation Random/MAP-Elites runs against the built `run_and_tumble` controller; longer scientific runs have not been benchmarked.
 - Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
 - A dedicated `test_flash_state` example now provides a reproducible two-run simulator smoke test and a two-boot real-robot test while preserving hardware motor calibration values.
+- Native Windows CI uses MSYS2/UCRT64 and the same pinned Box2D 3.x revision as the other platforms, runs the flash-state round trip as a Windows executable, and runs the Python suite under native CPython.
 - The worktree contains untracked quadrant-motility and magnetometer-related examples/configurations; their scientific status has not been assessed.
 
 ## Current scientific decisions
