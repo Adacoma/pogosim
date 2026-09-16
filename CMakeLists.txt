@@ -21,7 +21,11 @@ find_package(Boost 1.70 REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_gfx REQUIRED)
 find_package(SDL2_ttf REQUIRED)
-#find_package(Box2D REQUIRED)
+# The Unix toolchains install Box2D headers in their default compiler search
+# paths. MSVC needs the package target to discover the separately pinned build.
+if(MSVC)
+    find_package(box2d CONFIG REQUIRED)
+endif()
 find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(Arrow REQUIRED)
@@ -75,6 +79,9 @@ target_include_directories(${PROJECT_NAME}
 target_compile_definitions(${PROJECT_NAME}
     PUBLIC
         DATA_DIR="${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}"
+        # MSVC exposes the standard math constants only when this is defined
+        # before <cmath>; command-line target definitions satisfy that rule.
+        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:_USE_MATH_DEFINES>
 )
 
 # Link libraries
@@ -82,11 +89,14 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         #Boost::system
         SDL2::SDL2
-        #        Box2D::Box2D
         yaml-cpp::yaml-cpp
         spdlog::spdlog
         fmt::fmt
 )
+
+if(MSVC)
+    target_link_libraries(${PROJECT_NAME} PUBLIC box2d::box2d)
+endif()
 
 # Set compile options
 #target_compile_options(${PROJECT_NAME}

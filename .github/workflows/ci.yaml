@@ -216,7 +216,7 @@ jobs:
           cd template_prj && make clean sim && ./template_prj -c conf/test.yaml -g -nr && cd ..
 
   windows-native-build-and-test:
-    name: Native Windows (MSYS2 UCRT64)
+    name: Windows (MSYS2 UCRT64 / MinGW-w64)
     runs-on: windows-latest
     defaults:
       run:
@@ -298,6 +298,82 @@ jobs:
           python -m pip install .
           Pop-Location
           python -m unittest discover -s scripts/python_tests -v
+
+  windows-msvc-build:
+    name: Native Windows (MSVC)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install native Windows dependencies with vcpkg
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Use the vcpkg installation provided by the hosted Windows runner.
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install `
+            arrow:x64-windows `
+            boost-system:x64-windows `
+            fmt:x64-windows `
+            sdl2:x64-windows `
+            sdl2-gfx:x64-windows `
+            sdl2-image:x64-windows `
+            sdl2-ttf:x64-windows `
+            spdlog:x64-windows `
+            yaml-cpp:x64-windows
+          if ($LASTEXITCODE -ne 0) {
+            throw "vcpkg failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Build the pinned Box2D 3.x revision with MSVC
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Keep the simulator on the same Box2D 3.x revision as every other CI job.
+          git clone https://github.com/erincatto/box2d.git box2d-windows-msvc
+          git -C box2d-windows-msvc checkout 28adacf82377d4113f2ed00586141463244b9d10
+          $box2dPrefix = Join-Path $env:RUNNER_TEMP 'box2d-windows-msvc-install'
+          cmake -S box2d-windows-msvc -B box2d-windows-msvc/build `
+            -G 'Visual Studio 17 2022' -A x64 `
+            -DBOX2D_SAMPLES=OFF `
+            -DBOX2D_UNIT_TESTS=OFF `
+            -DBOX2D_DOCS=OFF `
+            -DCMAKE_INSTALL_PREFIX="$box2dPrefix"
+          if ($LASTEXITCODE -ne 0) { throw "Box2D configuration failed" }
+          cmake --build box2d-windows-msvc/build --config Release --parallel
+          if ($LASTEXITCODE -ne 0) { throw "Box2D build failed" }
+          cmake --install box2d-windows-msvc/build --config Release
+          if ($LASTEXITCODE -ne 0) { throw "Box2D installation failed" }
+          "BOX2D_MSVC_PREFIX=$box2dPrefix" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Configure and build Pogosim with MSVC
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installPrefix = Join-Path $env:RUNNER_TEMP 'pogosim-windows-msvc-install'
+          $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT 'scripts/buildsystems/vcpkg.cmake'
+          cmake -S . -B build-windows-msvc `
+            -G 'Visual Studio 17 2022' -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$toolchain" `
+            -DCMAKE_PREFIX_PATH="$env:BOX2D_MSVC_PREFIX" `
+            -DCMAKE_INSTALL_PREFIX="$installPrefix"
+          if ($LASTEXITCODE -ne 0) { throw "Pogosim configuration failed" }
+          cmake --build build-windows-msvc --config Release --parallel
+          if ($LASTEXITCODE -ne 0) { throw "Pogosim MSVC build failed" }
+          cmake --install build-windows-msvc --config Release
+          if ($LASTEXITCODE -ne 0) { throw "Pogosim MSVC installation failed" }
+
+      - name: Verify the MSVC build artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The Visual Studio generator places Release static libraries here.
+          $library = Join-Path $PWD 'build-windows-msvc\Release\pogosim.lib'
+          if (-not (Test-Path -LiteralPath $library -PathType Leaf)) {
+            throw "Expected MSVC library was not produced: $library"
+          }
+          Write-Host "Verified native MSVC artifact: $library"
 
 #      # Step 4: Run tests
 #      - name: Run tests

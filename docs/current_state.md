@@ -19,7 +19,7 @@ Last updated: 2026-09-16
 - Results are buffered into compressed Arrow/Feather files with configuration, arena, and version metadata. Pogobatch expands parameter choices and seeds, runs tasks locally or through Rundra, records manifests, and merges task outputs.
 - Pogoptim now reuses Pogobatch's public local-campaign API for Random Search, CMA-ES, and MAP-Elites, with YAML/CLI precedence and recorded evaluation provenance.
 - Optional flash-state archives now carry each robot's 64 KiB user flash plus motor direction/power calibration memories between simulator invocations, without checkpointing transient or physical state.
-- CI combines Linux, macOS, WSL2, and native Windows builds and headless simulator smoke runs with focused Python regression tests for Pogobatch and Pogoptim.
+- CI combines Linux, macOS, WSL2, MSYS2/MinGW-w64, and native MSVC builds with headless simulator smoke runs and focused Python regression tests for Pogobatch and Pogoptim.
 
 ## Remains unknown
 
@@ -28,7 +28,7 @@ Last updated: 2026-09-16
 - Which untracked configurations and example directories are active research work intended for integration.
 - Compatibility of optional analysis tools other than Pogoptim with current dependency releases.
 - Whether every example remains suitable for physical firmware as well as simulation, especially examples using optional `pogo-utils` functionality.
-- The native Windows CI definition has not yet been observed on a hosted Windows runner; local validation cannot reproduce that toolchain.
+- The MSYS2/MinGW-w64 CI has been exercised on hosted Windows, but the new PowerShell/MSVC definition has not yet been observed there; local validation cannot reproduce that toolchain.
 
 ## Working analyses
 
@@ -36,8 +36,10 @@ Last updated: 2026-09-16
 - The Pogoptim/Pogobatch migration has passed focused unit tests, optional CMA-ES/QDpy smoke tests, a nested-worker fake-simulator campaign, and one-evaluation Random/MAP-Elites runs against the built `run_and_tumble` controller; longer scientific runs have not been benchmarked.
 - Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
 - A dedicated `test_flash_state` example now provides a reproducible two-run simulator smoke test and a two-boot real-robot test while preserving hardware motor calibration values.
-- Native Windows CI uses MSYS2/UCRT64 and the same pinned Box2D 3.x revision as the other platforms, runs the flash-state round trip as a Windows executable, and runs the Python suite under native CPython.
+- The Windows jobs now distinguish MSYS2/UCRT64 with MinGW-w64 from a native PowerShell/MSVC build. Both use the same pinned Box2D 3.x revision; the MSYS2 job retains the simulator flash-state smoke test and native-CPython suite, while the initial MSVC job validates the CMake library build and installed artifact.
 - CMake resolves GNU make explicitly for optional example targets, so generated Ninja builds no longer contain Make-only `$(MAKE)` syntax.
+- MSVC builds define `_USE_MATH_DEFINES` at the target level so existing public headers and sources can use the standard math constants consistently.
+- The README's Windows installation section still describes MSYS2/UCRT64 and must be replaced after the PowerShell/MSVC CI path is validated.
 - The worktree contains untracked quadrant-motility and magnetometer-related examples/configurations; their scientific status has not been assessed.
 
 ## Current scientific decisions
