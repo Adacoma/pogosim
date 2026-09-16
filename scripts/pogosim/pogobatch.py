@@ -1104,8 +1104,16 @@ def _launch_simulator(
     gui: bool,
     simulator_output: str = "normal",
 ) -> None:
+    # Windows cannot execute a Python source file through its shebang. Use the
+    # active interpreter explicitly for Python simulator fixtures and scripts;
+    # native Pogosim executables retain the direct-launch path.
+    simulator_command = (
+        [sys.executable, simulator_binary]
+        if Path(simulator_binary).suffix.casefold() == ".py"
+        else [simulator_binary]
+    )
     command = [
-        simulator_binary,
+        *simulator_command,
         "-c",
         str(config_path),
         "-nr",

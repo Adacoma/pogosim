@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -139,6 +140,18 @@ class LocalCampaignApiTests(unittest.TestCase):
         final_attempt = self.root / "campaign/combo_000000/run_000000_seed_6_try_1"
         self.assertFalse(result["ok"])
         self.assertTrue((final_attempt / "input_config.yaml").is_file())
+
+    def test_python_simulator_uses_current_interpreter(self) -> None:
+        completed = subprocess.CompletedProcess([], 0, stdout="")
+        with mock.patch.object(
+            pogobatch.subprocess, "run", return_value=completed
+        ) as run:
+            pogobatch._launch_simulator(
+                self.config, "fake_simulator.py", 3, gui=False
+            )
+
+        command = run.call_args.args[0]
+        self.assertEqual(command[:2], [sys.executable, "fake_simulator.py"])
 
     def test_end_to_end_with_fake_simulator(self) -> None:
         simulator = self.root / "fake_simulator.py"
