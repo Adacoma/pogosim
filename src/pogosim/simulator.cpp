@@ -1867,7 +1867,9 @@ void Simulation::delete_old_data() {
             return;
         }
         glogger->info("Deleting old data files in directory: {}", directory.string());
-        delete_files_with_extension(directory, ".png", false);
+        // filesystem::path uses a wide native character type on Windows, so
+        // convert explicitly for the existing string-based utility API.
+        delete_files_with_extension(directory.string(), ".png", false);
     }
 }
 
