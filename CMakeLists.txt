@@ -173,24 +173,27 @@ add_custom_target(examples #ALL
     COMMENT "Building all examples"
 )
 
-# For each example directory
-foreach(EXAMPLE ${EXAMPLE_DIRS})
-    if(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE})
-        # Create a custom target for this specific example
-        add_custom_target(example_${EXAMPLE}
-            COMMAND ${CMAKE_COMMAND} -E echo "Building example: ${EXAMPLE}"
-            #COMMAND make clean
-            #COMMAND make sim
-            #WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE}
-            COMMAND $(MAKE) -C ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE} clean
-            COMMAND $(MAKE) -C ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE} sim
-            DEPENDS ${PROJECT_NAME}
-            USES_TERMINAL
-            COMMENT "Building example ${EXAMPLE}"
-        )
-        
-        # Add this example target as a dependency of the main examples target
-        add_dependencies(examples example_${EXAMPLE})
-    endif()
-endforeach()
+# Example directories use GNU-style Makefiles. Resolve make through CMake so
+# generator-specific syntax such as $(MAKE) is not written into Ninja files.
+find_program(POGOSIM_MAKE_EXECUTABLE NAMES gmake make)
+if(POGOSIM_MAKE_EXECUTABLE)
+    # For each example directory
+    foreach(EXAMPLE ${EXAMPLE_DIRS})
+        if(IS_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE})
+            # Create a custom target for this specific example
+            add_custom_target(example_${EXAMPLE}
+                COMMAND ${CMAKE_COMMAND} -E echo "Building example: ${EXAMPLE}"
+                COMMAND ${POGOSIM_MAKE_EXECUTABLE} -C ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE} clean
+                COMMAND ${POGOSIM_MAKE_EXECUTABLE} -C ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE} sim
+                DEPENDS ${PROJECT_NAME}
+                USES_TERMINAL
+                COMMENT "Building example ${EXAMPLE}"
+            )
 
+            # Add this example target as a dependency of the main examples target
+            add_dependencies(examples example_${EXAMPLE})
+        endif()
+    endforeach()
+else()
+    message(STATUS "GNU make not found; per-example build targets are unavailable")
+endif()

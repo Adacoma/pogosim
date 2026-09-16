@@ -37,6 +37,7 @@ Last updated: 2026-09-16
 - Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
 - A dedicated `test_flash_state` example now provides a reproducible two-run simulator smoke test and a two-boot real-robot test while preserving hardware motor calibration values.
 - Native Windows CI uses MSYS2/UCRT64 and the same pinned Box2D 3.x revision as the other platforms, runs the flash-state round trip as a Windows executable, and runs the Python suite under native CPython.
+- CMake resolves GNU make explicitly for optional example targets, so generated Ninja builds no longer contain Make-only `$(MAKE)` syntax.
 - The worktree contains untracked quadrant-motility and magnetometer-related examples/configurations; their scientific status has not been assessed.
 
 ## Current scientific decisions
