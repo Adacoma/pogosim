@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 from pathlib import Path
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -235,7 +236,9 @@ class PogoptimEndToEndTests(unittest.TestCase):
                 mock.patch.object(pogoptim, "evaluate_candidate", side_effect=failed_candidate),
             ):
                 with self.assertRaisesRegex(RuntimeError, "No successful evaluations"):
-                    pogoptim.optimize(str(config), "/bin/true", settings)
+                    # The candidate evaluator is mocked, so use the current
+                    # interpreter as a portable, existing executable fixture.
+                    pogoptim.optimize(str(config), sys.executable, settings)
 
             import json
 
