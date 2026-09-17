@@ -343,8 +343,8 @@ jobs:
           git clone https://github.com/erincatto/box2d.git box2d-windows-msvc
           git -C box2d-windows-msvc checkout 28adacf82377d4113f2ed00586141463244b9d10
           $box2dPrefix = Join-Path $env:RUNNER_TEMP 'box2d-windows-msvc-install'
-          # This Box2D revision declares its export before GNUInstallDirs, so
-          # define the library directory before configuration begins.
+          # This Box2D revision declares its target and export before
+          # GNUInstallDirs, so define both target-facing directories early.
           cmake -S box2d-windows-msvc -B box2d-windows-msvc/build `
             -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
@@ -352,6 +352,7 @@ jobs:
             -DBOX2D_UNIT_TESTS=OFF `
             -DBOX2D_DOCS=OFF `
             -DCMAKE_INSTALL_LIBDIR=lib `
+            -DCMAKE_INSTALL_INCLUDEDIR=include `
             -DCMAKE_INSTALL_PREFIX="$box2dPrefix"
           if ($LASTEXITCODE -ne 0) { throw "Box2D configuration failed" }
           cmake --build box2d-windows-msvc/build --parallel
