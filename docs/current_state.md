@@ -28,7 +28,7 @@ Last updated: 2026-09-17
 - Which untracked configurations and example directories are active research work intended for integration.
 - Compatibility of optional analysis tools other than Pogoptim with current dependency releases.
 - Whether every example remains suitable for physical firmware as well as simulation, especially examples using optional `pogo-utils` functionality.
-- The MSYS2/MinGW-w64 CI has been exercised on hosted Windows. The PowerShell/MSVC job builds Box2D with Visual Studio 2026's `cl.exe`; because the pinned Box2D revision creates its target/export before loading GNU install directories, CI must supply both its library and include directories explicitly. The complete correction has not yet been rerun, and local validation cannot reproduce MSVC.
+- The MSYS2/MinGW-w64 and PowerShell/MSVC library builds have both passed on hosted Windows. Native MSVC controller/example executable targets remain unavailable because the example Makefiles use GNU-specific compiler and linker options.
 
 ## Working analyses
 
@@ -39,7 +39,7 @@ Last updated: 2026-09-17
 - The Windows jobs now distinguish MSYS2/UCRT64 with MinGW-w64 from a native PowerShell/MSVC build. Both use the same pinned Box2D 3.x revision; the MSYS2 job retains the simulator flash-state smoke test and native-CPython suite, while the MSVC job initializes the latest installed `cl.exe`, builds through Ninja, exports Box2D's library and public headers through one explicit install prefix, and validates the CMake library artifact.
 - CMake resolves GNU make explicitly for optional example targets, so generated Ninja builds no longer contain Make-only `$(MAKE)` syntax.
 - MSVC builds define `_USE_MATH_DEFINES` at the target level so existing public headers and sources can use the standard math constants consistently.
-- The README's Windows installation section still describes MSYS2/UCRT64 and must be replaced after the PowerShell/MSVC CI path is validated.
+- The README documents the validated PowerShell/MSVC, Ninja, vcpkg, and pinned Box2D library installation path without requiring MSYS2 or WSL.
 - The worktree contains untracked quadrant-motility and magnetometer-related examples/configurations; their scientific status has not been assessed.
 
 ## Current scientific decisions
@@ -68,9 +68,10 @@ Last updated: 2026-09-17
 
 ## Next concrete tasks
 
-1. Decide whether the untracked quadrant-motility and magnetometer work should be documented, tested, and committed.
-2. Add quantitative validation references or datasets for motion, sensing, timing, and infrared communication models.
-3. Extend unit/regression coverage beyond the new batch/optimization tests to simulation scheduling, neighbor detection, and data logging.
-4. Benchmark nested Pogoptim parallelism and optimizer convergence on representative built controllers.
-5. Reconcile the CMake project version with the canonical C/Python version and document the release process.
-6. Record benchmark envelopes for runtime and memory as robot count and logging volume increase.
+1. Add native CMake controller/example executable targets and an MSVC simulator smoke test.
+2. Decide whether the untracked quadrant-motility and magnetometer work should be documented, tested, and committed.
+3. Add quantitative validation references or datasets for motion, sensing, timing, and infrared communication models.
+4. Extend unit/regression coverage beyond the new batch/optimization tests to simulation scheduling, neighbor detection, and data logging.
+5. Benchmark nested Pogoptim parallelism and optimizer convergence on representative built controllers.
+6. Reconcile the CMake project version with the canonical C/Python version and document the release process.
+7. Record benchmark envelopes for runtime and memory as robot count and logging volume increase.

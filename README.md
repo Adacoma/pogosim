@@ -103,6 +103,127 @@ cd pogosim
 Note that some (optional) advanced examples need the [pogo-utils](https://github.com/Adacoma/pogo-utils) library -- see below section "Simple way to create a new pogobot/pogosim project" to know how to register associated environment variables so that the Makefiles can assess pogo-utils. If pogo-utils is not present, those examples won't be compiled, but the rest of Pogosim will compile without errors.
 
 
+## Install on Native Windows (Experimental)
+
+This procedure matches the native Windows CI build: it uses Microsoft's x64
+MSVC compiler, PowerShell, Ninja, and the `x64-windows` vcpkg triplet.
+This procedure is experimental.
+
+Install the following prerequisites:
+
+- Visual Studio 2022 or newer with the **Desktop development with C++**
+  workload and a Windows SDK;
+- Git, CMake, and Ninja;
+- [vcpkg](https://github.com/microsoft/vcpkg);
+- optionally, 64-bit Python 3.12 for the Python tools.
+
+Open an **x64 Developer PowerShell for Visual Studio**. `cl.exe` must resolve
+to an x64 MSVC compiler before continuing:
+
+```powershell
+Get-Command cl.exe
+Get-Command cmake.exe
+Get-Command ninja.exe
+```
+
+Install vcpkg if it is not already available. The following user-local
+location is used throughout this section; change it consistently if desired:
+
+```powershell
+$vcpkgRoot = Join-Path $env:USERPROFILE 'vcpkg'
+git clone https://github.com/microsoft/vcpkg.git $vcpkgRoot
+& "$vcpkgRoot\bootstrap-vcpkg.bat"
+$env:VCPKG_ROOT = $vcpkgRoot
+```
+
+Install Pogosim's native dependencies through vcpkg:
+
+```powershell
+& "$env:VCPKG_ROOT\vcpkg.exe" install `
+    arrow:x64-windows `
+    boost-system:x64-windows `
+    fmt:x64-windows `
+    sdl2:x64-windows `
+    sdl2-gfx:x64-windows `
+    sdl2-image:x64-windows `
+    sdl2-ttf:x64-windows `
+    spdlog:x64-windows `
+    yaml-cpp:x64-windows
+```
+
+Clone Pogosim and enter its source directory:
+
+```powershell
+git clone https://github.com/Adacoma/pogosim.git
+Set-Location pogosim
+```
+
+Compile and install the exact Box2D 3.x revision used by Pogosim. The explicit
+install directory options are required by this Box2D revision so that its
+CMake package exports both the library and its public headers correctly:
+
+```powershell
+$depsRoot = Join-Path (Split-Path -Parent (Get-Location)) 'pogosim-msvc-deps'
+$box2dSource = Join-Path $depsRoot 'box2d-source'
+$box2dBuild = Join-Path $depsRoot 'box2d-build'
+$box2dInstall = Join-Path $depsRoot 'box2d-install'
+
+New-Item -ItemType Directory -Force $depsRoot | Out-Null
+git clone https://github.com/erincatto/box2d.git $box2dSource
+git -C $box2dSource checkout 28adacf82377d4113f2ed00586141463244b9d10
+
+cmake -S $box2dSource -B $box2dBuild -G Ninja `
+    -DCMAKE_BUILD_TYPE=Release `
+    -DBOX2D_SAMPLES=OFF `
+    -DBOX2D_UNIT_TESTS=OFF `
+    -DBOX2D_DOCS=OFF `
+    -DCMAKE_INSTALL_LIBDIR=lib `
+    -DCMAKE_INSTALL_INCLUDEDIR=include `
+    -DCMAKE_INSTALL_PREFIX="$box2dInstall"
+cmake --build $box2dBuild --parallel
+cmake --install $box2dBuild
+```
+
+Configure, compile, and install Pogosim. The installation is placed under the
+current user's local application-data directory and does not require
+administrator privileges:
+
+```powershell
+$vcpkgToolchain = Join-Path $env:VCPKG_ROOT 'scripts\buildsystems\vcpkg.cmake'
+$box2dConfig = Join-Path $box2dInstall 'lib\cmake\box2d'
+$pogosimInstall = Join-Path $env:LOCALAPPDATA 'pogosim'
+
+cmake -S . -B build-windows-msvc -G Ninja `
+    -DCMAKE_BUILD_TYPE=Release `
+    -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" `
+    -Dbox2d_DIR="$box2dConfig" `
+    -DCMAKE_INSTALL_PREFIX="$pogosimInstall"
+cmake --build build-windows-msvc --parallel
+cmake --install build-windows-msvc
+```
+
+The resulting static library is `build-windows-msvc\pogosim.lib`; the install
+tree contains the library, public headers, fonts, and arenas. Rerun the final
+three CMake commands after updating the Pogosim source.
+
+The current CMake project builds the Pogosim library with MSVC, but it does not
+yet build the controller examples as native MSVC executables. Their existing
+Makefiles use GNU-specific compiler and linker options. Use the Linux, macOS,
+WSL, or MSYS2/MinGW build for runnable examples until native example targets
+are added to CMake.
+
+The Python batch and optimization tools can optionally be installed using a
+normal native Windows Python installation. From the Pogosim source directory:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+Push-Location scripts
+..\.venv\Scripts\python.exe -m pip install ".[optim]"
+Pop-Location
+```
+
+
 ## Quickstart
 
 ### Launch example codes
