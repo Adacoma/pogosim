@@ -28,7 +28,7 @@ Last updated: 2026-09-17
 - Which untracked configurations and example directories are active research work intended for integration.
 - Compatibility of optional analysis tools other than Pogoptim with current dependency releases.
 - Whether every example remains suitable for physical firmware as well as simulation, especially examples using optional `pogo-utils` functionality.
-- The MSYS2/MinGW-w64 CI has been exercised on hosted Windows. The PowerShell/MSVC job now reaches Pogosim configuration with Visual Studio 2026's `cl.exe`; its next revision, which passes the exact installed Box2D package directory, has not yet been observed there, and local validation cannot reproduce MSVC.
+- The MSYS2/MinGW-w64 CI has been exercised on hosted Windows. The PowerShell/MSVC job builds Box2D with Visual Studio 2026's `cl.exe`; the pinned Box2D revision installed its package export at `/cmake/box2d` until CI supplied `CMAKE_INSTALL_LIBDIR` explicitly. That revision has not yet been rerun, and local validation cannot reproduce MSVC.
 
 ## Working analyses
 
@@ -36,7 +36,7 @@ Last updated: 2026-09-17
 - The Pogoptim/Pogobatch migration has passed focused unit tests, optional CMA-ES/QDpy smoke tests, a nested-worker fake-simulator campaign, and one-evaluation Random/MAP-Elites runs against the built `run_and_tumble` controller; longer scientific runs have not been benchmarked.
 - Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
 - A dedicated `test_flash_state` example now provides a reproducible two-run simulator smoke test and a two-boot real-robot test while preserving hardware motor calibration values.
-- The Windows jobs now distinguish MSYS2/UCRT64 with MinGW-w64 from a native PowerShell/MSVC build. Both use the same pinned Box2D 3.x revision; the MSYS2 job retains the simulator flash-state smoke test and native-CPython suite, while the MSVC job initializes the latest installed `cl.exe`, builds through Ninja, passes Box2D's discovered package directory explicitly, and validates the CMake library artifact.
+- The Windows jobs now distinguish MSYS2/UCRT64 with MinGW-w64 from a native PowerShell/MSVC build. Both use the same pinned Box2D 3.x revision; the MSYS2 job retains the simulator flash-state smoke test and native-CPython suite, while the MSVC job initializes the latest installed `cl.exe`, builds through Ninja, keeps Box2D's library and package export under one explicit install prefix, and validates the CMake library artifact.
 - CMake resolves GNU make explicitly for optional example targets, so generated Ninja builds no longer contain Make-only `$(MAKE)` syntax.
 - MSVC builds define `_USE_MATH_DEFINES` at the target level so existing public headers and sources can use the standard math constants consistently.
 - The README's Windows installation section still describes MSYS2/UCRT64 and must be replaced after the PowerShell/MSVC CI path is validated.
