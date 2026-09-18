@@ -51,6 +51,9 @@ Note that some (optional) advanced examples need the [pogo-utils](https://github
 
 
 ## Install on WSL
+
+<details><summary><strong>Show WSL installation instructions</strong></summary>
+
 Just follow the previous section to install on Ubuntu 24.04+ using WSL.
 If the simulator is really slow, it may be due to a bug with SDL2 on WSL, as explained [here](https://github.com/libsdl-org/SDL/issues/6333#issuecomment-1293872149) and [here]( https://github.com/lem-project/lem/issues/1332). If this is the case, just add:
 ```shell
@@ -63,8 +66,13 @@ before launching the simulator.
 
 Note that some (optional) advanced examples need the [pogo-utils](https://github.com/Adacoma/pogo-utils) library -- see below section "Simple way to create a new pogobot/pogosim project" to know how to register associated environment variables so that the Makefiles can assess pogo-utils. If pogo-utils is not present, those examples won't be compiled, but the rest of Pogosim will compile without errors.
 
+</details>
+
 
 ## Install on MacOSX
+
+<details><summary><strong>Show MacOSX installation instructions</strong></summary>
+
 The installation requires brew to be installed on your computer, cf brew documentation [here](https://brew.sh/).
 
 You can then install the necessary packages to compile Pogosim:
@@ -102,8 +110,12 @@ cd pogosim
 
 Note that some (optional) advanced examples need the [pogo-utils](https://github.com/Adacoma/pogo-utils) library -- see below section "Simple way to create a new pogobot/pogosim project" to know how to register associated environment variables so that the Makefiles can assess pogo-utils. If pogo-utils is not present, those examples won't be compiled, but the rest of Pogosim will compile without errors.
 
+</details>
+
 
 ## Install on Native Windows (Experimental)
+
+<details><summary><strong>Show native Windows installation instructions</strong></summary>
 
 This procedure matches the native Windows CI build: it uses Microsoft's x64
 MSVC compiler, PowerShell, Ninja, and the `x64-windows` vcpkg triplet.
@@ -222,6 +234,8 @@ Push-Location scripts
 ..\.venv\Scripts\python.exe -m pip install ".[optim]"
 Pop-Location
 ```
+
+</details>
 
 
 ## Quickstart
@@ -384,7 +398,8 @@ Options:
 
 ## Troubleshooting
 
-### In headless/Pogobatch mode, I get an SDL-related error
+<details><summary><strong>In headless/Pogobatch mode, I get an SDL-related error</strong></summary>
+
 If you get this error:
 ```
 INFO: Failed to initialize SDL: offscreen not available  
@@ -394,6 +409,8 @@ It means that you compiled Pogosim with an SDL version < 2.0.22. Headless mode i
 To have access to a newer version, you can:
     - update your system.
     - use apptainer/singularity (cf related section below) to create an Ubuntu 24.04 image with a newer version of SDL.
+
+</details>
 
 
 ## Access the pose and states of the robots in Python
