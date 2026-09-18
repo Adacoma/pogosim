@@ -40,7 +40,7 @@ Last updated: 2026-09-18
 - CMake resolves GNU make explicitly for optional example targets, so generated Ninja builds no longer contain Make-only `$(MAKE)` syntax.
 - MSVC builds define `_USE_MATH_DEFINES` at the target level so existing public headers and sources can use the standard math constants consistently.
 - The README documents the validated PowerShell/MSVC, Ninja, vcpkg, and pinned Box2D library installation path without requiring MSYS2 or WSL.
-- The README keeps WSL, MacOSX, native Windows, and individual troubleshooting instructions in collapsed `<details>` blocks while retaining installation section headings for navigation.
+- The README keeps WSL, MacOSX, native Windows, individual troubleshooting instructions, and the AI-agent guidance in collapsed `<details>` blocks while retaining section headings for navigation.
 - The worktree contains untracked quadrant-motility and magnetometer-related examples/configurations; their scientific status has not been assessed.
 
 ## Current scientific decisions

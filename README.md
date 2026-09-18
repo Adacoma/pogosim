@@ -618,6 +618,8 @@ This will generate a PDF report named "latex/refman.pdf".
 
 ## Instructions for AI agents: reproducible headless simulations and data collection
 
+<details><summary><strong>Show instructions for AI agents</strong></summary>
+
 For parameter sweeps, cluster execution, or quantitative analysis, run Pogosim
 without the GUI, pass an explicit seed, and log only the fields required by the
 analysis. A reproducible simulation is determined by the Pogosim source/build,
@@ -780,6 +782,8 @@ seed for each atomic run, and its merger adds stable `run`, `seed`, and
 `retry_attempt` columns to the combined dataset. For remote execution, Pogobatch
 can use Rundra to prepare the simulator, submit scheduler work, retrieve raw
 outputs, and merge the task shards.
+
+</details>
 
 
 ## Authors
