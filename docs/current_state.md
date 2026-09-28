@@ -1,6 +1,6 @@
 # Current project state
 
-Last updated: 2026-09-18
+Last updated: 2026-09-28
 
 ## Inspected
 
@@ -41,6 +41,7 @@ Last updated: 2026-09-18
 - MSVC builds define `_USE_MATH_DEFINES` at the target level so existing public headers and sources can use the standard math constants consistently.
 - The README documents the validated PowerShell/MSVC, Ninja, vcpkg, and pinned Box2D library installation path without requiring MSYS2 or WSL.
 - The README keeps WSL, MacOSX, native Windows, individual troubleshooting instructions, and the AI-agent guidance in collapsed `<details>` blocks while retaining section headings for navigation.
+- A worked run-and-tumble/Pogobatch/Rundra tutorial now includes a 100-robot, two-condition, 128-seed batch configuration, a merged-Feather MSD analysis script, and a link to the existing demonstration video. A one-seed local simulation and analysis completed; no 256-Task cluster campaign was submitted for this documentation change.
 - The worktree contains untracked quadrant-motility and magnetometer-related examples/configurations; their scientific status has not been assessed.
 
 ## Current scientific decisions
@@ -55,6 +56,7 @@ Last updated: 2026-09-18
 - Preserve simulation/hardware controller parity by storing mutable per-robot controller state in `USERDATA`.
 - Treat only the user flash section and motor calibration memories as persistent robot state; fresh user flash remains indeterminate unless an archive is loaded.
 - Use Feather output with embedded provenance and restrict logged fields/categories for large experiments.
+- For the run-and-tumble tutorial, compute origin-relative MSD per robot, average robots within each seed first, and describe uncertainty across independent seed-level curves.
 
 ## Known data limitations
 
@@ -66,6 +68,7 @@ Last updated: 2026-09-18
 - Generated results in local ignored directories are not canonical repository data and were not used to establish scientific conclusions.
 - Pogoptim is local-only, has no resume/checkpoint workflow, and relies on the optional QDpy package for MAP-Elites.
 - Flash archives validate simulator-level structure and robot identity but cannot determine whether controller-defined byte layouts are application-compatible.
+- The tutorial's solid disk arena bounds late-time MSD; its one-seed local smoke result is not evidence for a population-level condition effect.
 
 ## Next concrete tasks
 
@@ -76,3 +79,4 @@ Last updated: 2026-09-18
 5. Benchmark nested Pogoptim parallelism and optimizer convergence on representative built controllers.
 6. Reconcile the CMake project version with the canonical C/Python version and document the release process.
 7. Record benchmark envelopes for runtime and memory as robot count and logging volume increase.
+8. Run the documented 256-Task experiment on a configured cluster and check its retrieved data, run-level MSD uncertainty, and resource envelope.

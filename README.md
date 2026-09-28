@@ -571,7 +571,9 @@ apptainer exec /PATH/TO/pogosim.sif ./my_pogobot_project -c conf/test.yaml
 
 ## Launch several runs in Parallel, with different configuration options
 We provide the "Pogobatch" tool with Pogosim. It allows you to launch parallel Pogosim tasks locally or on clusters, using the rundra batch meta-scheduler. 
-A complete guide can here found [here](https://github.com/Adacoma/pogosim/blob/dev/docs/pogobatch-rundra-guide.md).
+See the [complete Pogobatch–Rundra guide](docs/pogobatch-rundra-guide.md) or the
+[worked run-and-tumble cluster MSD tutorial](docs/run-and-tumble-rundra-tutorial.md),
+which includes a demonstration video.
 
 ## Optimize simulation parameters
 

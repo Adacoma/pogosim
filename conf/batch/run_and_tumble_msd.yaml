@@ -1,0 +1,94 @@
+---
+
+# Worked example for docs/run-and-tumble-rundra-tutorial.md. Durations below
+# are milliseconds, matching the run_and_tumble controller's global_setup.
+pogobatch:
+  result_filename_format: run_and_tumble_msd.feather
+  result_new_columns:
+    - condition
+  rundra:
+    sync:
+      exclude:
+        - results/
+        - raw/
+        - derived/
+        - docs/
+        - .description/
+        - frames/
+        - build/
+        - .rundra-runs/
+        - "*.sif"
+
+boundary_condition: solid
+arena_file: arenas/disk.csv
+arena_surface: 1.0e6  # mm^2; solid walls bound the long-time MSD.
+initial_formation: random
+
+GUI: false
+simulation_time: 120.0  # s
+time_step: 0.01         # s
+save_video_period: -1.0
+enable_console_logging: false
+enable_data_logging: true
+data_filename: frames/data.feather
+save_data_period: 1.0  # s
+data_logger_fields: [time, robot_category, robot_id, x, y]
+data_logger_category: [robots]
+
+objects:
+  global_light:
+    type: static_light
+    light_mode: static
+    geometry: global
+    value: 200
+    photo_start_at: 1.0
+    photo_start_duration: 1.0
+    photo_start_value: 32767
+  robots:
+    type: pogobot
+    nb: 100
+    geometry: disk
+    radius: 26.5       # mm
+    body_linear_damping: 0.3
+    body_angular_damping: 0.3
+    body_density: 10.0
+    body_friction: 0.3
+    body_restitution: 0.5
+    max_linear_speed: 100.0
+    max_angular_speed: 2.0
+    linear_noise_stddev: 0.0
+    angular_noise_stddev: 0.0
+    communication_radius: 80.0
+    # The simulator expects a reception model even though this controller
+    # disables message processing and does not use communication.
+    msg_success_rate:
+      type: static
+      rate: 1.0
+
+parameters:
+  # Hierarchical choices keep each run/tumble pair together instead of
+  # forming the Cartesian product of four independent duration options.
+  batch_hierarchical_options:
+    name: condition
+    default:
+      run_duration_min: 20000
+      run_duration_max: 30000
+      tumble_duration_min: 100
+      tumble_duration_max: 200
+      enable_backward_dir: false
+    long_runs:
+      run_duration_min: 20000
+      run_duration_max: 30000
+      tumble_duration_min: 100
+      tumble_duration_max: 200
+      enable_backward_dir: false
+    long_tumbles:
+      run_duration_min: 200
+      run_duration_max: 400
+      tumble_duration_min: 8000
+      tumble_duration_max: 12000
+      enable_backward_dir: false
+
+_rundr:
+  version: 1
+  seeds: "0:127"  # Inclusive: 128 seeds per condition, 256 Tasks in total.

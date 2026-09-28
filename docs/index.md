@@ -9,6 +9,7 @@
 ## Experiment execution
 
 - [Pogobatch and Rundra guide](pogobatch-rundra-guide.md) — local parameter sweeps, cluster execution, task manifests, retrieval, merging, recovery, and provenance.
+- [Run-and-tumble cluster MSD tutorial](run-and-tumble-rundra-tutorial.md) — worked two-condition, 128-seed Pogobatch/Rundra experiment with configuration, analysis script, and demo video.
 - [Pogoptim guide](pogoptim-guide.md) — parameter domains, optimization algorithms, objectives, parallel execution, seeds, failure handling, and outputs.
 - [Persistent robot flash state](flash-state.md) — export/import lifecycle, stored fields, identity validation, and Pogobatch behavior.
 - [Template controller](../template_prj/main.c) and [template Makefile](../template_prj/Makefile) — minimal controller that can target both the simulator and physical Pogobots.
