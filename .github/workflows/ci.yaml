@@ -284,6 +284,13 @@ jobs:
             -c examples/test_flash_state/conf/export.yaml -g -nr
           ./examples/test_flash_state/test_flash_state.exe \
             -c examples/test_flash_state/conf/import.yaml -g -nr
+          # A smaller run must preserve unused records when replacing the same archive.
+          ./examples/test_flash_state/test_flash_state.exe \
+            -c examples/test_flash_state/conf/export_five.yaml -g -nr
+          ./examples/test_flash_state/test_flash_state.exe \
+            -c examples/test_flash_state/conf/import_two_from_five.yaml -g -nr
+          ./examples/test_flash_state/test_flash_state.exe \
+            -c examples/test_flash_state/conf/import_five_after_subset.yaml -g -nr
 
       - name: Set up native CPython
         uses: actions/setup-python@v5

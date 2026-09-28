@@ -146,81 +146,11 @@ std::map<robot_key, PogobotObject*> index_robots(
     return result;
 }
 
-void write_archive(
+template<typename HeaderFn, typename RecordFn>
+void read_archive(
     const std::filesystem::path& filename,
-    const std::vector<std::shared_ptr<PogobotObject>>& robots
-) {
-    if (robots.size() > std::numeric_limits<std::uint32_t>::max()) {
-        throw std::runtime_error("Too many robots for the flash-state archive format");
-    }
-
-    // Sorting by identity makes archives deterministic independently of vector order.
-    const auto indexed_robots = index_robots(robots);
-    std::ofstream output(filename, std::ios::binary | std::ios::trunc);
-    if (!output) {
-        throw std::runtime_error(
-            "Unable to open flash-state archive for writing: '" +
-            filename.string() + "'"
-        );
-    }
-
-    write_bytes(output, archive_magic.data(), archive_magic.size());
-    write_unsigned_le(output, archive_version);
-    write_unsigned_le(
-        output,
-        static_cast<std::uint32_t>(flash_memory_authorized_section_size)
-    );
-    write_unsigned_le(output, static_cast<std::uint32_t>(indexed_robots.size()));
-
-    for (const auto& [key, robot] : indexed_robots) {
-        const auto& [category, id] = key;
-        if (category.size() > std::numeric_limits<std::uint16_t>::max()) {
-            throw std::runtime_error(
-                "Robot category is too long for the flash-state archive: '" +
-                category + "'"
-            );
-        }
-
-        std::uint64_t checksum = fnv_offset_basis;
-        write_unsigned_le(output, id, &checksum);
-        write_unsigned_le(
-            output,
-            static_cast<std::uint16_t>(category.size()),
-            &checksum
-        );
-        write_bytes(
-            output,
-            reinterpret_cast<const unsigned char*>(category.data()),
-            category.size(),
-            &checksum
-        );
-        write_bytes(output, robot->motor_dir_mem, 3, &checksum);
-        for (std::uint16_t value : robot->motor_power_mem) {
-            write_unsigned_le(output, value, &checksum);
-        }
-        write_bytes(
-            output,
-            robot->flash_memory_authorized_section,
-            flash_memory_authorized_section_size,
-            &checksum
-        );
-        write_unsigned_le(output, checksum);
-    }
-
-    output.flush();
-    if (!output) {
-        throw std::runtime_error(
-            "Unable to finish writing flash-state archive: '" +
-            filename.string() + "'"
-        );
-    }
-}
-
-} // namespace
-
-void load(
-    const std::filesystem::path& filename,
-    const std::vector<std::shared_ptr<PogobotObject>>& robots
+    HeaderFn on_header,
+    RecordFn on_record
 ) {
     std::ifstream input(filename, std::ios::binary);
     if (!input) {
@@ -260,19 +190,11 @@ void load(
     const auto record_count = read_unsigned_le<std::uint32_t>(
         input, filename, "robot count"
     );
-    if (record_count != robots.size()) {
-        archive_error(
-            filename,
-            "robot count is " + std::to_string(record_count) + ", expected " +
-            std::to_string(robots.size())
-        );
-    }
+    on_header(record_count);
 
-    auto indexed_robots = index_robots(robots);
-    std::map<robot_key, bool> restored;
-    // One temporary image bounds loader memory independently of robot count.
+    std::map<robot_key, bool> seen;
+    // Reuse one 64 KiB buffer even when a larger archive has unused robots.
     std::vector<unsigned char> flash(flash_memory_authorized_section_size);
-
     for (std::uint32_t record = 0; record < record_count; ++record) {
         std::uint64_t checksum = fnv_offset_basis;
         const auto id = read_unsigned_le<std::uint16_t>(
@@ -292,15 +214,7 @@ void load(
         );
 
         const robot_key key{category, id};
-        const auto robot_it = indexed_robots.find(key);
-        if (robot_it == indexed_robots.end()) {
-            archive_error(
-                filename,
-                "no current robot matches ('" + category + "', " +
-                std::to_string(id) + ")"
-            );
-        }
-        if (!restored.emplace(key, true).second) {
+        if (!seen.emplace(key, true).second) {
             archive_error(
                 filename,
                 "duplicate robot record ('" + category + "', " +
@@ -341,16 +255,7 @@ void load(
                 std::to_string(id) + ")"
             );
         }
-
-        // Commit a record only after all of its bytes and checksum are valid.
-        PogobotObject* robot = robot_it->second;
-        std::memcpy(robot->motor_dir_mem, motor_directions.data(), 3);
-        std::copy(motor_powers.begin(), motor_powers.end(), robot->motor_power_mem);
-        std::memcpy(
-            robot->flash_memory_authorized_section,
-            flash.data(),
-            flash.size()
-        );
+        on_record(key, motor_directions, motor_powers, flash);
     }
 
     char trailing_byte = 0;
@@ -362,9 +267,198 @@ void load(
     }
 }
 
-void save_atomic(
+void write_header(std::ostream& output, std::uint32_t record_count) {
+    write_bytes(output, archive_magic.data(), archive_magic.size());
+    write_unsigned_le(output, archive_version);
+    write_unsigned_le(
+        output,
+        static_cast<std::uint32_t>(flash_memory_authorized_section_size)
+    );
+    write_unsigned_le(output, record_count);
+}
+
+void write_record(
+    std::ostream& output,
+    const robot_key& key,
+    const unsigned char* motor_directions,
+    const std::uint16_t* motor_powers,
+    const unsigned char* flash
+) {
+    const auto& [category, id] = key;
+    if (category.size() > std::numeric_limits<std::uint16_t>::max()) {
+        throw std::runtime_error(
+            "Robot category is too long for the flash-state archive: '" +
+            category + "'"
+        );
+    }
+
+    std::uint64_t checksum = fnv_offset_basis;
+    write_unsigned_le(output, id, &checksum);
+    write_unsigned_le(
+        output,
+        static_cast<std::uint16_t>(category.size()),
+        &checksum
+    );
+    write_bytes(
+        output,
+        reinterpret_cast<const unsigned char*>(category.data()),
+        category.size(),
+        &checksum
+    );
+    write_bytes(output, motor_directions, 3, &checksum);
+    for (std::size_t i = 0; i < 3; ++i) {
+        write_unsigned_le(output, motor_powers[i], &checksum);
+    }
+    write_bytes(
+        output,
+        flash,
+        flash_memory_authorized_section_size,
+        &checksum
+    );
+    write_unsigned_le(output, checksum);
+}
+
+void write_archive(
+    const std::filesystem::path& filename,
+    const std::vector<std::shared_ptr<PogobotObject>>& robots,
+    const std::filesystem::path& input_filename
+) {
+    if (robots.size() > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::runtime_error("Too many robots for the flash-state archive format");
+    }
+
+    // Sorting by identity makes fresh archives deterministic independently of
+    // the simulator's robot-vector order.
+    const auto indexed_robots = index_robots(robots);
+    std::ofstream output(filename, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error(
+            "Unable to open flash-state archive for writing: '" +
+            filename.string() + "'"
+        );
+    }
+
+    if (input_filename.empty()) {
+        write_header(output, static_cast<std::uint32_t>(indexed_robots.size()));
+        for (const auto& [key, robot] : indexed_robots) {
+            write_record(
+                output, key, robot->motor_dir_mem, robot->motor_power_mem,
+                robot->flash_memory_authorized_section
+            );
+        }
+    } else {
+        std::map<robot_key, bool> restored;
+        // Re-read the source archive while writing a separate temporary file.
+        // Unmatched records retain their persistent bytes; simulated robots
+        // replace their records with the final in-memory values.
+        read_archive(
+            input_filename,
+            [&](std::uint32_t record_count) {
+                if (record_count < indexed_robots.size()) {
+                    archive_error(
+                        input_filename,
+                        "robot count is " + std::to_string(record_count) +
+                        ", expected at least " + std::to_string(indexed_robots.size())
+                    );
+                }
+                write_header(output, record_count);
+            },
+            [&](const robot_key& key,
+                const std::array<unsigned char, 3>& directions,
+                const std::array<std::uint16_t, 3>& powers,
+                const std::vector<unsigned char>& flash) {
+                const auto robot_it = indexed_robots.find(key);
+                if (robot_it == indexed_robots.end()) {
+                    write_record(
+                        output, key, directions.data(), powers.data(), flash.data()
+                    );
+                } else {
+                    const PogobotObject* robot = robot_it->second;
+                    write_record(
+                        output, key, robot->motor_dir_mem, robot->motor_power_mem,
+                        robot->flash_memory_authorized_section
+                    );
+                    restored.emplace(key, true);
+                }
+            }
+        );
+        for (const auto& [key, robot] : indexed_robots) {
+            (void)robot;
+            if (restored.find(key) == restored.end()) {
+                archive_error(
+                    input_filename,
+                    "missing current robot ('" + key.first + "', " +
+                    std::to_string(key.second) + ")"
+                );
+            }
+        }
+    }
+
+    output.flush();
+    if (!output) {
+        throw std::runtime_error(
+            "Unable to finish writing flash-state archive: '" +
+            filename.string() + "'"
+        );
+    }
+}
+
+} // namespace
+
+void load(
     const std::filesystem::path& filename,
     const std::vector<std::shared_ptr<PogobotObject>>& robots
+) {
+    auto indexed_robots = index_robots(robots);
+    std::map<robot_key, bool> restored;
+    read_archive(
+        filename,
+        [&](std::uint32_t record_count) {
+            if (record_count < indexed_robots.size()) {
+                archive_error(
+                    filename,
+                    "robot count is " + std::to_string(record_count) +
+                    ", expected at least " + std::to_string(indexed_robots.size())
+                );
+            }
+        },
+        [&](const robot_key& key,
+            const std::array<unsigned char, 3>& motor_directions,
+            const std::array<std::uint16_t, 3>& motor_powers,
+            const std::vector<unsigned char>& flash) {
+            const auto robot_it = indexed_robots.find(key);
+            if (robot_it == indexed_robots.end()) {
+                return;  // Valid archive record for a robot absent from this run.
+            }
+
+            // Commit a matching record only after its checksum is valid.
+            PogobotObject* robot = robot_it->second;
+            std::memcpy(robot->motor_dir_mem, motor_directions.data(), 3);
+            std::copy(motor_powers.begin(), motor_powers.end(), robot->motor_power_mem);
+            std::memcpy(
+                robot->flash_memory_authorized_section,
+                flash.data(),
+                flash.size()
+            );
+            restored.emplace(key, true);
+        }
+    );
+    for (const auto& [key, robot] : indexed_robots) {
+        (void)robot;
+        if (restored.find(key) == restored.end()) {
+            archive_error(
+                filename,
+                "missing current robot ('" + key.first + "', " +
+                std::to_string(key.second) + ")"
+            );
+        }
+    }
+}
+
+void save_atomic(
+    const std::filesystem::path& filename,
+    const std::vector<std::shared_ptr<PogobotObject>>& robots,
+    const std::filesystem::path& input_filename
 ) {
     const auto parent = filename.parent_path();
     if (!parent.empty()) {
@@ -377,7 +471,7 @@ void save_atomic(
     temporary += ".tmp." + std::to_string(nonce);
 
     try {
-        write_archive(temporary, robots);
+        write_archive(temporary, robots, input_filename);
 #ifdef _WIN32
         // std::filesystem::rename cannot replace an existing file on Windows.
         // MoveFileExW preserves the same-path import/export workflow while

@@ -45,10 +45,22 @@ fresh simulated robot; the motor calibration memories retain their simulator
 defaults.
 
 The archive is a versioned binary format. Records are associated with robots
-by `(category, robot_id)` and protected by per-record checksums. Loading fails
-before controller initialization if the format, robot count, identity set,
-flash size, checksum, or file length does not match. Consequently, merely using
-the same robot count is insufficient if categories or ID assignment changed.
+by `(category, robot_id)` and protected by per-record checksums. Every robot in
+the new simulation must have a matching archive record, but the archive may
+contain more robots. Extra records are fully checked and ignored during the
+simulation; they do not create robots. A missing identity, too few records,
+bad format, wrong flash size, bad checksum, duplicate identity, or incorrect
+file length still causes loading to fail before controller initialization.
+Matching counts alone never substitutes for matching identities.
+
+When `input_file` is set, export retains records for robots absent from the
+current simulation and replaces records for simulated robots with their final
+flash and motor calibration memories. This also works when `input_file` and
+`output_file` are the same path. For example, a five-robot archive can be used
+by a two-robot run and still be imported later by a five-robot run. With no
+input archive, export contains only the robots in the current simulation. To
+preserve the unused records, export re-reads the input archive; keep it
+available and do not modify it concurrently during the simulation.
 
 The controller defines the meaning and layout of its flash bytes. Pogosim
 cannot detect an archive produced by an incompatible controller, so controller

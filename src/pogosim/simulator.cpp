@@ -813,9 +813,11 @@ void Simulation::export_flash_state() {
     if (flash_state_output_file.empty()) {
         return;
     }
-    pogosim::flash_state::save_atomic(flash_state_output_file, robots);
+    pogosim::flash_state::save_atomic(
+        flash_state_output_file, robots, flash_state_input_file
+    );
     glogger->info(
-        "Saved persistent memory for {} robots to '{}'",
+        "Saved persistent memory for {} simulated robots to '{}'",
         robots.size(),
         flash_state_output_file
     );

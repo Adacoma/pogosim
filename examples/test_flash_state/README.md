@@ -31,6 +31,21 @@ Run the export phase again whenever a fresh test archive is wanted. The
 archive is deliberately ignored by Git through the repository's `frames/`
 rule.
 
+To test loading a subset and retaining unused records when input and output
+are the same file, run this additional three-start sequence:
+
+```console
+./examples/test_flash_state/test_flash_state \
+  -c examples/test_flash_state/conf/export_five.yaml -g
+./examples/test_flash_state/test_flash_state \
+  -c examples/test_flash_state/conf/import_two_from_five.yaml -g
+./examples/test_flash_state/test_flash_state \
+  -c examples/test_flash_state/conf/import_five_after_subset.yaml -g
+```
+
+The middle run verifies robots 0 and 1, then replaces the archive. The last
+run verifies all five IDs, proving that records 2–4 survived the replacement.
+
 ## Real robots
 
 Build and upload the example with the normal Pogobot SDK workflow. The same

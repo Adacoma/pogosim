@@ -35,6 +35,7 @@ Last updated: 2026-09-28
 - No analysis is currently running as part of this milestone.
 - The Pogoptim/Pogobatch migration has passed focused unit tests, optional CMA-ES/QDpy smoke tests, a nested-worker fake-simulator campaign, and one-evaluation Random/MAP-Elites runs against the built `run_and_tumble` controller; longer scientific runs have not been benchmarked.
 - Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
+- Flash import now accepts an archive with extra robot identities while requiring every simulated robot to match. Export from an imported archive retains unused records, including same-path replacement; a five-to-two-to-five simulator sequence passed locally and is covered by the native Windows smoke test.
 - A dedicated `test_flash_state` example now provides a reproducible two-run simulator smoke test and a two-boot real-robot test while preserving hardware motor calibration values.
 - The Windows jobs now distinguish MSYS2/UCRT64 with MinGW-w64 from a native PowerShell/MSVC build. Both use the same pinned Box2D 3.x revision; the MSYS2 job retains the simulator flash-state smoke test and native-CPython suite, while the MSVC job initializes the latest installed `cl.exe`, builds through Ninja, exports Box2D's library and public headers through one explicit install prefix, and validates the CMake library artifact.
 - CMake resolves GNU make explicitly for optional example targets, so generated Ninja builds no longer contain Make-only `$(MAKE)` syntax.
@@ -55,6 +56,7 @@ Last updated: 2026-09-28
 - Require explicit descriptor domains for custom MAP-Elites features and reject out-of-domain values rather than clipping them.
 - Preserve simulation/hardware controller parity by storing mutable per-robot controller state in `USERDATA`.
 - Treat only the user flash section and motor calibration memories as persistent robot state; fresh user flash remains indeterminate unless an archive is loaded.
+- Permit smaller follow-up robot populations to restore their identity-matched flash records; preserve unused source records on export rather than silently shrinking a shared archive.
 - Use Feather output with embedded provenance and restrict logged fields/categories for large experiments.
 - For the run-and-tumble tutorial, compute origin-relative MSD per robot, average robots within each seed first, and describe uncertainty across independent seed-level curves.
 
