@@ -47,6 +47,24 @@ are the same file, run this additional three-start sequence:
 The middle run verifies robots 0 and 1, then replaces the archive. The last
 run verifies all five IDs, proving that records 2–4 survived the replacement.
 
+To test first-run creation from a missing input, ensure
+`frames/test_flash_state_bootstrap.pgflash` does not exist, then run:
+
+```console
+./examples/test_flash_state/test_flash_state \
+  -c examples/test_flash_state/conf/bootstrap_strict.yaml -g
+./examples/test_flash_state/test_flash_state \
+  -c examples/test_flash_state/conf/bootstrap.yaml -g
+./examples/test_flash_state/test_flash_state \
+  -c examples/test_flash_state/conf/bootstrap_import.yaml -g
+```
+
+The first command must fail without creating a file. The second creates an
+empty zero-record input archive, then replaces it with the prepared two-robot
+archive at normal export. The third must verify both robots successfully.
+Running `bootstrap_input_only.yaml` instead creates only the 18-byte empty
+marker, because no output file is configured.
+
 ## Real robots
 
 Build and upload the example with the normal Pogobot SDK workflow. The same

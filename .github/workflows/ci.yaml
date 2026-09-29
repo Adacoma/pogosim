@@ -291,6 +291,21 @@ jobs:
             -c examples/test_flash_state/conf/import_two_from_five.yaml -g -nr
           ./examples/test_flash_state/test_flash_state.exe \
             -c examples/test_flash_state/conf/import_five_after_subset.yaml -g -nr
+          # A missing input fails only when automatic creation is disabled.
+          if ./examples/test_flash_state/test_flash_state.exe \
+              -c examples/test_flash_state/conf/bootstrap_strict.yaml -g -nr; then
+            echo "Strict flash-state import unexpectedly succeeded" >&2
+            exit 1
+          fi
+          test ! -e frames/test_flash_state_bootstrap.pgflash
+          ./examples/test_flash_state/test_flash_state.exe \
+            -c examples/test_flash_state/conf/bootstrap.yaml -g -nr
+          ./examples/test_flash_state/test_flash_state.exe \
+            -c examples/test_flash_state/conf/bootstrap_import.yaml -g -nr
+          ./examples/test_flash_state/test_flash_state.exe \
+            -c examples/test_flash_state/conf/bootstrap_input_only.yaml -g -nr
+          # An input-only first run must not serialize indeterminate flash.
+          test "$(wc -c < frames/test_flash_state_empty_only.pgflash)" -eq 18
 
       - name: Set up native CPython
         uses: actions/setup-python@v5

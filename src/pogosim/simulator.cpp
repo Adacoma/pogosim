@@ -787,6 +787,8 @@ void Simulation::init_config() {
     const auto flash_state_config = config["flash_state"];
     const auto flash_state_input = flash_state_config["input_file"];
     const auto flash_state_output = flash_state_config["output_file"];
+    flash_state_create_if_missing =
+        flash_state_config["create_if_missing"].get<bool>(true);
     flash_state_input_file = flash_state_input.exists()
         ? flash_state_input.get<std::string>()
         : std::string{};
@@ -801,12 +803,21 @@ void Simulation::load_flash_state() {
     if (flash_state_input_file.empty()) {
         return;
     }
-    pogosim::flash_state::load(flash_state_input_file, robots);
-    glogger->info(
-        "Restored persistent memory for {} robots from '{}'",
-        robots.size(),
-        flash_state_input_file
-    );
+    // A missing input starts with indeterminate flash; the zero-record archive
+    // records that this path has been initialized without inventing flash data.
+    if (flash_state_create_if_missing) {
+        if (pogosim::flash_state::create_empty_if_missing(flash_state_input_file)) {
+            glogger->info("Created empty flash-state archive '{}'", flash_state_input_file);
+        }
+    }
+    if (pogosim::flash_state::load(flash_state_input_file, robots)) {
+        glogger->info(
+            "Restored persistent memory for {} robots from '{}'",
+            robots.size(), flash_state_input_file
+        );
+    } else {
+        glogger->info("Flash-state archive '{}' is empty; no memory restored", flash_state_input_file);
+    }
 }
 
 void Simulation::export_flash_state() {

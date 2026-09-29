@@ -348,12 +348,19 @@ void write_archive(
         }
     } else {
         std::map<robot_key, bool> restored;
+        bool empty_input = false;
         // Re-read the source archive while writing a separate temporary file.
         // Unmatched records retain their persistent bytes; simulated robots
-        // replace their records with the final in-memory values.
+        // replace their records with the final in-memory values. A zero-record
+        // input instead becomes the first full archive for this population.
         read_archive(
             input_filename,
             [&](std::uint32_t record_count) {
+                if (record_count == 0) {
+                    empty_input = true;
+                    write_header(output, static_cast<std::uint32_t>(indexed_robots.size()));
+                    return;
+                }
                 if (record_count < indexed_robots.size()) {
                     archive_error(
                         input_filename,
@@ -382,14 +389,24 @@ void write_archive(
                 }
             }
         );
-        for (const auto& [key, robot] : indexed_robots) {
-            (void)robot;
-            if (restored.find(key) == restored.end()) {
-                archive_error(
-                    input_filename,
-                    "missing current robot ('" + key.first + "', " +
-                    std::to_string(key.second) + ")"
+        if (empty_input) {
+            for (const auto& [key, robot] : indexed_robots) {
+                write_record(
+                    output, key, robot->motor_dir_mem, robot->motor_power_mem,
+                    robot->flash_memory_authorized_section
                 );
+            }
+        }
+        if (!empty_input) {
+            for (const auto& [key, robot] : indexed_robots) {
+                (void)robot;
+                if (restored.find(key) == restored.end()) {
+                    archive_error(
+                        input_filename,
+                        "missing current robot ('" + key.first + "', " +
+                        std::to_string(key.second) + ")"
+                    );
+                }
             }
         }
     }
@@ -405,15 +422,90 @@ void write_archive(
 
 } // namespace
 
-void load(
+bool create_empty_if_missing(const std::filesystem::path& filename) {
+    std::error_code status_error;
+    const auto status = std::filesystem::symlink_status(filename, status_error);
+    if (status_error && status_error != std::errc::no_such_file_or_directory) {
+        throw std::filesystem::filesystem_error(
+            "Unable to inspect flash-state input", filename, status_error
+        );
+    }
+    if (status.type() != std::filesystem::file_type::not_found) {
+        return false;
+    }
+
+    const auto parent = filename.parent_path();
+    if (!parent.empty()) {
+        std::filesystem::create_directories(parent);
+    }
+    const auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
+    std::filesystem::path temporary = filename;
+    temporary += ".tmp." + std::to_string(nonce);
+    bool created = false;
+    try {
+        {
+            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+            if (!output) {
+                throw std::runtime_error(
+                    "Unable to create empty flash-state archive: '" +
+                    filename.string() + "'"
+                );
+            }
+            // A header with zero records is valid, but contains no flash bytes.
+            write_header(output, 0);
+            output.close();
+            if (!output) {
+                throw std::runtime_error(
+                    "Unable to finish empty flash-state archive: '" +
+                    filename.string() + "'"
+                );
+            }
+        }
+        std::error_code link_error;
+        // A hard link publishes the complete archive only if the path is still
+        // absent, without replacing a concurrent creator's archive.
+        std::filesystem::create_hard_link(temporary, filename, link_error);
+        if (!link_error) {
+            created = true;
+        } else {
+            std::error_code current_error;
+            const auto current = std::filesystem::symlink_status(filename, current_error);
+            if (current_error && current_error != std::errc::no_such_file_or_directory) {
+                throw std::filesystem::filesystem_error(
+                    "Unable to inspect flash-state input", filename, current_error
+                );
+            }
+            if (current.type() == std::filesystem::file_type::not_found) {
+                throw std::filesystem::filesystem_error(
+                    "Unable to publish empty flash-state archive",
+                    temporary, filename, link_error
+                );
+            }
+        }
+    } catch (...) {
+        std::error_code ignored;
+        std::filesystem::remove(temporary, ignored);
+        throw;
+    }
+    std::error_code ignored;
+    std::filesystem::remove(temporary, ignored);
+    return created;
+}
+
+bool load(
     const std::filesystem::path& filename,
     const std::vector<std::shared_ptr<PogobotObject>>& robots
 ) {
     auto indexed_robots = index_robots(robots);
     std::map<robot_key, bool> restored;
+    bool empty_archive = false;
     read_archive(
         filename,
         [&](std::uint32_t record_count) {
+            if (record_count == 0) {
+                empty_archive = true;
+                return;
+            }
             if (record_count < indexed_robots.size()) {
                 archive_error(
                     filename,
@@ -443,6 +535,9 @@ void load(
             restored.emplace(key, true);
         }
     );
+    if (empty_archive) {
+        return false;
+    }
     for (const auto& [key, robot] : indexed_robots) {
         (void)robot;
         if (restored.find(key) == restored.end()) {
@@ -453,6 +548,7 @@ void load(
             );
         }
     }
+    return true;
 }
 
 void save_atomic(

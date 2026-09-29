@@ -13,12 +13,22 @@ Configure either operation independently:
 flash_state:
   input_file: "checkpoints/previous.pgflash"
   output_file: "checkpoints/final.pgflash"
+  create_if_missing: true  # default; set false to require an existing input
 ```
 
 `input_file` is loaded after all robots have been created but before
 `robot_main()` and `user_init()` run. `output_file` is written after all
 per-robot end-of-experiment callbacks have completed. Either key may be
 omitted. If both are omitted, Pogosim neither reads nor stores flash content.
+
+If `input_file` is specified but absent, Pogosim creates a valid zero-record
+archive by default. This marker contains no robot flash or motor memories:
+the first run starts with its usual indeterminate user flash and default motor
+calibration. An `output_file` is needed to save the final memories; when it is
+the same path as `input_file`, the completed run replaces the empty marker with
+a full archive. Without `output_file`, the input remains an empty marker.
+Set `create_if_missing: false` to fail when the input path does not exist.
+Existing malformed archives are never treated as empty and still fail.
 
 The input and output names may refer to the same file. Pogosim writes a
 temporary file beside the destination and atomically replaces the old archive
@@ -46,12 +56,13 @@ fresh simulated robot; the motor calibration memories retain their simulator
 defaults.
 
 The archive is a versioned binary format. Records are associated with robots
-by `(category, robot_id)` and protected by per-record checksums. Every robot in
-the new simulation must have a matching archive record, but the archive may
-contain more robots. Extra records are fully checked and ignored during the
-simulation; they do not create robots. A missing identity, too few records,
-bad format, wrong flash size, bad checksum, duplicate identity, or incorrect
-file length still causes loading to fail before controller initialization.
+by `(category, robot_id)` and protected by per-record checksums. Except for
+the zero-record fresh-state marker, every robot in the new simulation must
+have a matching archive record, but the archive may contain more robots.
+Extra records are fully checked and ignored during the simulation; they do not
+create robots. A missing identity, too few records, bad format, wrong flash
+size, bad checksum, duplicate identity, or incorrect file length still causes
+loading to fail before controller initialization.
 Matching counts alone never substitutes for matching identities.
 Archives containing the former 64 KiB flash region are rejected as the wrong
 size; they cannot restore the complete v3 region. Each robot record is now

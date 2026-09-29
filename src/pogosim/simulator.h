@@ -149,6 +149,7 @@ class Simulation {
     // corresponding import/export operation without touching robot flash.
     std::string flash_state_input_file;
     std::string flash_state_output_file;
+    bool flash_state_create_if_missing = true;
 
     /** Restore robot flash and motor calibration memories before user code runs. */
     void load_flash_state();
