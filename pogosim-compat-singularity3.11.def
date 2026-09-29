@@ -139,6 +139,8 @@ EOF
     ./litex_setup.py init
     cat ../../tools/litex_version.txt | awk '{ if(!system("test -d " $1)) {system("git -C " $1 " checkout " $3)}}'
     rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
+    # LiteX needs packaging>=24.2; do not uninstall Ubuntu's apt-owned copy.
+    python3 -m pip install --ignore-installed --no-deps 'packaging==24.2'
     ./litex_setup.py install
     cd ../..
 
@@ -149,5 +151,4 @@ EOF
 
     # Clean apt cache
     apt-get clean && rm -rf /var/lib/apt/lists/*
-
 
