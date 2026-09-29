@@ -9,7 +9,8 @@
  *  All helpers resolve at preprocessing time; they add zero run-time cost.
  */
 
-#define POGOLIB_RELEASE_VERSION "v2.7"
+/* Keep the simulated Pogolib release string aligned with pogobot/Software. */
+#define POGOLIB_RELEASE_VERSION "v2.7.1"
 
 
 /* ────────── 1. Canonical numeric components ────────── */
