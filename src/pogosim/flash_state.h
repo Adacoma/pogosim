@@ -24,7 +24,7 @@ void load(
 /**
  * Atomically save the persistent memory of every simulated robot.
  *
- * Only the 64 KiB user flash section and the motor direction/power calibration
+ * Only the 1472 KiB user flash section and motor direction/power calibration
  * memories are stored. If input_filename is nonempty, its unused robot records
  * are preserved while supplied robots' records are replaced with their final
  * memories. The input is re-read at export, so it must stay available and

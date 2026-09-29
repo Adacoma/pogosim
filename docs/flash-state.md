@@ -34,7 +34,8 @@ interpreted from its working directory.
 Each robot record contains only persistent state represented by the simulated
 Pogobot API:
 
-- the 64 KiB user-writable flash section;
+- the full v3 user-writable flash section: 5,888 pages of 256 bytes
+  (1,507,328 bytes, or 1,472 KiB);
 - the three motor-direction calibration values;
 - the three motor-power calibration values.
 
@@ -52,6 +53,9 @@ simulation; they do not create robots. A missing identity, too few records,
 bad format, wrong flash size, bad checksum, duplicate identity, or incorrect
 file length still causes loading to fail before controller initialization.
 Matching counts alone never substitutes for matching identities.
+Archives containing the former 64 KiB flash region are rejected as the wrong
+size; they cannot restore the complete v3 region. Each robot record is now
+about 23 times larger, and simulated flash uses 1,472 KiB of RAM per robot.
 
 When `input_file` is set, export retains records for robots absent from the
 current simulation and replaces records for simulated robots with their final

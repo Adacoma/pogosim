@@ -476,12 +476,32 @@ void erase_write_section_flash(void) {
     std::memset(current_robot->flash_memory_authorized_section, 0xFF, flash_memory_authorized_section_size);
 }
 
-void write_page_flash(uint8_t page, const void *data)  {
-    std::memcpy(current_robot->flash_memory_authorized_section + 256*page, data, 256);
+void write_page_flash(uint16_t page, const void *data) {
+    // Match firmware: invalid page numbers do not write outside user flash.
+    if (page >= POGOBOT_USER_FLASH_PAGE_COUNT) {
+        printf("write_page_flash: page %u out of range\n", (unsigned int)page);
+        return;
+    }
+    std::memcpy(
+        current_robot->flash_memory_authorized_section +
+            static_cast<size_t>(POGOBOT_USER_FLASH_PAGE_SIZE) * page,
+        data,
+        POGOBOT_USER_FLASH_PAGE_SIZE
+    );
 }
 
-void read_page_flash(uint8_t page, char *buf) {
-    std::memcpy(buf, current_robot->flash_memory_authorized_section + 256*page, 256);
+void read_page_flash(uint16_t page, char *buf) {
+    // Match firmware: an invalid read leaves the caller's buffer unchanged.
+    if (page >= POGOBOT_USER_FLASH_PAGE_COUNT) {
+        printf("read_page_flash: page %u out of range\n", (unsigned int)page);
+        return;
+    }
+    std::memcpy(
+        buf,
+        current_robot->flash_memory_authorized_section +
+            static_cast<size_t>(POGOBOT_USER_FLASH_PAGE_SIZE) * page,
+        POGOBOT_USER_FLASH_PAGE_SIZE
+    );
 }
 
 void magn_begin(void) {

@@ -34,7 +34,7 @@ static bool send_message(void) {
 }
 
 
-/* Erase 64kB in flash in RW authorized space */
+/* Erase the user-writable flash region. */
 /* Write and Read in each page (256 bytes) */
 static void test_flash_write_read(void) {
     int cmp = 0;

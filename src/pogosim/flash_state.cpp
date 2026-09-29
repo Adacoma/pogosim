@@ -193,7 +193,7 @@ void read_archive(
     on_header(record_count);
 
     std::map<robot_key, bool> seen;
-    // Reuse one 64 KiB buffer even when a larger archive has unused robots.
+    // Reuse one user-flash buffer even when an archive has unused robots.
     std::vector<unsigned char> flash(flash_memory_authorized_section_size);
     for (std::uint32_t record = 0; record < record_count; ++record) {
         std::uint64_t checksum = fnv_offset_basis;

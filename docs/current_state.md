@@ -1,6 +1,6 @@
 # Current project state
 
-Last updated: 2026-09-28
+Last updated: 2026-09-29
 
 ## Inspected
 
@@ -18,7 +18,7 @@ Last updated: 2026-09-28
 - The object model covers Pogobots, Pogobjects, Pogowalls, flexible membranes, active/passive objects, and static or time-varying lights. Communication supports directional range, optional occlusion, and static or density-dependent reception probability.
 - Results are buffered into compressed Arrow/Feather files with configuration, arena, and version metadata. Pogobatch expands parameter choices and seeds, runs tasks locally or through Rundra, records manifests, and merges task outputs.
 - Pogoptim now reuses Pogobatch's public local-campaign API for Random Search, CMA-ES, and MAP-Elites, with YAML/CLI precedence and recorded evaluation provenance.
-- Optional flash-state archives now carry each robot's 64 KiB user flash plus motor direction/power calibration memories between simulator invocations, without checkpointing transient or physical state.
+- Optional flash-state archives now carry each robot's 1,472 KiB v3 user flash plus motor direction/power calibration memories between simulator invocations, without checkpointing transient or physical state.
 - CI combines Linux, macOS, WSL2, MSYS2/MinGW-w64, and native MSVC builds with headless simulator smoke runs and focused Python regression tests for Pogobatch and Pogoptim.
 
 ## Remains unknown
@@ -37,6 +37,7 @@ Last updated: 2026-09-28
 - Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
 - Flash import now accepts an archive with extra robot identities while requiring every simulated robot to match. Export from an imported archive retains unused records, including same-path replacement; a five-to-two-to-five simulator sequence passed locally and is covered by the native Windows smoke test.
 - A dedicated `test_flash_state` example now provides a reproducible two-run simulator smoke test and a two-boot real-robot test while preserving hardware motor calibration values.
+- The simulated flash API now matches `pogobot/Software`: 5,888 pages of 256 bytes, `uint16_t` page indices, and non-mutating rejection of out-of-range pages. The archive stores the full region; old 64 KiB archives are rejected. The simulator example checks the final page and bounds behavior.
 - The Windows jobs now distinguish MSYS2/UCRT64 with MinGW-w64 from a native PowerShell/MSVC build. Both use the same pinned Box2D 3.x revision; the MSYS2 job retains the simulator flash-state smoke test and native-CPython suite, while the MSVC job initializes the latest installed `cl.exe`, builds through Ninja, exports Box2D's library and public headers through one explicit install prefix, and validates the CMake library artifact.
 - CMake resolves GNU make explicitly for optional example targets, so generated Ninja builds no longer contain Make-only `$(MAKE)` syntax.
 - MSVC builds define `_USE_MATH_DEFINES` at the target level so existing public headers and sources can use the standard math constants consistently.
@@ -56,6 +57,7 @@ Last updated: 2026-09-28
 - Require explicit descriptor domains for custom MAP-Elites features and reject out-of-domain values rather than clipping them.
 - Preserve simulation/hardware controller parity by storing mutable per-robot controller state in `USERDATA`.
 - Treat only the user flash section and motor calibration memories as persistent robot state; fresh user flash remains indeterminate unless an archive is loaded.
+- Keep archive loading strict after the v3 flash expansion; do not fabricate newly exposed pages for obsolete 64 KiB archives.
 - Permit smaller follow-up robot populations to restore their identity-matched flash records; preserve unused source records on export rather than silently shrinking a shared archive.
 - Use Feather output with embedded provenance and restrict logged fields/categories for large experiments.
 - For the run-and-tumble tutorial, compute origin-relative MSD per robot, average robots within each seed first, and describe uncertainty across independent seed-level curves.
@@ -70,6 +72,8 @@ Last updated: 2026-09-28
 - Generated results in local ignored directories are not canonical repository data and were not used to establish scientific conclusions.
 - Pogoptim is local-only, has no resume/checkpoint workflow, and relies on the optional QDpy package for MAP-Elites.
 - Flash archives validate simulator-level structure and robot identity but cannot determine whether controller-defined byte layouts are application-compatible.
+- The expanded flash consumes 1,472 KiB of RAM and archive space per robot, roughly 23 times the prior flash allocation; its large-population cost has not been benchmarked.
+- The bundled `pogobot-sdk` header still declares the older flash API; high-page coverage in `test_flash_state` currently runs only in simulation.
 - The tutorial's solid disk arena bounds late-time MSD; its one-seed local smoke result is not evidence for a population-level condition effect.
 
 ## Next concrete tasks

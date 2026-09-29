@@ -22,6 +22,9 @@ enum {
     FLASH_STATE_MODE_IMPORT = 2,
     TEST_FLASH_PAGE = 7,
     TEST_METADATA_PAGE = 8,
+#ifdef SIMULATOR
+    TEST_LAST_FLASH_PAGE = POGOBOT_USER_FLASH_PAGE_COUNT - 1,
+#endif
 };
 
 // This value is overridden from YAML by global_setup() in simulation. On real
@@ -112,6 +115,15 @@ static void prepare_persistent_state(void) {
     }
     write_page_flash(TEST_FLASH_PAGE, page);
 
+#ifdef SIMULATOR
+    // The final v3 page catches an API or archive that still truncates page
+    // numbers to uint8_t or stores only the old 64 KiB user region.
+    for (uint16_t i = 0; i < 256; ++i) {
+        page[i] = expected_flash_byte(robot_id, i) ^ 0xa5u;
+    }
+    write_page_flash(TEST_LAST_FLASH_PAGE, page);
+#endif
+
     build_metadata_page(metadata, robot_id, directions, powers);
     write_page_flash(TEST_METADATA_PAGE, metadata);
 
@@ -139,6 +151,27 @@ static void verify_persistent_state(void) {
     for (uint16_t i = 0; i < 256; ++i) {
         errors += page[i] != expected_flash_byte(robot_id, i);
     }
+
+#ifdef SIMULATOR
+    read_page_flash(TEST_LAST_FLASH_PAGE, (char *)page);
+    for (uint16_t i = 0; i < 256; ++i) {
+        errors += page[i] != (uint8_t)(expected_flash_byte(robot_id, i) ^ 0xa5u);
+    }
+
+    // Invalid page IDs must neither change the final page nor overwrite the
+    // caller's buffer, as in the physical firmware's bounds checks.
+    memset(page, 0x5a, sizeof(page));
+    write_page_flash(POGOBOT_USER_FLASH_PAGE_COUNT, page);
+    read_page_flash(TEST_LAST_FLASH_PAGE, (char *)page);
+    for (uint16_t i = 0; i < 256; ++i) {
+        errors += page[i] != (uint8_t)(expected_flash_byte(robot_id, i) ^ 0xa5u);
+    }
+    memset(page, 0x5a, sizeof(page));
+    read_page_flash(POGOBOT_USER_FLASH_PAGE_COUNT, (char *)page);
+    for (uint16_t i = 0; i < 256; ++i) {
+        errors += page[i] != 0x5au;
+    }
+#endif
 
     read_page_flash(TEST_METADATA_PAGE, (char *)metadata);
     errors += memcmp(metadata, fixture_magic, sizeof(fixture_magic)) != 0;
@@ -211,7 +244,7 @@ void user_init(void) {
         verify_persistent_state();
     } else {
         printf(
-            "FLASH_STATE: no fixture found; erasing the 64 KiB user section\n"
+            "FLASH_STATE: no fixture found; erasing the user flash section\n"
         );
         prepare_persistent_state();
         pogobot_led_setColor(0, 0, 255);

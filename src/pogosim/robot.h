@@ -132,7 +132,10 @@ private:
  */
 MsgSuccessRate* msg_success_rate_factory(Configuration const& config);
 
-size_t constexpr flash_memory_authorized_section_size = 0x10000;
+// Match the v3 firmware's complete user-writable region (pages 0 through 5887).
+size_t constexpr flash_memory_authorized_section_size =
+    static_cast<size_t>(POGOBOT_USER_FLASH_PAGE_COUNT) *
+    POGOBOT_USER_FLASH_PAGE_SIZE;
 
 
 /**

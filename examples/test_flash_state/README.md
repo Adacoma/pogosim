@@ -1,10 +1,11 @@
 # Flash-state import/export test
 
 This example checks persistent memory across two separate starts, both in
-Pogosim and on real Pogobots. It covers the 64 KiB user flash section, motor
-direction memory, and motor power memory. The simulator test additionally
-checks robot identity mapping, callback ordering, and using one pathname for
-both import and atomic export.
+Pogosim and on real Pogobots. It covers the user flash section, motor direction
+memory, and motor power memory. The simulator test additionally checks the
+last v3 flash page (5,887), rejects page 5,888 without changing flash or the
+read buffer, and checks robot identity mapping, callback ordering, and using
+one pathname for both import and atomic export.
 
 ## Simulator
 
@@ -52,7 +53,7 @@ Build and upload the example with the normal Pogobot SDK workflow. The same
 firmware performs both phases automatically:
 
 1. On the first boot, when no test marker is present, it erases the complete
-   64 KiB user-writable flash section, writes the fixture, snapshots the
+   user-writable flash section, writes the fixture, snapshots the
    existing motor calibration memories, and turns the LED blue.
 2. Power-cycle the robot without reflashing it. The next boot verifies the
    flash fixture and checks that the motor calibration memories still match the
@@ -62,3 +63,7 @@ The test does not replace real motor calibration with synthetic values.
 However, its first phase deliberately erases all existing user-writable flash,
 so it must only be run when losing that data is acceptable. Erase the test
 section or upload firmware that does so before repeating the first phase.
+
+The high-page checks are simulator-only. This checkout's bundled SDK header
+still declares the older flash API; use an SDK synchronized with the updated
+`pogobot/Software` firmware to exercise v3 flash pages on real robots.
