@@ -38,4 +38,5 @@
 
 - [CMake build](../CMakeLists.txt) and [build script](../build.sh) — build and install the simulator library and example programs.
 - [CI workflow](../.github/workflows/ci.yaml) — multi-platform builds and headless smoke tests.
+- [Simulator regression testing](regression-testing.md) — coverage, local CTest commands, installed-library compatibility, and isolated UBSan CI checks.
 - [Apptainer definitions](..) — root-level `pogosim-*.def` files for reproducible and cluster-oriented environments.

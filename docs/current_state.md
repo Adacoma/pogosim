@@ -33,6 +33,7 @@ Last updated: 2026-10-02
 
 ## Working analyses
 
+- Regression coverage now totals 60 CTest cases (previously 16), adding geometry/light/neighbor models, all ten factories under both boundaries, real C message delivery, flash corruption and round trips, Feather read-back/filtering, startup and callback failures, and an isolated installed-library consumer with legacy link flags and a spaces-containing prefix. All 60 pass locally in Release, Debug/UBSan, and with yaml-cpp 0.7; all 17 Python tests pass. `BUILD_TESTING=OFF` still builds only the library. CI runs the expanded suite on all existing toolchains and adds an isolated Ubuntu-latest UBSan build; hosted results remain pending. Runtime code, APIs and defaults are unchanged. See `regression-testing.md` for coverage and limitations.
 - Lightweight configuration validation is implemented: `--check-config` performs side-effect-free core preflight; `--strict-config` also validates consumed typed lookups, including C controller parameters. Default runs retain permissive behavior; unknown keys require no schema registration. All 16 CTest fixtures pass locally in Release, Debug/UBSan, and with yaml-cpp 0.7; hosted cross-platform validation remains unverified. Dated improvement recommendations and validation usage/extension guidance are recorded in `docs/`.
 - Boost.Context scheduling and simulated clocks are integrated. Fourteen runtime/simulator tests pass locally in Release and Debug with undefined-behavior checks, including mixed-language sleeps, physics, callbacks, timers, pacing, exceptions, cancellation, legacy linking, and periodic wall suppression. C and C++ example smoke runs, eight flash-state smoke configurations, and all 17 Python regression tests pass; hosted cross-platform and full container rebuilds remain unverified.
 - CMake supports both yaml-cpp's legacy and namespaced imported targets; all 14 tests pass against installed yaml-cpp 0.7 and 0.9 packages. Static Pogosim archives bundle Context members to preserve existing external Makefile link flags; a copied pre-coroutine Makefile built and ran against a temporary installation without edits. GNU/LLVM archive merging also passed paths-with-spaces checks; native Apple/MSVC verification remains with CI.
@@ -92,7 +93,7 @@ Last updated: 2026-10-02
 1. Verify the new coroutine runtime and simulator fixtures on hosted Linux/macOS/WSL/MinGW/MSVC CI; general native CMake example targets remain a separate task.
 2. Decide whether the untracked quadrant-motility and magnetometer work should be documented, tested, and committed.
 3. Add quantitative validation references or datasets for motion, sensing, timing, and infrared communication models.
-4. Extend unit/regression coverage beyond the new batch/optimization tests to simulation scheduling, neighbor detection, and data logging.
+4. Extend the regression suite to sensor/motor models and GUI interaction without confusing behavioral checks with empirical model validation.
 5. Benchmark nested Pogoptim parallelism and optimizer convergence on representative built controllers.
 6. Reconcile the CMake project version with the canonical C/Python version and document the release process.
 7. Record benchmark envelopes for runtime and memory as robot count and logging volume increase.

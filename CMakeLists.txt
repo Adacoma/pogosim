@@ -319,6 +319,9 @@ if(BUILD_TESTING)
         -P "${CMAKE_SOURCE_DIR}/tests/configuration/run_validation.cmake")
     set_tests_properties(configuration_validation_cli PROPERTIES
         ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 30)
+
+    # Additional coverage is test-only: no core flags, API or install changes.
+    include(tests/simulator/register_tests.cmake)
 endif()
 
 # Install rules

@@ -176,9 +176,23 @@ jobs:
           source .venv/bin/activate
           python3 -m unittest discover -s scripts/python_tests -v
 
-      - name: Test cooperative controller scheduling
+      - name: Test simulator regressions
         if: matrix.os != 'windows-latest'
         run: ctest --test-dir build --output-on-failure
+
+      # Instrument only this isolated CI build; normal builds and installed
+      # controller flags retain their existing behavior on every platform.
+      - name: Build and test simulator with UBSan (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          UBSAN_OPTIONS: 'halt_on_error=1:print_stacktrace=1'
+        run: |
+          cmake -S . -B build-ubsan -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS="-fsanitize=undefined -fno-omit-frame-pointer" \
+            -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined"
+          cmake --build build-ubsan --parallel 2
+          ctest --test-dir build-ubsan --output-on-failure
 
       - name: Test Python batch and optimization tools (Windows+WSL2)
         if: matrix.os == 'windows-latest'
@@ -189,7 +203,7 @@ jobs:
           source .venv/bin/activate
           python3 -m unittest discover -s scripts/python_tests -v
 
-      - name: Test cooperative controller scheduling (Windows+WSL2)
+      - name: Test simulator regressions (Windows+WSL2)
         if: matrix.os == 'windows-latest'
         shell: wsl-bash {0}
         run: |
@@ -319,7 +333,7 @@ jobs:
           # An input-only first run must not serialize indeterminate flash.
           test "$(wc -c < frames/test_flash_state_empty_only.pgflash)" -eq 18
 
-      - name: Test cooperative controller scheduling natively
+      - name: Test simulator regressions natively
         run: ctest --test-dir build-windows-native --output-on-failure
 
       - name: Set up native CPython
@@ -441,7 +455,7 @@ jobs:
           }
           Write-Host "Verified native MSVC artifact: $library"
 
-      - name: Test cooperative controller scheduling with MSVC
+      - name: Test simulator regressions with MSVC
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -449,7 +463,7 @@ jobs:
           $runtimeDir = Join-Path $env:VCPKG_INSTALLATION_ROOT 'installed/x64-windows/bin'
           $env:PATH = "$runtimeDir;$env:PATH"
           ctest --test-dir build-windows-msvc --output-on-failure
-          if ($LASTEXITCODE -ne 0) { throw 'MSVC controller scheduling tests failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'MSVC simulator regression tests failed' }
 
 #      # Step 4: Run tests
 #      - name: Run tests
