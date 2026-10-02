@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- avoid Windows' `max` macro collision in the coroutine stack-size limit check
 - skip Pogowall initialization under periodic boundaries instead of dereferencing a null factory result
 - preserve external Makefile link compatibility by bundling Boost.Context members into the static Pogosim archive
 - support yaml-cpp's legacy imported target on Ubuntu 22.04 as well as newer namespaced targets

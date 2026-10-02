@@ -26,7 +26,8 @@ struct RobotCoroutine::Impl {
         using traits = boost::context::stack_traits;
         // Protected stacks round up to pages and add a guard page. Reject
         // sizes that would overflow that allocation on unbounded platforms.
-        if (stack_size > std::numeric_limits<std::size_t>::max() - 2 * traits::page_size() ||
+        // Parentheses prevent Windows headers' function-like max macro expanding.
+        if (stack_size > (std::numeric_limits<std::size_t>::max)() - 2 * traits::page_size() ||
             stack_size < traits::minimum_size() ||
             (!traits::is_unbounded() && stack_size > traits::maximum_size())) {
             throw std::invalid_argument("Invalid coroutine_stack_size for this platform");
