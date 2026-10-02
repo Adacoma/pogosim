@@ -32,6 +32,16 @@ if(MSVC)
     find_package(box2d CONFIG REQUIRED)
 endif()
 find_package(yaml-cpp REQUIRED)
+# yaml-cpp 0.7 (Ubuntu 22.04) exports only the unnamespaced installed
+# target; newer packages export yaml-cpp::yaml-cpp. Link a real target so
+# includes, static/shared definitions and library locations are inherited.
+if(TARGET yaml-cpp::yaml-cpp)
+    set(POGOSIM_YAML_CPP_TARGET yaml-cpp::yaml-cpp)
+elseif(TARGET yaml-cpp)
+    set(POGOSIM_YAML_CPP_TARGET yaml-cpp)
+else()
+    message(FATAL_ERROR "yaml-cpp package did not provide a supported CMake target")
+endif()
 find_package(spdlog REQUIRED)
 find_package(Arrow REQUIRED)
 find_package(fmt REQUIRED)
@@ -94,7 +104,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Boost::context
         SDL2::SDL2
-        yaml-cpp::yaml-cpp
+        ${POGOSIM_YAML_CPP_TARGET}
         spdlog::spdlog
         fmt::fmt
 )
