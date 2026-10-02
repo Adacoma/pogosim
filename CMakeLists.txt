@@ -13,13 +13,13 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Vcpkg provides a current Boost package config on MSVC. Keep legacy
 # FindBoost on established Unix builds to preserve their existing discovery.
 if(MSVC)
-    find_package(Boost 1.70 CONFIG REQUIRED)
+    find_package(Boost 1.70 CONFIG REQUIRED COMPONENTS context)
 else()
     if(POLICY CMP0167)
         cmake_policy(SET CMP0167 OLD)
     endif()
     set(Boost_NO_BOOST_CMAKE ON)
-    find_package(Boost 1.70 REQUIRED)
+    find_package(Boost 1.70 REQUIRED COMPONENTS context)
 endif()
 
 # Find required packages
@@ -92,7 +92,7 @@ target_compile_definitions(${PROJECT_NAME}
 # Link libraries
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        #Boost::system
+        Boost::context
         SDL2::SDL2
         yaml-cpp::yaml-cpp
         spdlog::spdlog
@@ -137,6 +137,37 @@ else()
             $<$<CONFIG:Debug>:/W4 /Od /Zi /DDEBUG>
         >
     )
+endif()
+
+# Boost.Context may unwind through the C API when a suspended controller is
+# stopped. MSVC must not assume extern "C" calls are non-throwing, or use /GL.
+target_compile_options(${PROJECT_NAME} PUBLIC
+    $<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-fexceptions>)
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PUBLIC
+        $<$<COMPILE_LANGUAGE:CXX>:/EHs>
+        $<$<COMPILE_LANGUAGE:CXX>:/EHc->
+        /GL-)
+endif()
+
+# A standalone runtime test exercises mixed C/C++ stacks without SDL/physics.
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(test_robot_coroutine
+        tests/robot_coroutine/runtime_test.cpp
+        tests/robot_coroutine/nested_calls.c
+        src/pogosim/robot_coroutine.cpp)
+    target_include_directories(test_robot_coroutine PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(test_robot_coroutine PRIVATE Boost::context)
+    target_compile_options(test_robot_coroutine PRIVATE
+        $<$<COMPILE_LANG_AND_ID:C,GNU,Clang,AppleClang>:-fexceptions>)
+    if(MSVC)
+        target_compile_options(test_robot_coroutine PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/EHs>
+            $<$<COMPILE_LANGUAGE:CXX>:/EHc-> /GL-)
+    endif()
+    add_test(NAME robot_coroutine_runtime COMMAND test_robot_coroutine)
+    set_tests_properties(robot_coroutine_runtime PROPERTIES TIMEOUT 15)
 endif()
 
 # Install rules

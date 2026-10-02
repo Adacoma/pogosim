@@ -14,7 +14,7 @@ To install it on *Debian/Ubuntu* (tested: 24.04 LTS), use the following commands
 First, install the necessary packages:
 ```shell
 sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-    build-essential cmake git libboost-system-dev \
+    build-essential cmake git libboost-system-dev libboost-context-dev \
     libsdl2-dev libsdl2-image-dev libsdl2-gfx-dev libsdl2-ttf-dev \
     libyaml-cpp-dev libspdlog-dev libfmt-dev \
     wget unzip ca-certificates lsb-release
@@ -154,6 +154,7 @@ Install Pogosim's native dependencies through vcpkg:
 & "$env:VCPKG_ROOT\vcpkg.exe" install `
     arrow:x64-windows `
     boost-system:x64-windows `
+    boost-context:x64-windows `
     fmt:x64-windows `
     sdl2:x64-windows `
     sdl2-gfx:x64-windows `

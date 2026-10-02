@@ -33,7 +33,7 @@ From: ubuntu:24.04
         build-essential \
         cmake \
         git \
-        libboost-system-dev \
+        libboost-system-dev libboost-context-dev \
         libsdl2-dev \
         libsdl2-image-dev \
         libsdl2-gfx-dev \
@@ -113,7 +113,7 @@ From: ubuntu:24.04
         libboost-iostreams-dev \
         libboost-program-options-dev \
         libboost-python-dev \
-        libboost-system-dev \
+        libboost-system-dev libboost-context-dev \
         libboost-thread-dev \
         libeigen3-dev \
         libffi-dev \

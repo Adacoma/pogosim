@@ -1,6 +1,6 @@
 # Current project state
 
-Last updated: 2026-09-29
+Last updated: 2026-10-02
 
 ## Inspected
 
@@ -32,6 +32,7 @@ Last updated: 2026-09-29
 
 ## Working analyses
 
+- A guarded-stack Boost.Context runtime now passes standalone mixed C/C++ suspension, initialization, pacing, cancellation/unwinding, and exception tests. Build/install dependencies and example link flags are updated; robot scheduling and simulation-clock integration are the next implementation step.
 - No analysis is currently running as part of this milestone.
 - The Pogoptim/Pogobatch migration has passed focused unit tests, optional CMA-ES/QDpy smoke tests, a nested-worker fake-simulator campaign, and one-evaluation Random/MAP-Elites runs against the built `run_and_tumble` controller; longer scientific runs have not been benchmarked.
 - Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
