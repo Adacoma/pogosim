@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- add opt-in configuration preflight (`--check-config`) and strict typed lookups (`--strict-config`) without a mandatory schema or new dependencies
+- record dated simulator improvement recommendations and configuration-validation usage/developer guidance
 - add cooperative Boost.Context controller stacks, configurable guarded stack sizes, and mixed C/C++ scheduling regression tests
 - add a public `pogobatch.run_local_campaign` API with structured results and task-failure details
 - package the `pogoptim` console command and optional CMA-ES/MAP-Elites dependencies

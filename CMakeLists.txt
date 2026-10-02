@@ -201,6 +201,13 @@ endif()
 # A standalone runtime test exercises mixed C/C++ stacks without SDL/physics.
 include(CTest)
 if(BUILD_TESTING)
+    # Validation needs no controllers, SDL initialization, or output fixtures.
+    add_executable(test_configuration tests/configuration/validation_test.cpp)
+    target_include_directories(test_configuration PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(test_configuration PRIVATE pogosim)
+    add_test(NAME configuration_validation COMMAND test_configuration)
+    set_tests_properties(configuration_validation PROPERTIES TIMEOUT 15)
+
     add_executable(test_robot_coroutine
         tests/robot_coroutine/runtime_test.cpp
         tests/robot_coroutine/nested_calls.c
@@ -304,6 +311,14 @@ if(BUILD_TESTING)
     set_tests_properties(objects_periodic_skip_pogowalls PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 15)
+
+    add_test(NAME configuration_validation_cli COMMAND ${CMAKE_COMMAND}
+        "-DPROGRAM=$<TARGET_FILE:test_controller_scheduling>"
+        "-DNORMAL_CONFIG=${CMAKE_CURRENT_BINARY_DIR}/coroutine-0.yaml"
+        "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+        -P "${CMAKE_SOURCE_DIR}/tests/configuration/run_validation.cmake")
+    set_tests_properties(configuration_validation_cli PROPERTIES
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 30)
 endif()
 
 # Install rules

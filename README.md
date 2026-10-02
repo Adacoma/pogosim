@@ -404,6 +404,8 @@ Options:
   -nr, --do-not-show-robot-msg    Suppress robot messages.
   -s, --seed <int>                Seed the simulator RNG.
   -P, --progress                  Show progress output.
+  --check-config                  Check core configuration without running.
+  --strict-config                 Check core constraints and typed lookups.
   -V, --version                   Show version information.
   -h, --help                      Display this help message.
 ```
@@ -413,6 +415,8 @@ Options:
 - Parameter "-v" enables verbose mode (show debug messages).
 - Parameter "-nr" disables messages from the robots (printf in robot code).
 - Parameter "-P" displays a progress bar of the simulation, depending on the parameter value "simulation\_time" defined in the configuration file.
+
+Use `--check-config` to check core YAML types and constraints without running controllers or creating flash/output files. Use `--strict-config` to also reject invalid typed lookups during a normal simulation. Existing runs remain permissive and unknown keys are allowed; see [configuration validation](docs/configuration-validation.md) for scope and examples.
 
 
 ## Troubleshooting

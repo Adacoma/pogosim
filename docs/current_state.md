@@ -33,6 +33,7 @@ Last updated: 2026-10-02
 
 ## Working analyses
 
+- Lightweight configuration validation is implemented: `--check-config` performs side-effect-free core preflight; `--strict-config` also validates consumed typed lookups, including C controller parameters. Default runs retain permissive behavior; unknown keys require no schema registration. All 16 CTest fixtures pass locally in Release, Debug/UBSan, and with yaml-cpp 0.7; hosted cross-platform validation remains unverified. Dated improvement recommendations and validation usage/extension guidance are recorded in `docs/`.
 - Boost.Context scheduling and simulated clocks are integrated. Fourteen runtime/simulator tests pass locally in Release and Debug with undefined-behavior checks, including mixed-language sleeps, physics, callbacks, timers, pacing, exceptions, cancellation, legacy linking, and periodic wall suppression. C and C++ example smoke runs, eight flash-state smoke configurations, and all 17 Python regression tests pass; hosted cross-platform and full container rebuilds remain unverified.
 - CMake supports both yaml-cpp's legacy and namespaced imported targets; all 14 tests pass against installed yaml-cpp 0.7 and 0.9 packages. Static Pogosim archives bundle Context members to preserve existing external Makefile link flags; a copied pre-coroutine Makefile built and ran against a temporary installation without edits. GNU/LLVM archive merging also passed paths-with-spaces checks; native Apple/MSVC verification remains with CI.
 - Periodic boundaries now return immediately when skipping Pogowalls, avoiding a pre-existing null dereference during object creation. The regression covers both implicit and explicit wall coordinates; short 50-robot Toner–Tu runs passed headless/UBSan and the GUI code path with SDL's dummy display, with walls still declared and outputs disabled in temporary configs.
@@ -72,6 +73,7 @@ Last updated: 2026-10-02
 
 ## Known data limitations
 
+- Check-only validation covers core settings, not controller execution, every specialized model option, or external file/archive contents. Validate concrete simulation inputs, not unexpanded batch-only choices without scalar defaults; unused-key spelling mistakes remain undetectable by design.
 - Logged timestamps lie on simulator ticks and may not exactly match the requested logging period or final simulation time.
 - Long-time displacement in solid arenas is bounded; periodic trajectories require coordinate unwrapping before conventional unbounded-space MSD analysis.
 - Changing robot count at fixed arena area also changes density, collision frequency, and communication connectivity.

@@ -11,6 +11,8 @@
 #include <vector>
 #include <utility>
 #include <type_traits>
+#include <cmath>
+#include <limits>
 
 /**
  * @brief Convert an \c arena_polygons_t structure into a compact YAML string.
@@ -69,6 +71,15 @@ public:
     /// Construct Configuration from an existing YAML::Node.
     explicit Configuration(const YAML::Node &node);
 
+    /// Opt-in type checking follows child lookups; unknown keys remain allowed.
+    void enable_validation(bool enabled = true) { validate_ = enabled; }
+
+    /// Check core safety constraints without initializing the simulation or files.
+    void validate_simulator() const;
+
+    /// Optional domain constraint for a parameter; inactive in legacy mode.
+    void require(bool condition, const std::string& expectation) const;
+
     /**
      * @brief Loads configuration parameters from a YAML file.
      *
@@ -100,7 +111,8 @@ public:
      * If the current node is defined, attempts to cast it to type T; otherwise returns default_value.
      *
      * @param T The expected type.
-     * @param default_value The default value to return if the node is not defined or conversion fails.
+     * @param default_value The default value for missing nodes or legacy conversion failures.
+     * @throws std::invalid_argument on conversion failures when validation is enabled.
      * @return T The value of the node cast to type T.
      */
     template<typename T>
@@ -147,6 +159,11 @@ private:
     YAML::Node node_;
     mutable YAML::Node resolved_cache_;  // Cache for resolved hierarchical default
     mutable bool cache_valid_;           // Whether the cache is valid
+    bool validate_ = false;
+    std::string path_; // Construct diagnostic paths only when validation is enabled.
+
+    Configuration child(const YAML::Node& node, const std::string& key) const;
+    [[noreturn]] void invalid(const std::string& expectation) const;
 
     /**
      * @brief If @p n is a map containing a 'batch_hierarchical_options' map with a
@@ -188,6 +205,39 @@ numeric_fallback(const YAML::Node&, const T& default_value) {
     return default_value;
 }
 
+// Keep legacy numeric coercions available, but never truncate or perform an
+// out-of-range float-to-integer cast in the opt-in validation mode.
+template<typename T>
+T checked_conversion(const YAML::Node& n) {
+    try {
+        return n.as<T>();
+    } catch (const YAML::Exception&) {
+        if constexpr (std::is_integral_v<T>) {
+            const long double value = n.as<long double>();
+            if constexpr (std::is_same_v<T, bool>) {
+                if (value == 0 || value == 1) return value != 0;
+            } else {
+                // Exclusive power-of-two bound also works when MSVC's long
+                // double cannot represent UINT64_MAX exactly.
+                const long double upper = std::ldexp(1.0L, std::numeric_limits<T>::digits);
+                const long double lower = std::is_signed_v<T> ? -upper : 0;
+                if (std::isfinite(value) && std::trunc(value) == value &&
+                        value >= lower && value < upper) return static_cast<T>(value);
+            }
+        }
+        throw;
+    }
+}
+
+template<typename T>
+std::string expected_type() {
+    if constexpr (std::is_same_v<T, bool>) return "a boolean (or 0/1)";
+    if constexpr (std::is_integral_v<T>) return "an integer in the requested type's range";
+    if constexpr (std::is_floating_point_v<T>) return "a number in the requested type's range";
+    if constexpr (std::is_same_v<T, std::string>) return "a scalar string";
+    return "a value of the requested type";
+}
+
 } // namespace detail
 
 template<typename T>
@@ -202,8 +252,19 @@ T Configuration::get(const T& default_value) const {
 
     /* honour an eventual "default_option" sub-key ---------------- */
     if (target.IsMap()) {
-        YAML::Node opt = target["default_option"];
-        if (opt) { target = opt; }
+        const YAML::Node opt = target_ref["default_option"]; // Const lookup: no insertion.
+        // Do not overwrite the batch definition through YAML's shared aliases.
+        if (opt) { target.reset(opt); }
+    }
+
+    // Missing/null entries retain their historical default behavior. This is
+    // especially important for optional parameters and batch defaults.
+    if (validate_ && target && !target.IsNull()) {
+        try {
+            return detail::checked_conversion<T>(target);
+        } catch (const YAML::Exception&) {
+            invalid(detail::expected_type<T>());
+        }
     }
 
     /* -------- 1st attempt – let yaml-cpp do the conversion ------ */
@@ -222,6 +283,7 @@ void Configuration::set(const std::string& key, const T& value) {
         node_ = YAML::Node(YAML::NodeType::Map);
     }
     node_[key] = value;
+    cache_valid_ = false;
 }
 
 template<typename T>

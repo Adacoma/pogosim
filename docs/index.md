@@ -5,9 +5,11 @@
 - [Project README](../README.md) — purpose, installation, quickstart, simulator controls, configuration examples, data export, containers, and reproducible experiments.
 - [Current project state](current_state.md) — inspected areas, current understanding, open questions, scientific decisions, data limitations, and next tasks.
 - [Change log](../CHANGELOG.md) — release history and user-visible changes.
+- [Improvement recommendations (2026-10-02)](improvement-recommendations-2026-10-02.md) — prioritized reliability, scientific-output, installation, and performance proposals.
 
 ## Experiment execution
 
+- [Configuration validation](configuration-validation.md) — check-only preflight, optional strict typed lookups, compatibility, and adding parameters without a schema.
 - [Pogobatch and Rundra guide](pogobatch-rundra-guide.md) — local parameter sweeps, cluster execution, task manifests, retrieval, merging, recovery, and provenance.
 - [Run-and-tumble cluster MSD tutorial](run-and-tumble-rundra-tutorial.md) — worked two-condition, 128-seed Pogobatch/Rundra experiment with configuration, analysis script, and demo video.
 - [Pogoptim guide](pogoptim-guide.md) — parameter domains, optimization algorithms, objectives, parallel execution, seeds, failure handling, and outputs.

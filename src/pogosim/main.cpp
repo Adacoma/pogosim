@@ -13,7 +13,8 @@
 #include "utils.h"
 #undef main         // We defined main() as robot_main() in pogobot.h
 
-bool parse_arguments(int argc, char* argv[], std::string& config_file, bool& verbose, bool& quiet, bool& do_not_show_robot_msg, bool& gui, bool& progress, bool& seed_provided, uint32_t& seed) {
+// Keep the existing parser entry point below while extending the simulator CLI.
+static bool parse_arguments_impl(int argc, char* argv[], std::string& config_file, bool& verbose, bool& quiet, bool& do_not_show_robot_msg, bool& gui, bool& progress, bool& seed_provided, uint32_t& seed, bool& check_config, bool& strict_config) {
     verbose = false;
     quiet = false;
     do_not_show_robot_msg = false;
@@ -22,6 +23,8 @@ bool parse_arguments(int argc, char* argv[], std::string& config_file, bool& ver
     seed_provided = false;
     seed = 0;
     config_file.clear();
+    check_config = false;
+    strict_config = false;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -43,6 +46,10 @@ bool parse_arguments(int argc, char* argv[], std::string& config_file, bool& ver
             do_not_show_robot_msg = true;
         } else if (arg == "-P" || arg == "--progress") {
             progress = true;
+        } else if (arg == "--check-config") {
+            check_config = true;
+        } else if (arg == "--strict-config") {
+            strict_config = true;
         } else if (arg == "-s" || arg == "--seed") {
             if (i + 1 < argc) {
                 std::string seed_arg = argv[++i];
@@ -81,6 +88,11 @@ bool parse_arguments(int argc, char* argv[], std::string& config_file, bool& ver
     return true;
 }
 
+bool parse_arguments(int argc, char* argv[], std::string& config_file, bool& verbose, bool& quiet, bool& do_not_show_robot_msg, bool& gui, bool& progress, bool& seed_provided, uint32_t& seed) {
+    bool check_config, strict_config;
+    return parse_arguments_impl(argc, argv, config_file, verbose, quiet, do_not_show_robot_msg, gui, progress, seed_provided, seed, check_config, strict_config);
+}
+
 void print_help() {
     std::cout << "Usage: pogosim [options]\n"
               << "Options:\n"
@@ -91,6 +103,8 @@ void print_help() {
               << "  -nr, --do-not-show-robot-msg    Suppress robot messages.\n"
               << "  -s, --seed <int>                Seed the simulator RNG.\n"
               << "  -P, --progress                  Show progress output.\n"
+              << "  --check-config                  Check core configuration without running.\n"
+              << "  --strict-config                 Check core constraints and typed lookups.\n"
               << "  -V, --version                   Show version information.\n"
               << "  -h, --help                      Display this help message.\n";
 }
@@ -105,9 +119,11 @@ int main(int argc, char** argv) {
     bool progress = false;
     bool cli_seed_provided = false;
     uint32_t cli_seed = 0;
+    bool check_config = false;
+    bool strict_config = false;
 
     // Parse command-line arguments
-    if (!parse_arguments(argc, argv, config_file, verbose, quiet, do_not_show_robot_msg, gui, progress, cli_seed_provided, cli_seed)) {
+    if (!parse_arguments_impl(argc, argv, config_file, verbose, quiet, do_not_show_robot_msg, gui, progress, cli_seed_provided, cli_seed, check_config, strict_config)) {
         std::cerr << "Usage: " << argv[0] << " -c CONFIG_FILE [-v/-q] [-nr] [-g] [-s SEED] [-P] [-V]" << std::endl;
         return 1;
     }
@@ -116,6 +132,19 @@ int main(int argc, char** argv) {
     try {
         // Load configuration
         config.load(config_file);
+        if (check_config || strict_config) {
+            // Validate the effective CLI overrides before any SDL/controller,
+            // logging output or flash-file initialization can have side effects.
+            if (cli_seed_provided) config.set("seed", cli_seed);
+            config.set("GUI", gui);
+            config.set("progress_bar", progress);
+            config.validate_simulator();
+            if (check_config) {
+                std::cout << "Core configuration checks passed; controller callbacks are not run." << std::endl;
+                return 0;
+            }
+            config.enable_validation();
+        }
         // Init logging
         init_logger(config);
         if (verbose) {
