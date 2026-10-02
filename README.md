@@ -219,11 +219,21 @@ The resulting static library is `build-windows-msvc\pogosim.lib`; the install
 tree contains the library, public headers, fonts, and arenas. Rerun the final
 three CMake commands after updating the Pogosim source.
 
-The current CMake project builds the Pogosim library with MSVC, but it does not
-yet build the controller examples as native MSVC executables. Their existing
+The current CMake project builds the Pogosim library and controller-scheduling
+test executables with MSVC, but it does not yet build the standard controller
+examples as native MSVC executables. Their existing
 Makefiles use GNU-specific compiler and linker options. Use the Linux, macOS,
 WSL, or MSYS2/MinGW build for runnable examples until native example targets
 are added to CMake.
+
+Run the headless scheduler tests from the source directory, with vcpkg DLLs on
+the executable search path:
+
+```powershell
+$runtimeDir = Join-Path $env:VCPKG_ROOT 'installed\x64-windows\bin'
+$env:PATH = "$runtimeDir;$env:PATH"
+ctest --test-dir build-windows-msvc --output-on-failure
+```
 
 The Python batch and optimization tools can optionally be installed using a
 normal native Windows Python installation. From the Pogosim source directory:
@@ -366,6 +376,14 @@ cd examples/walls
 make clean && make bin ROBOT_CATEGORY=walls
 ```
 
+
+### Sleeping in controllers
+
+`msleep()` now suspends the robot's C/C++ call stack while other robots and
+physics continue. Existing controllers need no API changes, and hardware builds
+still use the firmware implementation. See [cooperative controller scheduling](docs/controller-scheduling.md)
+for callback restrictions, timer semantics, stack sizing, and C++ cleanup rules.
+Loops without positive sleeps are not automatically interrupted.
 
 ### Headless mode
 To launch your simulation in headless mode (while still exporting png files of the traces), use the "-g" command line parameter. E.g.:

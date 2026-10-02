@@ -176,6 +176,10 @@ jobs:
           source .venv/bin/activate
           python3 -m unittest discover -s scripts/python_tests -v
 
+      - name: Test cooperative controller scheduling
+        if: matrix.os != 'windows-latest'
+        run: ctest --test-dir build --output-on-failure
+
       - name: Test Python batch and optimization tools (Windows+WSL2)
         if: matrix.os == 'windows-latest'
         shell: wsl-bash {0}
@@ -184,6 +188,14 @@ jobs:
           cd "$REPO"
           source .venv/bin/activate
           python3 -m unittest discover -s scripts/python_tests -v
+
+      - name: Test cooperative controller scheduling (Windows+WSL2)
+        if: matrix.os == 'windows-latest'
+        shell: wsl-bash {0}
+        run: |
+          REPO="$(wslpath -u '${{ github.workspace }}')"
+          cd "$REPO"
+          ctest --test-dir build --output-on-failure
 
       # Step 4: Run tests
       - name: Launch Pogosim
@@ -307,6 +319,9 @@ jobs:
           # An input-only first run must not serialize indeterminate flash.
           test "$(wc -c < frames/test_flash_state_empty_only.pgflash)" -eq 18
 
+      - name: Test cooperative controller scheduling natively
+        run: ctest --test-dir build-windows-native --output-on-failure
+
       - name: Set up native CPython
         uses: actions/setup-python@v5
         with:
@@ -425,6 +440,16 @@ jobs:
             throw "Expected MSVC library was not produced: $library"
           }
           Write-Host "Verified native MSVC artifact: $library"
+
+      - name: Test cooperative controller scheduling with MSVC
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Simulator fixtures also need the DLLs for vcpkg dependencies.
+          $runtimeDir = Join-Path $env:VCPKG_INSTALLATION_ROOT 'installed/x64-windows/bin'
+          $env:PATH = "$runtimeDir;$env:PATH"
+          ctest --test-dir build-windows-msvc --output-on-failure
+          if ($LASTEXITCODE -ne 0) { throw 'MSVC controller scheduling tests failed' }
 
 #      # Step 4: Run tests
 #      - name: Run tests

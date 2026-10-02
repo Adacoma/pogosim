@@ -22,6 +22,7 @@
 - [Public controller entry header](../src/pogobase.h) — common include used by simulated and physical controllers.
 - [Pogosim controller API](../src/pogosim/pogosim.h) — controller lifecycle, per-robot state, callbacks, and shared helpers.
 - [Simulated Pogobot API](../src/pogosim/spogobot.h) — simulation implementations of the Pogobot-facing C API.
+- [Cooperative controller scheduling](controller-scheduling.md) — nested C/C++ sleeps, simulation clocks, initialization/shutdown, stack sizing, and build requirements.
 - [Simulator architecture](../src/pogosim/simulator.h) — simulation ownership, initialization, main loop, objects, rendering, and logging.
 - [Doxygen configuration](../Doxyfile) — generates the detailed source/API reference; generated output is not tracked.
 - [Pogobot reception-success model](pogobot_P_reception_success.pdf) — supporting communication-model document.

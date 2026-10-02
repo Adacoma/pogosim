@@ -5,17 +5,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- add cooperative Boost.Context controller stacks, configurable guarded stack sizes, and mixed C/C++ scheduling regression tests
 - add a public `pogobatch.run_local_campaign` API with structured results and task-failure details
 - package the `pogoptim` console command and optional CMA-ES/MAP-Elites dependencies
 - add deterministic per-candidate simulation seeds, nested parallelism controls, unified histories, and MAP-Elites archive artifacts
 
 ### Changed
 
+- suspend at simulated sleep call sites while physics and other robots continue; preserve stack locals and unwind controllers before end callbacks
 - migrate Pogoptim to the refactored Pogobatch task/manifest/merge implementation
 - read optimization defaults from YAML while retaining explicit command-line precedence
 
 ### Fixed
 
+- derive simulated stopwatches and millisecond clocks from simulation time; correct timer remaining-time signs, origin offsets, and expiry waits
 - restore Pogoptim package/direct-script imports and compatibility with current Matplotlib colormap APIs
 
 ## [0.10.10] - 2026-06-22
