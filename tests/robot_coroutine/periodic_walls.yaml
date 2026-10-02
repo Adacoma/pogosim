@@ -1,0 +1,31 @@
+# Both object-creation paths must omit Pogowalls under periodic boundaries.
+# The legacy controller checks that the remaining robots run and finish normally.
+seed: 1
+arena_file: arenas/square.csv
+arena_surface: 1.0e6
+initial_formation: disk
+boundary_condition: periodic
+delete_old_files: false
+enable_console_logging: false
+enable_data_logging: false
+save_video_period: -1
+simulation_time: 0.09
+time_step: 0.001
+objects:
+  robots:
+    type: pogobot
+    nb: 2
+    geometry: disk
+    radius: 26.5
+    communication_radius: 0
+    msg_success_rate:
+      type: static
+      rate: 1.0
+  walls:
+    type: pogowall
+    geometry: arena
+  positioned_walls:
+    type: pogowall
+    geometry: arena
+    x: 0
+    y: 0

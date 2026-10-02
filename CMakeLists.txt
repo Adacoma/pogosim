@@ -292,6 +292,18 @@ if(BUILD_TESTING)
     set_tests_properties(controller_legacy_makefile_link PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 15)
+
+    # Periodic boundaries intentionally omit Pogowalls, including categories
+    # with explicit coordinates. Reuse the short controller to verify startup
+    # and completion without initializing a null object in either factory call.
+    add_test(NAME objects_periodic_skip_pogowalls COMMAND ${CMAKE_COMMAND}
+        "-DPROGRAM=$<TARGET_FILE:test_controller_legacy_link>"
+        "-DCONFIG=${CMAKE_SOURCE_DIR}/tests/robot_coroutine/periodic_walls.yaml"
+        -DEXPECTED_STATUS=0
+        -P "${CMAKE_SOURCE_DIR}/tests/robot_coroutine/run_simulation.cmake")
+    set_tests_properties(objects_periodic_skip_pogowalls PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 15)
 endif()
 
 # Install rules
