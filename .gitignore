@@ -68,6 +68,7 @@ tmp_opt/
 *.bak
 old/
 pogobot
+*.back
 
 # Output data files
 *.feather
