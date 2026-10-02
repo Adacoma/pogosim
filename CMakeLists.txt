@@ -168,6 +168,57 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME robot_coroutine_runtime COMMAND test_robot_coroutine)
     set_tests_properties(robot_coroutine_runtime PROPERTIES TIMEOUT 15)
+
+    # Link a real simulator/controller fixture on every toolchain, including
+    # MSVC. Example Makefiles remain unchanged as the user-facing build path.
+    add_executable(test_controller_scheduling
+        tests/robot_coroutine/controller.c
+        tests/robot_coroutine/controller_bridge.cpp)
+    target_include_directories(test_controller_scheduling PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(test_controller_scheduling PRIVATE pogosim
+        ${SDL2_GFX_LIBRARIES} ${SDL2TTF_LIBRARY} Arrow::arrow_shared)
+    if(NOT MSVC)
+        target_link_libraries(test_controller_scheduling PRIVATE box2d)
+    endif()
+    # Generate isolated configs/results in the build tree, not the worktree.
+    set(SCHEDULING_CASE_NAMES normal end_sleep setup_sleep step_exception
+        negative_sleep init_exception export_sleep invalid_stack early_stop
+        init_cancellation global_exception)
+    foreach(TEST_MODE RANGE 0 10)
+        list(GET SCHEDULING_CASE_NAMES ${TEST_MODE} TEST_CASE_NAME)
+        set(STACK_SIZE 131072)
+        set(SIMULATION_TIME 0.09)
+        set(LOG_DATA false)
+        set(DATA_FILENAME "${CMAKE_CURRENT_BINARY_DIR}/coroutine-${TEST_MODE}.feather")
+        set(EXPECTED_STATUS 2)
+        set(EXPECTED_MESSAGE "Sleep is only supported inside")
+        if(TEST_MODE EQUAL 0 OR TEST_MODE EQUAL 8 OR TEST_MODE EQUAL 9)
+            set(EXPECTED_STATUS 0)
+            set(EXPECTED_MESSAGE "")
+            if(TEST_MODE EQUAL 9)
+                set(SIMULATION_TIME 0)
+            endif()
+        elseif(TEST_MODE EQUAL 3 OR TEST_MODE EQUAL 5 OR TEST_MODE EQUAL 10)
+            set(EXPECTED_MESSAGE "fixture controller exception")
+        elseif(TEST_MODE EQUAL 4)
+            set(EXPECTED_MESSAGE "msleep duration must be nonnegative")
+        elseif(TEST_MODE EQUAL 6)
+            set(LOG_DATA true)
+        elseif(TEST_MODE EQUAL 7)
+            set(STACK_SIZE 0)
+            set(EXPECTED_MESSAGE "Invalid coroutine_stack_size")
+        endif()
+        set(TEST_CONFIG "${CMAKE_CURRENT_BINARY_DIR}/coroutine-${TEST_MODE}.yaml")
+        configure_file(tests/robot_coroutine/simulation.yaml.in "${TEST_CONFIG}" @ONLY)
+        add_test(NAME controller_scheduling_${TEST_CASE_NAME} COMMAND ${CMAKE_COMMAND}
+            "-DPROGRAM=$<TARGET_FILE:test_controller_scheduling>"
+            "-DCONFIG=${TEST_CONFIG}" "-DEXPECTED_STATUS=${EXPECTED_STATUS}"
+            "-DEXPECTED_MESSAGE=${EXPECTED_MESSAGE}"
+            -P "${CMAKE_SOURCE_DIR}/tests/robot_coroutine/run_simulation.cmake")
+        set_tests_properties(controller_scheduling_${TEST_CASE_NAME} PROPERTIES
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 15)
+    endforeach()
 endif()
 
 # Install rules

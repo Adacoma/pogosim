@@ -185,6 +185,9 @@ public:
      */
     virtual ~Simulation();
 
+    /** Unwind suspended controllers while robot data and physics are valid. */
+    void stop_robot_controllers();
+
     /**
      * @brief Initializes the simulation components.
      *

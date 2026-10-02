@@ -65,8 +65,9 @@ SIM_CC = cc
 SIM_CXX = c++
 # Allow cancellation/exception unwinding through controller C frames.
 SIM_CFLAGS = -Wall -MMD -MP -O2 -fexceptions -std=c11 -I$(POGOSIM_INCLUDE_DIR) $(SIM_INCLUDES_EXT)
-# Updated C++ flags for C++20 support
-SIM_CXXFLAGS = -Wall -MMD -MP -O2 -std=c++20 -fno-exceptions -fno-rtti \
+# Simulation needs exception unwinding to release suspended C++ locals.
+# The embedded build below retains its exception-free compiler flags.
+SIM_CXXFLAGS = -Wall -MMD -MP -O2 -std=c++20 -fno-rtti \
 	$(shell pkg-config --cflags spdlog) -pthread -I$(POGOSIM_INCLUDE_DIR) $(SIM_INCLUDES_EXT)
 # Link the compiled Context library; MSYS2 uses the -mt library suffix.
 SIM_BOOST_CONTEXT_LIB ?= $(if $(filter MINGW% MSYS%,$(OS)),-lboost_context-mt,-lboost_context)

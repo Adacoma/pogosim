@@ -6,6 +6,7 @@
 #include <set>
 #include <queue>
 #include <chrono>
+#include <memory>
 #include <SDL2/SDL.h>
 #include <box2d/box2d.h>
 
@@ -15,6 +16,8 @@
 #include "spogobot.h"
 #include "objects.h"
 #include "raw_magnetometer_model.h"
+
+namespace pogosim { class RobotCoroutine; }
 
 /**
  * @brief Returns a log string for the current robot.
@@ -227,7 +230,7 @@ public:
 
 
 
-    //virtual ~Robot();
+    ~PogobotObject() override;
 
     // Base info
     size_t userdatasize;
@@ -242,10 +245,14 @@ public:
     /**
      * @brief Launches the user-defined step function.
      *
-     * Updates the object's time, enables all registered stop watches, executes the user step
-     * function via pogo_main_loop_step, and then disables the stop watches.
+     * Resumes the controller stack when its simulation-time deadline is due.
      */
     virtual void launch_user_step(float t) override;
+
+    // Scheduler-only operations; no Boost types are exposed to the C API.
+    void start_controller(std::size_t stack_size);
+    void stop_controller();
+    void synchronize_time(uint64_t simulation_time_microseconds);
 
     // C-code accessible values
     uint32_t pogobot_ticks = 0;                 ///< Simulation ticks counter.
@@ -261,32 +268,6 @@ public:
     uint8_t percent_msgs_sent_per_ticks = 20;   ///< Percentage of messages sent per tick.
     uint32_t nb_msgs_sent = 0;                  ///< Counter for messages sent.
     uint32_t nb_msgs_recv = 0;                  ///< Counter for messages received.
-
-    // Time-related utilities
-    std::set<time_reference_t*> stop_watches;   ///< Set of registered stop watches.
-
-    /**
-     * @brief Registers a stop watch with the robot.
-     *
-     * Adds the given stop watch pointer to the set of stop watches.
-     *
-     * @param sw Pointer to the stop watch to register.
-     */
-    void register_stop_watch(time_reference_t* sw);
-
-    /**
-     * @brief Enables all registered stop watches.
-     *
-     * Iterates through all registered stop watches and enables them.
-     */
-    void enable_stop_watches();
-
-    /**
-     * @brief Disables all registered stop watches.
-     *
-     * Iterates through all registered stop watches and disables them.
-     */
-    void disable_stop_watches();
 
     /**
      * @brief Updates the object's current time.
@@ -424,6 +405,12 @@ public:
     void sleep_µs(uint64_t microseconds);
 
     uint64_t current_time_microseconds = 0LL;                        ///< Current time in microseconds.
+
+private:
+    std::unique_ptr<pogosim::RobotCoroutine> controller_;
+    uint64_t simulation_time_microseconds_ = 0;
+
+public:
 
     /// Motors current direction and power ([R, L, B])
     uint8_t motor_dir_mem[3] = {0, 1, 0};

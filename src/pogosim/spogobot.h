@@ -912,7 +912,7 @@ typedef struct time_reference_t {
     bool enabled;
     //std::chrono::time_point<std::chrono::system_clock> start_time;
     uint64_t start_time;
-    uint32_t elapsed_ms;
+    uint32_t elapsed_ms; // Accumulated microseconds; retain the existing field name/layout.
 } time_reference_t;
 
 

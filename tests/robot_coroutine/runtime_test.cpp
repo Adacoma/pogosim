@@ -1,6 +1,7 @@
 #include "pogosim/robot_coroutine.h"
 
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -37,11 +38,13 @@ void run_tests() {
     nested.resume(0, true);
     require(initialized == 1 && completed == 0, "Startup ran user_step");
     nested.resume(0);
+    require(!nested.ready(4999) && nested.ready(5000), "Wakeup readiness did not match the deadline");
     nested.resume(4999);
     require(completed == 0, "C sleep returned before its deadline");
     nested.resume(5000);
     require(c_result == 112 && completed >= 1, "Nested C locals were not preserved");
     nested.stop();
+    require(!nested.ready(5000), "Stopped controller remained ready");
 
     std::vector<int> events;
     RobotCoroutine* first_ptr = nullptr;
@@ -106,6 +109,10 @@ void run_tests() {
     try { RobotCoroutine invalid({}, {}, 0); }
     catch (const std::invalid_argument&) { caught = true; }
     require(caught, "Invalid stack size was accepted");
+    caught = false;
+    try { RobotCoroutine invalid({}, {}, std::numeric_limits<std::size_t>::max()); }
+    catch (const std::invalid_argument&) { caught = true; }
+    require(caught, "Overflowing guarded stack size was accepted");
     caught = false;
     try { no_sleep.resume(0); }
     catch (const std::invalid_argument&) { caught = true; }

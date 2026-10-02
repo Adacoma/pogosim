@@ -29,6 +29,7 @@
 #include "distances.h"
 #include "spogobot.h"
 #include "flash_state.h"
+#include "robot_coroutine.h"
 #undef main         // We defined main() as robot_main() in pogobot.h
 
 void dummy_global_robot_init() {}
@@ -355,6 +356,7 @@ Simulation::Simulation(Configuration& _config)
 }
 
 Simulation::~Simulation() {
+    stop_robot_controllers();
     // Reset data logger so that it knows it must flush all buffers into feather files before the simulation object is destroyed
     if (data_logger) {
         data_logger.reset();
@@ -369,6 +371,14 @@ Simulation::~Simulation() {
     if (window)
         SDL_DestroyWindow(window);
     SDL_Quit();
+}
+
+void Simulation::stop_robot_controllers() {
+    // Restore each robot's C globals before running stack-local destructors.
+    for (auto const& robot : robots) robot->stop_controller();
+    if (dummy_global_robot) dummy_global_robot->stop_controller();
+    current_robot = nullptr;
+    mydata = nullptr;
 }
 
 void Simulation::init_all() {
@@ -1162,11 +1172,12 @@ void Simulation::create_robots() {
         callback_global_setup();
     }
 
-    // Setup all robots
+    // Run initialization on the same stack as the controller, so initialization
+    // may sleep without blocking setup of other robots or advancing physics.
+    size_t const stack_size = config["coroutine_stack_size"].get(pogosim::RobotCoroutine::default_stack_size);
     for (auto robot : robots) {
         set_current_robot(*robot.get());
-        if (current_robot->user_init != nullptr)
-            current_robot->user_init();
+        robot->start_controller(stack_size);
     }
 
     // Create a dummy global robot handle
@@ -1190,6 +1201,7 @@ void Simulation::create_robots() {
     dummy_global_robot->init(worldId);
     set_current_robot(*dummy_global_robot.get());
     _pogobot_start(dummy_global_robot_init, callback_global_step, "__system");
+    dummy_global_robot->start_controller(stack_size);
 }
 
 
@@ -1722,9 +1734,6 @@ void Simulation::main_loop() {
     double time_step_duration = config["time_step"].get(0.01f);
     double GUI_frame_period;
 
-    //sim_starting_time = std::chrono::system_clock::now();
-    sim_starting_time_microseconds = get_current_time_microseconds();
-
     // Prepare main loop
     running = true;
     one_tick_requested = false;
@@ -1751,6 +1760,11 @@ void Simulation::main_loop() {
 
     // Main loop for all robots
     while (running && t < simulation_time) {
+        // Every clock observes the same physics time, including sleeping robots
+        // and synchronous export/click callbacks. Scheduling remains ordered.
+        uint64_t const now = static_cast<uint64_t>(std::llround(t * 1000000.0));
+        for (auto const& robot : robots) robot->synchronize_time(now);
+        if (dummy_global_robot) dummy_global_robot->synchronize_time(now);
         handle_SDL_events();
 
         // Check if we want to pause and run one tick
@@ -1773,10 +1787,7 @@ void Simulation::main_loop() {
         // Launch global step callback, if specified
         set_current_robot(*dummy_global_robot.get());
         if (callback_global_step != nullptr) {
-            if (t * 1000000.0f >= dummy_global_robot->current_time_microseconds) {
-                dummy_global_robot->launch_user_step(t);
-            }
-            //callback_global_step();
+            dummy_global_robot->launch_user_step(t);
         }
 
         // Launch user code on normal objects
@@ -1787,13 +1798,10 @@ void Simulation::main_loop() {
         // Launch user code on robots
         for (auto robot : robots) {
             set_current_robot(*robot.get());
-            // Check if the robot has waited enough time
-            //glogger->debug("Debug main loop. t={}  robot.current_time_microseconds={}", t * 1000000.0f, robot.current_time_microseconds);
-            if (t * 1000000.0f >= robot->current_time_microseconds) {
-                robot->launch_user_step(t);
-            }
+            // The coroutine resumes only when its simulated sleep has expired.
+            robot->launch_user_step(t);
             // Check if dt is enough to simulate the main loop frequency of this robot
-            double const main_loop_period = 1.0f / main_loop_hz;
+            double const main_loop_period = main_loop_hz > 0 ? 1.0 / main_loop_hz : time_step_duration;
             if (time_step_duration > main_loop_period) {
                 glogger->warn("Time step duration dt={} is not enough to simulate a main loop frequency of {}. Adjusting to {}", time_step_duration, main_loop_hz, main_loop_period);
                 time_step_duration = main_loop_period;
@@ -1852,6 +1860,13 @@ void Simulation::main_loop() {
     if (progress_bar) {
         tqdmrange.end();
     }
+
+    // Cancellation releases stack-local C++ resources before end callbacks or
+    // physics teardown, without finishing code after a pending sleep.
+    uint64_t const final_time = static_cast<uint64_t>(std::llround(t * 1000000.0));
+    for (auto const& robot : robots) robot->synchronize_time(final_time);
+    if (dummy_global_robot) dummy_global_robot->synchronize_time(final_time);
+    stop_robot_controllers();
 
     // Run per-robot end-of-experiment callbacks, if specified
     for (auto robot : robots) {

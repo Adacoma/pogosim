@@ -4,6 +4,7 @@
 #include <boost/context/protected_fixedsize_stack.hpp>
 #include <boost/context/detail/exception.hpp>
 #include <exception>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -23,7 +24,10 @@ struct RobotCoroutine::Impl {
     Impl(std::function<void()> initialize, std::function<void()> step,
          std::size_t stack_size) {
         using traits = boost::context::stack_traits;
-        if (stack_size < traits::minimum_size() ||
+        // Protected stacks round up to pages and add a guard page. Reject
+        // sizes that would overflow that allocation on unbounded platforms.
+        if (stack_size > std::numeric_limits<std::size_t>::max() - 2 * traits::page_size() ||
+            stack_size < traits::minimum_size() ||
             (!traits::is_unbounded() && stack_size > traits::maximum_size())) {
             throw std::invalid_argument("Invalid coroutine_stack_size for this platform");
         }
@@ -96,6 +100,9 @@ void RobotCoroutine::stop() {
 }
 
 bool RobotCoroutine::active() const { return impl_->active; }
+bool RobotCoroutine::ready(std::uint64_t now) const {
+    return impl_->worker && now >= impl_->wakeup;
+}
 bool RobotCoroutine::initialized() const { return impl_->initialized; }
 std::uint64_t RobotCoroutine::now() const { return impl_->now; }
 

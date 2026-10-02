@@ -21,6 +21,7 @@
 #include "pogosim.h"
 #include "simulator.h"
 #include "colormaps.h"
+#include "robot_coroutine.h"
 
 
 /************* GLOBALS *************/ // {{{1
@@ -172,6 +173,16 @@ void PogobotObject::initialize_magnetometer(
     }
 }
 
+PogobotObject::~PogobotObject() {
+    // Controller locals may still use USERDATA while their stack is unwound.
+    stop_controller();
+    free(data);
+    if (current_robot == this) {
+        current_robot = nullptr;
+        mydata = nullptr;
+    }
+}
+
 void PogobotObject::do_init([[maybe_unused]] b2WorldId world_id) {
     PhysicalObject::do_init(world_id);
     data = malloc(userdatasize);
@@ -250,30 +261,42 @@ void PogobotObject::create_robot_body([[maybe_unused]] b2WorldId world_id) {
 
 
 void PogobotObject::launch_user_step([[maybe_unused]] float t) {
-    PhysicalObject::launch_user_step(t);
-    update_time();
-    enable_stop_watches();
-    //user_step();
-    if (_enable_user_steps) {
-        pogo_main_loop_step(user_step);
-    }
-    disable_stop_watches();
-}
-
-void PogobotObject::register_stop_watch(time_reference_t* sw) {
-    stop_watches.insert(sw);
-}
-
-void PogobotObject::enable_stop_watches() {
-    for (auto* sw : stop_watches) {
-        sw->enable();
+    if (controller_ && controller_->ready(simulation_time_microseconds_)) {
+        // Preserve sensor bookkeeping at controller wakeups, rather than
+        // invoking the physical-object hook on every sleeping robot's tick.
+        PhysicalObject::launch_user_step(t);
+        controller_->resume(simulation_time_microseconds_);
     }
 }
 
-void PogobotObject::disable_stop_watches() {
-    for (auto* sw : stop_watches) {
-        sw->disable();
+void PogobotObject::start_controller(std::size_t stack_size) {
+    controller_ = std::make_unique<pogosim::RobotCoroutine>(
+        [this] { if (user_init) user_init(); },
+        [this] {
+            update_time();
+            if (_enable_user_steps) pogo_main_loop_step(user_step);
+            // Retain the existing per-iteration temporal overhead, including
+            // main_loop_hz == 0 controllers which do not have a pacing sleep.
+            if (current_time_microseconds > controller_->now()) {
+                controller_->sleep_until(current_time_microseconds);
+            }
+        }, stack_size);
+    controller_->resume(simulation_time_microseconds_, true);
+}
+
+void PogobotObject::stop_controller() {
+    if (controller_) {
+        PogobotObject* previous = current_robot;
+        set_current_robot(*this);
+        controller_->stop();
+        controller_.reset();
+        if (previous && previous != this) set_current_robot(*previous);
     }
+}
+
+void PogobotObject::synchronize_time(uint64_t simulation_time_microseconds) {
+    simulation_time_microseconds_ = simulation_time_microseconds;
+    current_time_microseconds = std::max(current_time_microseconds, simulation_time_microseconds);
 }
 
 
@@ -729,12 +752,30 @@ void PogobotObject::initialize_flash_memory() {
 }
 
 void PogobotObject::update_time() {
-    current_time_microseconds += temporal_noise;
+    // Keep the established per-iteration overhead, without converting the
+    // entire 64-bit clock to float and losing microsecond precision.
+    if (!std::isfinite(temporal_noise) || temporal_noise < 0.0f ||
+        static_cast<long double>(temporal_noise) >= std::numeric_limits<uint64_t>::max()) {
+        throw std::invalid_argument("Invalid robot temporal noise");
+    }
+    uint64_t const overhead = static_cast<uint64_t>(temporal_noise);
+    if (overhead > std::numeric_limits<uint64_t>::max() - current_time_microseconds) {
+        throw std::overflow_error("Robot clock overflow");
+    }
+    current_time_microseconds += overhead;
 }
 
 void PogobotObject::sleep_µs(uint64_t microseconds) {
-    if (microseconds <= 0) return;
-    current_time_microseconds += microseconds;
+    if (microseconds == 0) return;
+    if (!controller_ || !controller_->active()) {
+        throw std::logic_error("Sleep is only supported inside robot init/step/message or global-step controllers");
+    }
+    if (microseconds > std::numeric_limits<uint64_t>::max() - current_time_microseconds) {
+        throw std::overflow_error("Robot sleep deadline overflow");
+    }
+    // Do not advance the clock into the future: execution resumes only when
+    // physics time catches up, with current_robot and USERDATA restored.
+    controller_->sleep_until(current_time_microseconds + microseconds);
 }
 
 

@@ -184,9 +184,12 @@ int main(int argc, char** argv) {
         simulation->main_loop();
 
         // Explicit destruction before late process teardown
+        simulation->stop_robot_controllers();
         simulation.reset();
     } catch (const std::exception& e) {
         // Also destroy it on error if it was partially created
+        // Keep the global simulation handle available during controller unwind.
+        if (simulation) simulation->stop_robot_controllers();
         simulation.reset();
         std::cerr << "Error: " << e.what() << std::endl;
         return 2;

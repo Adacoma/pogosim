@@ -26,6 +26,7 @@ public:
     void sleep_until(std::uint64_t deadline);
     void stop();
     bool active() const;
+    bool ready(std::uint64_t now) const;
     bool initialized() const;
     std::uint64_t now() const;
 

@@ -13,6 +13,7 @@ Last updated: 2026-10-02
 
 - Pogosim is a two-dimensional behavioral and physical simulator for Pogobot swarm controllers. Its central goal is to let one C controller source target both simulation and physical robots through a compatibility API.
 - A simulated controller's `main` is renamed to `robot_main`. The simulator invokes it for each robot, allocates separate `USERDATA`, and swaps per-robot API state through `set_current_robot` before controller calls.
+- Robot initialization and main-loop calls now run on independent guarded Boost.Context stacks. Positive sleeps suspend at the call site until physics time reaches their deadline; synchronous lifecycle/export/UI callbacks cannot sleep.
 - YAML defines the arena, boundary conditions, initial formation, objects, physics, sensing, communication, timing, rendering, and output.
 - Each simulation tick runs global/object/robot controllers, advances Box2D, applies periodic wrapping when selected, recomputes directional neighbors, logs data, and optionally renders.
 - The object model covers Pogobots, Pogobjects, Pogowalls, flexible membranes, active/passive objects, and static or time-varying lights. Communication supports directional range, optional occlusion, and static or density-dependent reception probability.
@@ -28,11 +29,11 @@ Last updated: 2026-10-02
 - Which untracked configurations and example directories are active research work intended for integration.
 - Compatibility of optional analysis tools other than Pogoptim with current dependency releases.
 - Whether every example remains suitable for physical firmware as well as simulation, especially examples using optional `pogo-utils` functionality.
-- The MSYS2/MinGW-w64 and PowerShell/MSVC library builds have both passed on hosted Windows. Native MSVC controller/example executable targets remain unavailable because the example Makefiles use GNU-specific compiler and linker options.
+- Earlier MSYS2/MinGW-w64 and PowerShell/MSVC library builds passed on hosted Windows. The new coroutine integration and CMake simulator fixtures still need hosted macOS/Windows verification; standard example Makefiles remain GNU-specific.
 
 ## Working analyses
 
-- A guarded-stack Boost.Context runtime now passes standalone mixed C/C++ suspension, initialization, pacing, cancellation/unwinding, and exception tests. Build/install dependencies and example link flags are updated; robot scheduling and simulation-clock integration are the next implementation step.
+- Boost.Context scheduling and simulated clocks are integrated. Twelve runtime/simulator tests pass locally in Release and Debug with undefined-behavior checks, including mixed-language sleeps, physics, callbacks, timers, pacing, exceptions, early stop, and initialization cancellation. C and C++ example smoke runs, eight flash-state smoke configurations, and all 17 Python regression tests pass; hosted cross-platform and full container rebuilds remain unverified.
 - No analysis is currently running as part of this milestone.
 - The Pogoptim/Pogobatch migration has passed focused unit tests, optional CMA-ES/QDpy smoke tests, a nested-worker fake-simulator campaign, and one-evaluation Random/MAP-Elites runs against the built `run_and_tumble` controller; longer scientific runs have not been benchmarked.
 - Flash persistence has been implemented with pre-controller restore, post-callback atomic export, strict robot identity validation, and task-local Pogobatch outputs; round-trip and rejection checks cover the archive boundary.
@@ -59,6 +60,7 @@ Last updated: 2026-10-02
 - Give each optimization candidate a deterministic, disjoint simulation-seed block; do not reuse common random numbers across candidates.
 - Require explicit descriptor domains for custom MAP-Elites features and reject out-of-domain values rather than clipping them.
 - Preserve simulation/hardware controller parity by storing mutable per-robot controller state in `USERDATA`.
+- Use cooperative same-thread scheduling with simulation-time wakeups, not preemption. Cancel suspended stacks before end callbacks and resource teardown; keep hardware sleep and firmware build dependencies unchanged.
 - Treat only the user flash section and motor calibration memories as persistent robot state; fresh user flash remains indeterminate unless an archive is loaded.
 - Keep archive loading strict after the v3 flash expansion; do not fabricate newly exposed pages for obsolete 64 KiB archives.
 - Permit smaller follow-up robot populations to restore their identity-matched flash records; preserve unused source records on export rather than silently shrinking a shared archive.
@@ -78,10 +80,11 @@ Last updated: 2026-10-02
 - The expanded flash consumes 1,472 KiB of RAM and archive space per robot, roughly 23 times the prior flash allocation; its large-population cost has not been benchmarked.
 - The bundled `pogobot-sdk` header still declares the older flash API; high-page coverage in `test_flash_state` currently runs only in simulation.
 - The tutorial's solid disk arena bounds late-time MSD; its one-seed local smoke result is not evidence for a population-level condition effect.
+- Corrected sleep/timer semantics can change trajectories and tick counts relative to older Pogosim results. The additional guarded stacks default to 128 KiB per robot plus the global controller; large-population scaling has not been benchmarked.
 
 ## Next concrete tasks
 
-1. Add native CMake controller/example executable targets and an MSVC simulator smoke test.
+1. Verify the new coroutine runtime and simulator fixtures on hosted Linux/macOS/WSL/MinGW/MSVC CI; general native CMake example targets remain a separate task.
 2. Decide whether the untracked quadrant-motility and magnetometer work should be documented, tested, and committed.
 3. Add quantitative validation references or datasets for motion, sensing, timing, and infrared communication models.
 4. Extend unit/regression coverage beyond the new batch/optimization tests to simulation scheduling, neighbor detection, and data logging.

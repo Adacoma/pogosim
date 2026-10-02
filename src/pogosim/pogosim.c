@@ -77,11 +77,15 @@ void _pogobot_start(void (*user_init)(void), void (*user_step)(void)) {
 }
 #endif
 
+#ifndef SIMULATOR
+/* Real robots keep their hardware stopwatch implementation. Simulation uses
+ * its physics clock, implemented in spogobot.cpp. */
 uint32_t current_time_milliseconds(void) {
     _current_time_milliseconds += pogobot_stopwatch_get_elapsed_microseconds(&_global_timer) / 1000;
     pogobot_stopwatch_reset(&_global_timer);
     return _current_time_milliseconds;
 }
+#endif
 
 void display_led_error_code(error_code_t const c) {
     // Check if led error codes are enabled

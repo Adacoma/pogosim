@@ -1,0 +1,26 @@
+# Short, deterministic simulation; CMake substitutes one failure mode per test.
+seed: 1
+arena_file: arenas/square.csv
+arena_surface: 1.0e6
+initial_formation: disk
+enable_console_logging: false
+enable_data_logging: @LOG_DATA@
+data_filename: "@DATA_FILENAME@"
+simulation_time: @SIMULATION_TIME@
+time_step: 0.001
+coroutine_stack_size: @STACK_SIZE@
+objects:
+  robots:
+    type: pogobot
+    nb: 2
+    geometry: disk
+    radius: 26.5
+    linear_noise_stddev: 0
+    angular_noise_stddev: 0
+    temporal_noise_stddev: 0
+    communication_radius: 0
+    msg_success_rate:
+      type: static
+      rate: 1.0
+parameters:
+  test_mode: @TEST_MODE@

@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
+#include <stdexcept>
 #include "SDL2_gfxPrimitives.h"
 
 #include "spogobot.h"
@@ -25,32 +26,30 @@ uint8_t const _selected_power = 1;
 /************* time_reference_t *************/ // {{{1
 
 void time_reference_t::reset() {
-    enabled = false;
-    if (current_robot != nullptr)
-        current_robot->register_stop_watch(this);
-
+    // Derive elapsed time from the simulated clock, never register pointers to
+    // timers on a controller's stack (they may disappear after a suspension).
+    enabled = true;
     start_time = current_robot->current_time_microseconds;
-    auto const duration = start_time - sim_starting_time_microseconds;
-    hardware_value_at_time_origin = duration;
+    hardware_value_at_time_origin = static_cast<uint32_t>(start_time);
     elapsed_ms = 0;
 }
 
 void time_reference_t::enable() {
+    if (enabled) return;
     enabled = true;
     start_time = current_robot->current_time_microseconds;
-    //glogger->debug("ENABLE!! {}", start_time);
 }
 
 void time_reference_t::disable() {
+    elapsed_ms = get_elapsed_microseconds();
     enabled = false;
-    get_elapsed_microseconds();
-    //glogger->debug("DISABLE!! {}", start_time);
 }
 
 uint32_t time_reference_t::get_elapsed_microseconds() {
-    auto const duration = current_robot->current_time_microseconds - start_time;
-    elapsed_ms += duration;
-    return elapsed_ms;
+    // Firmware exposes a wrapping 32-bit microsecond counter. Reading it twice
+    // at the same simulation time must not accumulate time twice.
+    return elapsed_ms + (enabled ? static_cast<uint32_t>(
+        current_robot->current_time_microseconds - start_time) : 0u);
 }
 
 
@@ -59,7 +58,11 @@ void time_reference_t::add_elapsed_microseconds(uint64_t microseconds) {
 }
 
 void time_reference_t::offset_origin_microseconds(uint64_t microseconds) {
-    start_time -= microseconds;
+    // A positive firmware offset moves the origin into the future. Signed
+    // offsets arrive modulo 2^64 through the existing internal signature.
+    start_time += microseconds;
+    hardware_value_at_time_origin += static_cast<uint32_t>(microseconds);
+    if (!enabled) elapsed_ms -= static_cast<uint32_t>(microseconds);
 }
 
 
@@ -449,9 +452,7 @@ void pogobot_timer_init( time_reference_t *timer, int32_t microseconds_to_go ) {
 }
 
 int32_t pogobot_timer_get_remaining_microseconds( time_reference_t *timer ) {
-    uint32_t const now = current_robot->current_time_microseconds;
-    int32_t const remain = now - timer->start_time;
-    return remain;
+    return static_cast<int32_t>(0u - timer->get_elapsed_microseconds());
 }
 
 bool pogobot_timer_has_expired( time_reference_t *timer ) {
@@ -460,10 +461,10 @@ bool pogobot_timer_has_expired( time_reference_t *timer ) {
 
 void pogobot_timer_wait_for_expiry( time_reference_t *timer ) {
     int64_t const remain = pogobot_timer_get_remaining_microseconds(timer);
-    if (remain <= 0)
+    if (remain < 0)
         return;
-    // Simulate sleep
-    current_robot->sleep_µs(remain);
+    // Firmware considers a timer expired strictly after its deadline.
+    current_robot->sleep_µs(static_cast<uint64_t>(remain) + 1);
 }
 
 void pogobot_timer_offset_origin_microseconds( time_reference_t *timer, int32_t microseconds_offset ) {
@@ -528,9 +529,15 @@ uint8_t magn_init(void) {
 /************* General API *************/ // {{{1
 
 void msleep(int milliseconds) {
-    //std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+    if (milliseconds < 0) throw std::invalid_argument("msleep duration must be nonnegative");
     glogger->debug("{} Sleeping for {} ms", log_current_robot(), milliseconds);
     current_robot->sleep_µs(static_cast<uint64_t>(milliseconds) * 1000);
+}
+
+uint32_t current_time_milliseconds(void) {
+    // Preserve sub-millisecond time even when controllers read the clock often.
+    _current_time_milliseconds = static_cast<uint32_t>(current_robot->current_time_microseconds / 1000);
+    return _current_time_milliseconds;
 }
 
 // Helper function to convert va_list arguments to a string
