@@ -85,18 +85,27 @@ These constraints follow [Boost.Context's fiber cleanup rules](https://www.boost
 
 ## Installation and stack budget
 
-Boost.Context is a compiled dependency, not header-only. The installation commands,
-example/template Makefiles, container recipes, and CI include it:
+Boost.Context is a compiled build dependency, not header-only. The installation
+commands, container recipes, and CI include it:
 
 - Ubuntu/WSL: `libboost-context-dev`.
 - macOS: the existing Homebrew `boost` package.
-- MSYS2/UCRT64: the existing Boost package; Makefiles select `-lboost_context-mt`.
+- MSYS2/UCRT64: the existing Boost package.
 - Native MSVC/vcpkg: `boost-context:x64-windows`.
 
-Rebuild Pogosim and controller executables after upgrading. Existing containers
-also need rebuilding. Custom Unix Makefiles must link `-lboost_context` and compile
-C controller frames with `-fexceptions`; C++ unwinding must remain enabled. MSVC
-targets inherit `/EHs /EHc- /GL-` from Pogosim for safe mixed-language unwinding.
+The default static Pogosim library bundles the Context archive members, so
+existing external Makefiles keep their original link flags: no additional
+`-lboost_context` is required. On MSVC with shared vcpkg dependencies, the bundled
+members import the Context DLL; keep the vcpkg runtime directory on `PATH`, as
+for the other DLL dependencies. A shared Pogosim build instead links Context
+normally as a private dependency.
+
+Rebuild and reinstall Pogosim, then rebuild controller executables after
+upgrading. Existing containers also need rebuilding. Keep exception unwinding
+enabled for C++ controllers and do not strip unwind information from C frames.
+The supplied builds enable C exception support and MSVC `/EHs /EHc- /GL-` for
+safe mixed-language unwinding. Ordinary legacy C compiler flags are covered by
+the compatibility test below.
 
 Each controller allocates a fixed 128 KiB stack by default, with a guard page and
 context overhead. This is additional to `USERDATA` and simulated flash memory.
@@ -126,6 +135,9 @@ ctest --test-dir build --output-on-failure
 The tests cover nested sleeps, independent initialization, physics during sleep,
 robot globals, message callbacks, stopwatch/timer arithmetic, pacing, invalid
 sleep/stack configuration, exception propagation, and cancellation during
-initialization, normal completion, and early stop. CI runs them on Linux, macOS,
+initialization, normal completion, and early stop. A legacy-link fixture compiles
+a C controller with ordinary flags and links the raw Pogosim archive using only
+the pre-coroutine dependencies, then checks nested sleeps and cancellation.
+CI runs them on Linux, macOS,
 WSL, MSYS2, and MSVC. To build just the library, configure with
 `-DBUILD_TESTING=OFF`.

@@ -57,11 +57,9 @@ SIM_CXX = c++
 # Allow cancellation/exception unwinding through controller C frames.
 SIM_CFLAGS = -Wall -MMD -MP -O2 -fexceptions -std=c11 -I$(POGOSIM_INCLUDE_DIR) $(SIM_INCLUDES_EXT)
 SIM_CXXFLAGS = -Wall -MMD -MP -O2 -std=c++20 $(shell pkg-config --cflags spdlog) -pthread -I$(POGOSIM_INCLUDE_DIR) $(SIM_INCLUDES_EXT)
-# Link the compiled Context library; MSYS2 uses the -mt library suffix.
-SIM_BOOST_CONTEXT_LIB ?= $(if $(filter MINGW% MSYS%,$(OS)),-lboost_context-mt,-lboost_context)
 SIM_LDFLAGS = $(SIM_LD_FLAGS_BOX2D)  $(SIM_LD_FLAGS_POGOSIM) -lyaml-cpp \
               $(shell pkg-config --libs spdlog) \
-              -lSDL2 -lSDL2_gfx -lSDL2_ttf -lbox2d $(STDCPP_LIB) -lfmt -lm -larrow $(SIM_BOOST_CONTEXT_LIB) $(SIM_LD_EXT)
+              -lSDL2 -lSDL2_gfx -lSDL2_ttf -lbox2d $(STDCPP_LIB) -lfmt -lm -larrow $(SIM_LD_EXT)
 
 SIM_TARGET = $(MAKEFILE_DIR)
 

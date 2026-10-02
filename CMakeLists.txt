@@ -12,6 +12,11 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Vcpkg provides a current Boost package config on MSVC. Keep legacy
 # FindBoost on established Unix builds to preserve their existing discovery.
+# A static Pogosim archive embeds Context's objects for existing Makefile
+# consumers. Unix packages provide a static archive alongside the shared lib.
+if(NOT MSVC AND NOT BUILD_SHARED_LIBS)
+    set(Boost_USE_STATIC_LIBS ON)
+endif()
 if(MSVC)
     find_package(Boost 1.70 CONFIG REQUIRED COMPONENTS context)
 else()
@@ -102,15 +107,48 @@ target_compile_definitions(${PROJECT_NAME}
 # Link libraries
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        Boost::context
         SDL2::SDL2
         ${POGOSIM_YAML_CPP_TARGET}
         spdlog::spdlog
         fmt::fmt
+    PRIVATE
+        Boost::context
 )
 
 if(MSVC)
     target_link_libraries(${PROJECT_NAME} PUBLIC box2d::box2d)
+endif()
+
+# Merely linking a static dependency does not put its objects in libpogosim.a.
+# Bundle it during the library build so existing external Makefiles need no
+# additional -lboost_context. On MSVC this can include a DLL's import members;
+# its DLL remains in the same vcpkg runtime directory as the other dependencies.
+if(NOT BUILD_SHARED_LIBS)
+    if(MSVC)
+        set(POGOSIM_CONTEXT_ARCHIVER ${CMAKE_AR})
+        set(POGOSIM_CONTEXT_ARCHIVE_STYLE MSVC)
+    elseif(APPLE)
+        find_program(POGOSIM_CONTEXT_ARCHIVER NAMES libtool PATHS /usr/bin NO_DEFAULT_PATH)
+        if(NOT POGOSIM_CONTEXT_ARCHIVER)
+            message(FATAL_ERROR "Apple libtool is required to bundle Boost.Context")
+        endif()
+        set(POGOSIM_CONTEXT_ARCHIVE_STYLE APPLE)
+    else()
+        set(POGOSIM_CONTEXT_ARCHIVER ${CMAKE_AR})
+        set(POGOSIM_CONTEXT_ARCHIVE_STYLE MRI)
+    endif()
+    set(POGOSIM_CONTEXT_BUNDLE_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/EmbedBoostContext.cmake")
+    set_property(TARGET pogosim APPEND PROPERTY LINK_DEPENDS
+        "${POGOSIM_CONTEXT_BUNDLE_SCRIPT}" "$<TARGET_LINKER_FILE:Boost::context>")
+    add_custom_command(TARGET pogosim POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            "-DPOGOSIM_ARCHIVE=$<TARGET_FILE:pogosim>"
+            "-DCONTEXT_ARCHIVE=$<TARGET_LINKER_FILE:Boost::context>"
+            "-DARCHIVER=${POGOSIM_CONTEXT_ARCHIVER}"
+            "-DARCHIVE_STYLE=${POGOSIM_CONTEXT_ARCHIVE_STYLE}"
+            -P "${POGOSIM_CONTEXT_BUNDLE_SCRIPT}"
+        COMMENT "Bundling Boost.Context for legacy Makefile consumers"
+        VERBATIM)
 endif()
 
 # Set compile options
@@ -229,6 +267,31 @@ if(BUILD_TESTING)
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
             ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 15)
     endforeach()
+
+    # Bypass Pogosim's CMake link interface deliberately: this mirrors existing
+    # external Makefiles, which list only the pre-coroutine dependencies.
+    add_executable(test_controller_legacy_link tests/robot_coroutine/legacy_controller.c)
+    # Legacy Makefiles use the C++ driver even for an all-C controller; the raw
+    # archive path does not let CMake infer the simulator's C++ runtime needs.
+    set_target_properties(test_controller_legacy_link PROPERTIES LINKER_LANGUAGE CXX C_STANDARD 11)
+    target_include_directories(test_controller_legacy_link PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_link_libraries(test_controller_legacy_link PRIVATE "$<TARGET_FILE:pogosim>"
+        SDL2::SDL2 ${POGOSIM_YAML_CPP_TARGET} spdlog::spdlog fmt::fmt
+        ${SDL2_GFX_LIBRARIES} ${SDL2TTF_LIBRARY} Arrow::arrow_shared)
+    if(MSVC)
+        target_link_libraries(test_controller_legacy_link PRIVATE box2d::box2d)
+    else()
+        target_link_libraries(test_controller_legacy_link PRIVATE box2d)
+    endif()
+    add_dependencies(test_controller_legacy_link pogosim)
+    add_test(NAME controller_legacy_makefile_link COMMAND ${CMAKE_COMMAND}
+        "-DPROGRAM=$<TARGET_FILE:test_controller_legacy_link>"
+        "-DCONFIG=${CMAKE_CURRENT_BINARY_DIR}/coroutine-0.yaml"
+        -DEXPECTED_STATUS=0
+        -P "${CMAKE_SOURCE_DIR}/tests/robot_coroutine/run_simulation.cmake")
+    set_tests_properties(controller_legacy_makefile_link PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 15)
 endif()
 
 # Install rules
