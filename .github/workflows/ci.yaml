@@ -159,6 +159,9 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           ./build.sh Release
+          # sudo installation creates a root-owned manifest. The unprivileged
+          # installed-consumer test must rewrite it for its isolated prefix.
+          sudo chown "$(id -u):$(id -g)" build/install_manifest.txt
 
       - name: Build (Windows+WSL2)
         if: matrix.os == 'windows-latest'
@@ -169,6 +172,8 @@ jobs:
           cd "$REPO"
           dos2unix ./build.sh || true
           bash ./build.sh Release
+          # Restore only the generated manifest, not the build tree or SDK.
+          sudo chown "$(id -u):$(id -g)" build/install_manifest.txt
 
       - name: Test Python batch and optimization tools
         if: matrix.os != 'windows-latest'
