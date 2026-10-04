@@ -12,16 +12,25 @@ typedef struct {
 DECLARE_USERDATA(USERDATA);
 REGISTER_USERDATA(USERDATA);
 
-static void require(int condition) {
-    if (!condition) exit(23); /* Unlike assert(), also checked in Release. */
+static void require(int condition, const char *message, long long actual, long long expected) {
+    /* Keep exit 23 and Release checks, but identify the failing C/C++ invariant
+     * and its observed value in native Windows and installed-consumer logs. */
+    if (!condition) {
+        fprintf(stderr, "Legacy controller: %s (robot=%u, actual=%lld, expected=%lld)\n",
+                message, (unsigned)pogobot_helper_getid(), actual, expected);
+        exit(23);
+    }
 }
 
 static void nested_sleep(uint16_t saved_id) {
     time_reference_t local;
     pogobot_stopwatch_reset(&local);
     msleep(1);
-    require(saved_id == pogobot_helper_getid() && mydata->id == saved_id);
-    require(pogobot_stopwatch_get_elapsed_microseconds(&local) >= 1000);
+    uint16_t resumed_id = pogobot_helper_getid();
+    require(saved_id == resumed_id, "Robot identity changed across sleep", resumed_id, saved_id);
+    require(mydata->id == saved_id, "USERDATA identity changed across sleep", mydata->id, saved_id);
+    int32_t elapsed = pogobot_stopwatch_get_elapsed_microseconds(&local);
+    require(elapsed >= 1000, "Nested stopwatch below minimum duration", elapsed, 1000);
 }
 
 void user_init(void) {
@@ -37,8 +46,9 @@ void user_step(void) {
 }
 
 static void robot_end(void) {
-    require(mydata->steps == 90);
-    require(pogobot_stopwatch_get_elapsed_microseconds(&mydata->lifetime) >= 90000);
+    require(mydata->steps == 90, "Controller step count mismatch", mydata->steps, 90);
+    int32_t elapsed = pogobot_stopwatch_get_elapsed_microseconds(&mydata->lifetime);
+    require(elapsed >= 90000, "Lifetime stopwatch below minimum duration", elapsed, 90000);
 }
 
 int main(void) {

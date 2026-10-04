@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <exception>
 #include <string>
 #include <chrono>
 #include <sstream>
@@ -203,6 +204,7 @@ int main(int argc, char** argv) {
         robotlogger->sinks().clear();
     }
 
+    std::exception_ptr simulation_failure;
     try {
         // Create the simulation object
         simulation = std::make_unique<Simulation>(config);
@@ -211,19 +213,24 @@ int main(int argc, char** argv) {
 
         // Launch simulation
         simulation->main_loop();
-
-        // Explicit destruction before late process teardown
-        simulation->stop_robot_controllers();
-        simulation.reset();
-    } catch (const std::exception& e) {
-        // Also destroy it on error if it was partially created
-        // Keep the global simulation handle available during controller unwind.
-        if (simulation) simulation->stop_robot_controllers();
-        simulation.reset();
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 2;
+    } catch (const std::exception&) {
+        // Fiber cancellation switches contexts: Boost.Context forbids doing
+        // that inside a catch block. Retain the error until cleanup is done.
+        simulation_failure = std::current_exception();
     }
 
+    // Keep the global handle available while suspended controller locals
+    // unwind, then destroy resources before late process teardown.
+    if (simulation) simulation->stop_robot_controllers();
+    simulation.reset();
+    if (simulation_failure) {
+        try {
+            std::rethrow_exception(simulation_failure);
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+            return 2;
+        }
+    }
     return 0;
 }
 

@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- cancel controller fibers outside exception handlers to respect Boost.Context's switching rules; report failed legacy C/C++ controller assertions with robot identity and observed values
 - restore generated install-manifest ownership in Linux/macOS and WSL CI after sudo installation so unprivileged installed-consumer tests can reinstall
 - use consistent C linkage for simulator userdata/callback globals on MSVC and match the core userdata-size declaration to the controller's `size_t` definition
 - avoid Windows' `max` macro collision in the coroutine stack-size limit check
