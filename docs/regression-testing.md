@@ -1,9 +1,9 @@
 # Simulator regression testing
 
-Last updated: 2026-10-02
+Last updated: 2026-10-04
 
-The CMake/CTest suite contains 60 tests: the existing 16 configuration and
-controller-scheduling tests, plus 44 simulator regressions. These fixtures do
+The CMake/CTest suite contains 61 tests: the existing 16 configuration and
+controller-scheduling tests, plus 45 simulator regressions. These fixtures do
 not modify runtime code, public APIs, configuration defaults, controller
 Makefiles, or installed dependencies.
 
@@ -60,7 +60,11 @@ all test executables. Test binaries are never installed.
   per-robot time ordering, and field/category filtering.
 - Error paths: malformed YAML, missing arena, unknown object/geometry/sensor
   source, invalid output destinations, and schema/export callback exceptions.
-- Installed-library compatibility: a separate C consumer uses only installed
+- C/C++ linkage: the legacy controller also compiles and runs as C++, with
+  explicit redeclaration checks for the userdata globals and all six callback
+  variables. These checks reject missing C linkage even on Unix. A separate
+  compile-time check requires the core userdata-size declaration to be `size_t`.
+- Installed-library compatibility: separate C and C++ consumers use only installed
   simulator headers and the raw archive, with the pre-coroutine dependency
   list and no explicit Boost.Context link flag. Its installation prefix
   contains spaces. Dependency-discovery modules are reused, but the consumer
@@ -94,7 +98,7 @@ are unchanged. The existing Python batch/optimization suite remains separate:
 python3 -m unittest discover -s scripts/python_tests -v
 ```
 
-All 60 CTest cases passed locally in Release, Debug/UBSan, and a build using
+All 61 CTest cases passed locally in Release, Debug/UBSan, and a build using
 yaml-cpp 0.7; all 17 Python tests also passed. Hosted macOS/Windows execution
 of the expanded suite still requires CI confirmation.
 

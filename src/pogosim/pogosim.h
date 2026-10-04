@@ -28,22 +28,25 @@
 #ifdef SIMULATOR // Compiling for the simulator
 #include <stddef.h>
 
+#ifdef __cplusplus
+// These variables are shared with the C simulator API. The linkage must be
+// specified where the macros expand, not just around their definitions.
+#define DECLARE_USERDATA(UDT) \
+    extern "C" { extern UDT *mydata; }
+
+#define REGISTER_USERDATA(UDT) \
+    extern "C" { size_t UserdataSize = sizeof(UDT); UDT *mydata; }
+#else
 #define DECLARE_USERDATA(UDT)       \
     extern UDT *mydata;
 
 #define REGISTER_USERDATA(UDT) 		\
 	size_t UserdataSize = sizeof(UDT); \
 	UDT *mydata;
+#endif
 
 #define SET_CALLBACK(CALLBACK_FN, FN) \
     CALLBACK_FN = FN;
-
-extern void (*callback_create_data_schema)(void);
-extern void (*callback_export_data)(void);
-extern void (*callback_global_setup)(void);
-extern void (*callback_global_step)(void);
-extern void (*callback_robot_end)(void);
-extern void (*callback_robot_click)(void);
 
 #else // Compiling for real robots
 
@@ -111,6 +114,14 @@ typedef enum {
 #define GET_MACRO_START(_1, _2, _3, NAME, ...) NAME
 
 #ifdef SIMULATOR // Compiling for the simulator
+// Definitions live in pogosim.c; keep C linkage for C++ users on MSVC too.
+extern void (*callback_create_data_schema)(void);
+extern void (*callback_export_data)(void);
+extern void (*callback_global_setup)(void);
+extern void (*callback_global_step)(void);
+extern void (*callback_robot_end)(void);
+extern void (*callback_robot_click)(void);
+
 const char* get_current_robot_category(void);
 bool current_robot_category_is(const char* category);
 

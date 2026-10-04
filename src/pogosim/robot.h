@@ -2,6 +2,7 @@
 #define ROBOT_H
 
 #include <vector>
+#include <cstddef>
 #include <cmath>
 #include <set>
 #include <queue>
@@ -1062,8 +1063,12 @@ protected:
 
 //extern Robot* current_robot;
 extern PogobotObject* current_robot;
-extern int UserdataSize;
+// REGISTER_USERDATA defines these in either a C or a C++ controller. Match
+// its size_t width and C symbol names, independently of compiler mangling.
+extern "C" {
+extern std::size_t UserdataSize;
 extern void* mydata;
+}
 extern uint64_t sim_starting_time_microseconds;
 
 

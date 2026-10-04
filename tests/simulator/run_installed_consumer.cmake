@@ -16,6 +16,7 @@ checked_command("${CMAKE_COMMAND}"
     "-DCMAKE_EXE_LINKER_FLAGS=${LINK_FLAGS}"
     "-DINSTALL_PREFIX=${prefix}" "-DINSTALLED_LIBRARY=${prefix}/${INSTALL_LIBDIR}/${LIBRARY_NAME}"
     "-DCONTROLLER_SOURCE=${SOURCE_DIR}/tests/robot_coroutine/legacy_controller.c"
+    "-DCPP_CONTROLLER_SOURCE=${CPP_CONTROLLER_SOURCE}"
     "-DSIMULATION_CONFIG=${BUILD_DIR}/coroutine-0.yaml" "-DSOURCE_DIR=${SOURCE_DIR}")
 checked_command("${CMAKE_COMMAND}" --build "${TEST_DIR}/build" --config "${CONFIG}" --parallel 2)
 checked_command("${CMAKE_CTEST_COMMAND}" --test-dir "${TEST_DIR}/build" -C "${CONFIG}" --output-on-failure)

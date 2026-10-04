@@ -18,6 +18,17 @@ pogosim_regression_executable(test_simulator_regression
 # Reuse the hardware-compatible example unchanged on every CMake toolchain.
 pogosim_regression_executable(test_flash_archive_controller examples/test_flash_state/main.c)
 
+# Compile the same public API fixture as C++ as well as C; MSVC decorates C++
+# globals differently, so linking must not rely on Unix symbol conventions.
+pogosim_regression_executable(test_controller_cpp_link tests/simulator/cpp_controller.cpp)
+target_include_directories(test_controller_cpp_link PRIVATE "${CMAKE_SOURCE_DIR}/tests/robot_coroutine")
+add_test(NAME simulator_cpp_controller_link COMMAND ${CMAKE_COMMAND}
+    "-DPROGRAM=$<TARGET_FILE:test_controller_cpp_link>"
+    "-DCONFIG=${CMAKE_CURRENT_BINARY_DIR}/coroutine-0.yaml" -DEXPECTED_STATUS=0
+    -P "${CMAKE_SOURCE_DIR}/tests/robot_coroutine/run_simulation.cmake")
+set_tests_properties(simulator_cpp_controller_link PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 15)
+
 set(REGRESSION_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/regression")
 set(MODEL_CASES geometry lighting neighbors probabilities flash logging)
 foreach(type pogobot pogobject pogowall membrane rectmembrane passive_object
@@ -67,6 +78,7 @@ add_test(NAME simulator_installed_legacy_consumer COMMAND ${CMAKE_COMMAND}
     "-DYAML_DIR=${yaml-cpp_DIR}" "-DBOX2D_DIR=${box2d_DIR}" "-DARROW_DIR=${Arrow_DIR}"
     "-DC_FLAGS=${CMAKE_C_FLAGS}" "-DCXX_FLAGS=${CMAKE_CXX_FLAGS}"
     "-DLINK_FLAGS=${CMAKE_EXE_LINKER_FLAGS}"
+    "-DCPP_CONTROLLER_SOURCE=${CMAKE_SOURCE_DIR}/tests/simulator/cpp_controller.cpp"
     -P "${CMAKE_SOURCE_DIR}/tests/simulator/run_installed_consumer.cmake")
 set_tests_properties(simulator_installed_legacy_consumer PROPERTIES
     ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 180)

@@ -1,7 +1,11 @@
 #include "pogosim/simulator.h"
 #undef main
 #include "test_support.h"
+#include <type_traits>
 #include <vector>
+
+// The C++ core must read the same width that REGISTER_USERDATA defines.
+static_assert(std::is_same_v<decltype(UserdataSize), std::size_t>);
 
 namespace { std::vector<PogobotObject*> robots; float moved_angle = 0; }
 

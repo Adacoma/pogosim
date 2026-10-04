@@ -138,6 +138,9 @@ sleep/stack configuration, exception propagation, and cancellation during
 initialization, normal completion, and early stop. A legacy-link fixture compiles
 a C controller with ordinary flags and links the raw Pogosim archive using only
 the pre-coroutine dependencies, then checks nested sleeps and cancellation.
+The same controller also compiles and runs as C++ with explicit C-linkage
+checks for userdata and callback globals; a separate installed-library test
+builds both C and C++ consumers without extra Boost.Context link flags.
 CI runs them on Linux, macOS,
 WSL, MSYS2, and MSVC. To build just the library, configure with
 `-DBUILD_TESTING=OFF`.
