@@ -1,9 +1,10 @@
 # Simulator regression testing
 
-Last updated: 2026-10-04
+Last updated: 2026-10-05
 
-The CMake/CTest suite contains 61 tests: the existing 16 configuration and
-controller-scheduling tests, plus 45 simulator regressions. These fixtures do
+The CMake/CTest suite contains 65 tests (69 on MSVC): the existing 16 configuration
+and controller-scheduling tests, 45 simulator regressions, and four public-macro
+checks. MSVC runs those macro checks under both preprocessor modes. These fixtures do
 not modify runtime code, public APIs, configuration defaults, controller
 Makefiles, or installed dependencies.
 
@@ -64,6 +65,12 @@ all test executables. Test binaries are never installed.
   explicit redeclaration checks for the userdata globals and all six callback
   variables. These checks reject missing C linkage even on Unix. A separate
   compile-time check requires the core userdata-size declaration to be `size_t`.
+- Controller registration: standalone C/C++ fixtures check both `pogobot_start`
+  argument forms, forwarded argument packs, callback pointers, and category
+  evaluation. They cover simulation and hardware category-filtering macros;
+  the hardware fixture uses a type-declaration stub, not the firmware SDK.
+  MSVC explicitly tests `/Zc:preprocessor-` and `/Zc:preprocessor`. The legacy
+  C/C++ simulation and installed consumers also use both registration forms.
 - Installed-library compatibility: separate C and C++ consumers use only installed
   simulator headers and the raw archive, with the pre-coroutine dependency
   list and no explicit Boost.Context link flag. Its installation prefix

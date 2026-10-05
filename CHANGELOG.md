@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- test both controller-registration forms in C/C++ and the hardware macro branch, with explicit traditional/conforming MSVC preprocessor coverage
 - broaden simulator regression coverage to 61 CTest cases, including C/C++ and installed-library compatibility, and add an isolated Linux Debug/UBSan CI build without runtime or API changes
 - add opt-in configuration preflight (`--check-config`) and strict typed lookups (`--strict-config`) without a mandatory schema or new dependencies
 - record dated simulator improvement recommendations and configuration-validation usage/developer guidance
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- preserve `pogobot_start` registration under MSVC's traditional preprocessor without changing controller calls or requiring new compiler flags
 - cancel controller fibers outside exception handlers to respect Boost.Context's switching rules; report failed legacy C/C++ controller assertions with robot identity and observed values
 - restore generated install-manifest ownership in Linux/macOS and WSL CI after sudo installation so unprivileged installed-consumer tests can reinstall
 - use consistent C linkage for simulator userdata/callback globals on MSVC and match the core userdata-size declaration to the controller's `size_t` definition

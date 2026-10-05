@@ -53,7 +53,12 @@ static void robot_end(void) {
 
 int main(void) {
     pogobot_init();
-    pogobot_start(user_init, user_step);
+    /* Exercise both public registration forms in C/C++ and installed builds. */
+    if (pogobot_helper_getid() == 0) {
+        pogobot_start(user_init, user_step);
+    } else {
+        pogobot_start(user_init, user_step, "robots");
+    }
     SET_CALLBACK(callback_robot_end, robot_end);
     return 0;
 }

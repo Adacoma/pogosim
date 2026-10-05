@@ -1,6 +1,6 @@
 # Current project state
 
-Last updated: 2026-10-04
+Last updated: 2026-10-05
 
 ## Inspected
 
@@ -33,7 +33,8 @@ Last updated: 2026-10-04
 
 ## Working analyses
 
-- Hosted MSVC linked successfully but failed eight error-path tests during teardown and two C++ controller runs. Cleanup now happens after leaving the exception handler, as required by Boost.Context; the error remains alive through an `exception_ptr` and exit code 2 is unchanged. Legacy C/C++ assertions now report their condition, robot ID and observed/expected values while retaining exit code 23. All 61 tests pass locally in Release, Debug/UBSan and with yaml-cpp 0.7; deliberate C/C++ assertion failures also print the new diagnostics. Hosted MSVC verification and the cause of its separate C++ assertion failures remain pending.
+- Hosted MSVC now passes 59 of the previous 61 tests, including all eight formerly crashing exception paths. Cleanup outside catch blocks is verified there; error exit code 2 is unchanged.
+- The remaining C++ failures were traced to `pogobot_start`'s variadic selector: MSVC's traditional preprocessor drops registration, leaving USERDATA uninitialized. An isolated MSVC 19.51 Compiler Explorer probe rejects the old dispatcher and accepts the tuple-based fix under both preprocessor modes, including forwarded arguments. Controller calls and external compiler/link flags are unchanged. Standalone C/C++ checks cover both argument forms and hardware category-filtering macros with a type stub; all eight variants compile with inlined public headers under MSVC 19.51, and CI runs each under both preprocessors. All 65 local tests pass in Release, Debug/UBSan and with yaml-cpp 0.7. Full hosted simulator verification remains pending.
 - Ubuntu CI's installed-consumer failure was confirmed as a write-denied `build/install_manifest.txt` left by the privileged system installation; all preceding 60 tests passed and paths containing spaces installed correctly. Linux/macOS and WSL build steps now restore ownership of that generated file before unprivileged tests. Runtime, user build scripts and the spaces-containing installation test are unchanged; hosted verification remains pending.
 - MSVC's unresolved userdata/callback globals were traced to C/C++ language-linkage mismatches, not missing controller bridges. Shared declarations and C++ userdata macros now use C linkage, and the core reads `UserdataSize` as `size_t`. The added regression rejects the old headers even on Unix; installed C and C++ consumers pass locally with unchanged legacy dependencies. Hosted MSVC now links successfully; its runtime failures are tracked above. Firmware branches and controller macro call signatures are unchanged.
 - Regression coverage includes geometry/light/neighbor models, all ten factories under both boundaries, real C message delivery, flash corruption and round trips, Feather read-back/filtering, startup and callback failures, and installed C/C++ consumers with legacy link flags and a spaces-containing prefix. `BUILD_TESTING=OFF` retains the library-only path. CI runs the suite on all existing toolchains and adds an isolated Ubuntu-latest UBSan build; hosted results remain pending. See `regression-testing.md` for coverage and limitations.
@@ -93,7 +94,7 @@ Last updated: 2026-10-04
 
 ## Next concrete tasks
 
-1. Rerun hosted MSVC CI to verify exception teardown and use the new assertion diagnostics to identify its C++ controller failures; continue cross-platform coroutine checks. General native CMake example targets remain a separate task.
+1. Rerun hosted MSVC CI to verify C++ controller registration and all 69 tests; continue cross-platform coroutine checks. General native CMake example targets remain a separate task.
 2. Decide whether the untracked quadrant-motility and magnetometer work should be documented, tested, and committed.
 3. Add quantitative validation references or datasets for motion, sensing, timing, and infrared communication models.
 4. Extend the regression suite to sensor/motor models and GUI interaction without confusing behavioral checks with empirical model validation.

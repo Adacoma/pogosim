@@ -112,6 +112,12 @@ typedef enum {
 
 
 #define GET_MACRO_START(_1, _2, _3, NAME, ...) NAME
+// Pass argument lists as parenthesized tuples: MSVC's traditional preprocessor
+// otherwise forwards __VA_ARGS__ as one selector argument and can drop the call.
+// Separate selection and invocation also force the selected macro to rescan.
+// The trailing 0 below keeps the selector's variadic tail nonempty for two args.
+#define POGOSIM_SELECT_START(args) GET_MACRO_START args
+#define POGOSIM_INVOKE_START(fn, args) fn args
 
 #ifdef SIMULATOR // Compiling for the simulator
 // Definitions live in pogosim.c; keep C linkage for C++ users on MSVC too.
@@ -132,7 +138,8 @@ void _pogobot_start(void (*user_init)(void), void (*user_step)(void), const char
 #define pogobot_start_3(user_init, user_step, object_category) \
     _pogobot_start((user_init), (user_step), (object_category))
 
-#define pogobot_start(...) GET_MACRO_START(__VA_ARGS__, pogobot_start_3, pogobot_start_2)(__VA_ARGS__)
+#define pogobot_start(...) \
+    POGOSIM_INVOKE_START(POGOSIM_SELECT_START((__VA_ARGS__, pogobot_start_3, pogobot_start_2, 0)), (__VA_ARGS__))
 
 #else // Compiling for real robots
 #define get_current_robot_category()         (STRINGIFY(ROBOT_CATEGORY))
@@ -153,7 +160,8 @@ void _pogobot_start(void (*user_init)(void), void (*user_step)(void));
         } \
     } while (0)
 
-#define pogobot_start(...) GET_MACRO_START(__VA_ARGS__, pogobot_start_3, pogobot_start_2)(__VA_ARGS__)
+#define pogobot_start(...) \
+    POGOSIM_INVOKE_START(POGOSIM_SELECT_START((__VA_ARGS__, pogobot_start_3, pogobot_start_2, 0)), (__VA_ARGS__))
 
 #endif
 

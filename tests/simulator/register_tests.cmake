@@ -29,6 +29,38 @@ add_test(NAME simulator_cpp_controller_link COMMAND ${CMAKE_COMMAND}
 set_tests_properties(simulator_cpp_controller_link PROPERTIES
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" ENVIRONMENT "SDL_VIDEODRIVER=dummy" TIMEOUT 15)
 
+# Header-only API tests catch lost registration before reading uninitialized
+# USERDATA. MSVC C11/C17 and C++ have different default preprocessors: exercise
+# both modes explicitly without adding compiler requirements to user targets.
+set(START_PREPROCESSOR_MODES default)
+if(MSVC)
+    set(START_PREPROCESSOR_MODES traditional conforming)
+endif()
+foreach(language c cpp)
+    foreach(platform simulator hardware)
+        foreach(mode IN LISTS START_PREPROCESSOR_MODES)
+            set(target "test_start_dispatch_${platform}_${language}_${mode}")
+            add_executable(${target} "tests/simulator/start_dispatch.${language}")
+            target_include_directories(${target} PRIVATE "${CMAKE_SOURCE_DIR}/src")
+            if(platform STREQUAL "hardware")
+                target_compile_definitions(${target} PRIVATE REAL_ROBOT)
+                target_include_directories(${target} PRIVATE
+                    "${CMAKE_SOURCE_DIR}/tests/simulator/start_dispatch_stubs")
+            endif()
+            if(MSVC)
+                if(mode STREQUAL "traditional")
+                    target_compile_options(${target} PRIVATE /Zc:preprocessor-)
+                else()
+                    target_compile_options(${target} PRIVATE /Zc:preprocessor)
+                endif()
+            endif()
+            add_test(NAME "simulator_start_dispatch_${platform}_${language}_${mode}" COMMAND ${target})
+            set_tests_properties("simulator_start_dispatch_${platform}_${language}_${mode}"
+                PROPERTIES TIMEOUT 15)
+        endforeach()
+    endforeach()
+endforeach()
+
 set(REGRESSION_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/regression")
 set(MODEL_CASES geometry lighting neighbors probabilities flash logging)
 foreach(type pogobot pogobject pogowall membrane rectmembrane passive_object
